@@ -34,3 +34,8 @@ media/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code internal
+.claude/skills/
+.claude/plugins/
+.claude/todos/
