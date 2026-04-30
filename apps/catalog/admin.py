@@ -33,7 +33,7 @@ class ProductAdmin(admin.ModelAdmin):
                     'price_wholesale', 'ric', 'is_active']
     list_filter = ['brand', 'category', 'is_active']
     search_fields = ['title', 'articul', 'nc_code']
-    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ['slug', 'nc_code', 'created_at', 'updated_at']
     inlines = [ProductImageInline, ProductTechInline]
     list_per_page = 50
 

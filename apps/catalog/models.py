@@ -20,7 +20,8 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title, allow_unicode=True)
+            base = slugify(self.title, allow_unicode=True) or f"cat-{self.breez_id}"
+            self.slug = f"{base}-{self.breez_id}" if Category.objects.filter(slug=base).exists() else base
         super().save(*args, **kwargs)
 
 
@@ -42,7 +43,8 @@ class Brand(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title, allow_unicode=True)
+            base = slugify(self.title, allow_unicode=True) or f"brand-{self.breez_id}"
+            self.slug = f"{base}-{self.breez_id}" if Brand.objects.filter(slug=base).exists() else base
         super().save(*args, **kwargs)
 
 
@@ -80,8 +82,12 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base = f"{self.brand}-{self.articul}" if self.articul else self.title
-            self.slug = slugify(base, allow_unicode=True)
+            brand_part = slugify(self.brand.title, allow_unicode=True) if self.brand else ''
+            if brand_part and self.articul:
+                base = f"{brand_part}-{self.articul}-{self.nc_code}"
+            else:
+                base = f"{slugify(self.title, allow_unicode=True)}-{self.nc_code}"
+            self.slug = base[:500] or f"product-{self.nc_code}"
         super().save(*args, **kwargs)
 
 
@@ -93,6 +99,8 @@ class ProductImage(models.Model):
 
     class Meta:
         ordering = ['order']
+        verbose_name = 'Изображение'
+        verbose_name_plural = 'Изображения'
 
     def __str__(self):
         return f"Фото {self.product.title} #{self.order}"
@@ -126,6 +134,9 @@ class ProductTech(models.Model):
 
     class Meta:
         unique_together = ('product', 'spec')
+        verbose_name = 'Характеристика товара'
+        verbose_name_plural = 'Характеристики товара'
 
     def __str__(self):
-        return f"{self.product.articul} — {self.spec.title}: {self.value}"
+        identifier = self.product.articul or self.product.nc_code
+        return f"{identifier} — {self.spec.title}: {self.value}"
