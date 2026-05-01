@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.title }} — Oasis{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+  <!-- Галерея -->
+  <div class="card p-4">
+    {% with images=product.images.all %}
+      {% if images %}
+        <img id="main-img" src="{{ images.0.url }}"
+             alt="{{ product.title }}" class="w-full h-80 object-contain mb-4">
+        <div class="flex gap-2 flex-wrap">
+          {% for img in images %}
+            <img src="{{ img.url }}" alt=""
+                 class="w-16 h-16 object-contain cursor-pointer border-2 rounded
+                        hover:border-accent"
+                 onclick="document.getElementById('main-img').src='{{ img.url }}'">
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="h-80 flex items-center justify-center text-gray-300 text-4xl">
+          📦
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+  <!-- Информация -->
+  <div>
+    <p class="text-sm text-gray-400 mb-1">{{ product.brand }} / {{ product.category }}</p>
+    <h1 class="text-2xl font-bold mb-2">{{ product.title }}</h1>
+    <p class="text-sm text-gray-400 mb-4">Арт: {{ product.articul }} | НС: {{ product.nc_code }}</p>
+    {% if product.stock.in_stock %}
+      <div class="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold mb-4">
+        В наличии: {{ product.stock.quantity }} шт.
+      </div>
+    {% else %}
+      <div class="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-sm mb-4">
+        Нет в наличии
+      </div>
+    {% endif %}
+    {% if product.ric %}
+      <p class="text-sm text-gray-500">РИЦ: {{ product.ric|floatformat:0 }} {{ product.ric_currency }}</p>
+    {% endif %}
+    {% if show_price %}
+      {% if product.price_wholesale %}
+        <p class="text-3xl font-extrabold text-accent mt-1 mb-4">
+          {{ product.price_wholesale|floatformat:0 }} ₽
+        </p>
+        {% if product.stock.in_stock %}
+          <form hx-post="/cart/add/" hx-target="#cart-msg" hx-swap="innerHTML"
+                class="flex gap-3 items-center">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.pk }}">
+            <input type="number" name="quantity" value="1" min="1"
+                   class="w-20 border rounded-lg px-3 py-2 text-center">
+            <button class="btn-accent px-6 py-2 rounded-lg font-semibold">
+              В корзину
+            </button>
+          </form>
+          <div id="cart-msg" class="mt-2 text-sm text-green-600"></div>
+        {% endif %}
+      {% endif %}
+    {% else %}
+      <div class="card p-4 bg-orange-50 mt-2">
+        <p class="text-sm text-gray-600">
+          <a href="/auth/register/" class="text-accent font-semibold">Зарегистрируйтесь</a>
+          как дилер, чтобы увидеть оптовые цены и оформить заказ.
+        </p>
+      </div>
+    {% endif %}
+    <div class="flex gap-3 mt-4">
+      {% if product.booklet_url %}
+        <a href="{{ product.booklet_url }}" target="_blank"
+           class="text-sm text-accent hover:underline">📄 Буклет</a>
+      {% endif %}
+      {% if product.manual_url %}
+        <a href="{{ product.manual_url }}" target="_blank"
+           class="text-sm text-accent hover:underline">📋 Инструкция</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% if product.tech_values.exists %}
+  <div class="card p-6 mt-8">
+    <h2 class="text-xl font-bold mb-4">Технические характеристики</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+      {% for tv in product.tech_values.all %}
+        <div class="flex justify-between py-2 border-b border-gray-100">
+          <span class="text-sm text-gray-600">{{ tv.spec.title }}</span>
+          <span class="text-sm font-semibold">{{ tv.value }} {{ tv.spec.unit }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

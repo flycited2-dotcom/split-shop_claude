@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Каталог климатической техники — Oasis{% endblock %}
+{% block content %}
+<div class="flex gap-6">
+  <!-- Фильтры -->
+  <aside class="w-64 shrink-0">
+    <div class="card p-5">
+      <h2 class="font-bold text-lg mb-4">Фильтры</h2>
+      <form method="get">
+        <div class="mb-4">
+          <label class="block text-sm font-semibold mb-1">Поиск</label>
+          {{ filter.form.q }}
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-semibold mb-1">Бренд</label>
+          {{ filter.form.brand }}
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-semibold mb-1">Категория</label>
+          {{ filter.form.category }}
+        </div>
+        <div class="mb-4 flex items-center gap-2">
+          {{ filter.form.in_stock }}
+          <label class="text-sm">Только в наличии</label>
+        </div>
+        <button type="submit" class="btn-accent w-full py-2 rounded-lg font-semibold">
+          Применить
+        </button>
+        <a href="/catalog/" class="block text-center text-sm text-gray-400 mt-2">
+          Сбросить
+        </a>
+      </form>
+    </div>
+  </aside>
+  <!-- Товары -->
+  <div class="flex-1">
+    <p class="text-sm text-gray-400 mb-4">
+      Найдено: {{ page_obj.paginator.count }} товаров
+    </p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {% for product in page_obj %}
+        {% include 'partials/product_card.html' with show_price=show_price %}
+      {% empty %}
+        <p class="col-span-4 text-gray-400 text-center py-12">Товары не найдены</p>
+      {% endfor %}
+    </div>
+    <!-- Пагинация -->
+    {% if page_obj.has_other_pages %}
+      <div class="flex justify-center gap-2 mt-8">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}"
+             class="px-4 py-2 card text-sm hover:text-accent">← Назад</a>
+        {% endif %}
+        <span class="px-4 py-2 bg-accent text-white rounded-card text-sm">
+          {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}"
+             class="px-4 py-2 card text-sm hover:text-accent">Вперёд →</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

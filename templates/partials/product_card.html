@@ -1,0 +1,31 @@
+<div class="card p-4 flex flex-col hover:shadow-md transition">
+  {% with img=product.images.first %}
+    <a href="{% url 'product_detail' product.slug %}">
+      <img src="{{ img.url|default:'/static/img/no-photo.png' }}"
+           alt="{{ product.title }}"
+           class="w-full h-40 object-contain mb-3">
+    </a>
+  {% endwith %}
+  <p class="text-xs text-gray-400 mb-1">{{ product.brand }}</p>
+  <a href="{% url 'product_detail' product.slug %}"
+     class="font-semibold text-sm text-gray-800 hover:text-accent line-clamp-2 mb-2">
+    {{ product.title }}
+  </a>
+  {% if product.stock.in_stock %}
+    <span class="text-xs text-green-600 font-semibold mb-2">В наличии</span>
+  {% else %}
+    <span class="text-xs text-gray-400 mb-2">Нет в наличии</span>
+  {% endif %}
+  <div class="mt-auto">
+    {% if product.ric %}
+      <p class="text-xs text-gray-400">РИЦ: {{ product.ric|floatformat:0 }} ₽</p>
+    {% endif %}
+    {% if show_price and product.price_wholesale %}
+      <p class="text-lg font-bold text-accent">
+        {{ product.price_wholesale|floatformat:0 }} ₽
+      </p>
+    {% elif not show_price %}
+      <p class="text-sm text-gray-400 italic">Цена — после регистрации</p>
+    {% endif %}
+  </div>
+</div>

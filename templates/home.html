@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Oasis — климатическая техника оптом{% endblock %}
+{% block content %}
+<div class="text-center py-12">
+  <h1 class="text-4xl font-extrabold text-gray-800 mb-4">
+    Климатическая техника оптом
+  </h1>
+  <p class="text-lg text-gray-500 mb-8">
+    B2B-портал для официальных дилеров. Оптовые цены после одобрения.
+  </p>
+  <a href="/catalog/" class="btn-accent px-8 py-3 rounded-lg font-bold text-lg inline-block">
+    Перейти в каталог
+  </a>
+</div>
+
+{% if brands %}
+<section class="mt-12">
+  <h2 class="text-2xl font-bold mb-6">Бренды</h2>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+    {% for brand in brands %}
+      <div class="card p-4 flex items-center justify-center hover:shadow-md transition">
+        <span class="font-bold text-gray-700">{{ brand.title }}</span>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if featured %}
+<section class="mt-12">
+  <h2 class="text-2xl font-bold mb-6">В наличии</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {% for product in featured %}
+      {% include 'partials/product_card.html' with show_price=False %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}
