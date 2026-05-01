@@ -1,0 +1,47 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Oasis — климатическая техника{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#F97316' },
+          fontFamily: { sans: ['Nunito Sans', 'sans-serif'] },
+          borderRadius: { card: '12px' }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    body { background-color: #F5F7FA; font-family: 'Nunito Sans', sans-serif; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn-accent { background: #F97316; color: white; transition: all .2s; }
+    .btn-accent:hover { background: #ea6c0a; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="text-gray-900 min-h-screen flex flex-col">
+  {% include 'partials/header.html' %}
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="mb-4 p-4 rounded-card
+          {% if message.tags == 'error' %}bg-red-100 text-red-700
+          {% elif message.tags == 'success' %}bg-green-100 text-green-700
+          {% else %}bg-blue-100 text-blue-700{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {% include 'partials/footer.html' %}
+</body>
+</html>

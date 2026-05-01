@@ -1,0 +1,38 @@
+<!-- templates/partials/header.html -->
+<header class="bg-white shadow-sm sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <a href="/" class="text-2xl font-extrabold text-accent">OASIS</a>
+    <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-600">
+      <a href="/catalog/" class="hover:text-accent transition">Каталог</a>
+      <a href="/brands/" class="hover:text-accent transition">Бренды</a>
+    </nav>
+    <div class="flex items-center gap-4">
+      {% if user.is_authenticated %}
+        {% if user.is_approved %}
+          <a href="/cart/" class="relative hover:text-accent transition">
+            🛒
+            {% if cart_count > 0 %}
+              <span class="absolute -top-2 -right-2 bg-accent text-white text-xs
+                           rounded-full w-5 h-5 flex items-center justify-center">
+                {{ cart_count }}
+              </span>
+            {% endif %}
+          </a>
+        {% endif %}
+        <a href="/account/" class="text-sm font-semibold hover:text-accent">
+          {{ user.company_name|default:user.username }}
+        </a>
+        <form method="post" action="/auth/logout/">
+          {% csrf_token %}
+          <button class="text-sm text-gray-400 hover:text-red-500">Выйти</button>
+        </form>
+      {% else %}
+        <a href="/auth/login/" class="text-sm font-semibold hover:text-accent">Войти</a>
+        <a href="/auth/register/"
+           class="btn-accent px-4 py-2 rounded-lg text-sm font-semibold">
+          Регистрация
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</header>
