@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% block title %}Oasis — климатическая техника оптом{% endblock %}
 {% block content %}
+
+<!-- Hero -->
 <div class="text-center py-12">
   <h1 class="text-4xl font-extrabold text-gray-800 mb-4">
     Климатическая техника оптом
@@ -8,32 +10,71 @@
   <p class="text-lg text-gray-500 mb-8">
     B2B-портал для официальных дилеров. Оптовые цены после одобрения.
   </p>
-  <a href="/catalog/" class="btn-accent px-8 py-3 rounded-lg font-bold text-lg inline-block">
-    Перейти в каталог
-  </a>
+  <div class="flex gap-4 justify-center">
+    <a href="/catalog/" class="btn-accent px-8 py-3 rounded-lg font-bold text-lg inline-block">
+      Перейти в каталог
+    </a>
+    {% if not user.is_authenticated %}
+      <a href="/auth/register/" class="px-8 py-3 rounded-lg font-bold text-lg border-2 border-accent text-accent inline-block hover:bg-orange-50">
+        Стать дилером
+      </a>
+    {% endif %}
+  </div>
 </div>
 
-{% if brands %}
-<section class="mt-12">
-  <h2 class="text-2xl font-bold mb-6">Бренды</h2>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-    {% for brand in brands %}
-      <div class="card p-4 flex items-center justify-center hover:shadow-md transition">
-        <span class="font-bold text-gray-700">{{ brand.title }}</span>
-      </div>
+<!-- Категории -->
+{% if categories %}
+<section class="mt-8">
+  <h2 class="text-2xl font-bold mb-4">Категории товаров</h2>
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+    {% for cat in categories %}
+      <a href="/catalog/?category={{ cat.pk }}"
+         class="card p-4 flex flex-col items-center justify-center text-center hover:shadow-md transition hover:text-accent min-h-[80px]">
+        <span class="font-semibold text-sm text-gray-700 hover:text-accent">{{ cat.title }}</span>
+        {% if cat.children.count %}
+          <span class="text-xs text-gray-400 mt-1">{{ cat.children.count }} подкатегорий</span>
+        {% endif %}
+      </a>
     {% endfor %}
   </div>
 </section>
 {% endif %}
 
-{% if featured %}
-<section class="mt-12">
-  <h2 class="text-2xl font-bold mb-6">В наличии</h2>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    {% for product in featured %}
-      {% include 'partials/product_card.html' with show_price=False %}
+<!-- Бренды -->
+{% if brands %}
+<section class="mt-10">
+  <h2 class="text-2xl font-bold mb-4">Бренды</h2>
+  <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+    {% for brand in brands %}
+      <a href="/catalog/?brand={{ brand.pk }}"
+         class="card p-3 flex items-center justify-center hover:shadow-md transition h-16">
+        {% if brand.logo_url %}
+          <img src="{{ brand.logo_url }}" alt="{{ brand.title }}"
+               class="max-h-10 max-w-full object-contain"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+          <span class="text-xs font-bold text-gray-700 hidden">{{ brand.title }}</span>
+        {% else %}
+          <span class="text-xs font-bold text-gray-700 text-center">{{ brand.title }}</span>
+        {% endif %}
+      </a>
     {% endfor %}
   </div>
 </section>
 {% endif %}
+
+<!-- В наличии -->
+{% if featured %}
+<section class="mt-10">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-2xl font-bold">Есть в наличии</h2>
+    <a href="/catalog/?in_stock=true" class="text-accent text-sm hover:underline">Смотреть все →</a>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {% for product in featured %}
+      {% include 'partials/product_card.html' with show_price=show_price %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% endblock %}

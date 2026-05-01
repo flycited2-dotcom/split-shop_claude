@@ -1,31 +1,48 @@
+{% load static %}
 <div class="card p-4 flex flex-col hover:shadow-md transition">
   {% with img=product.images.first %}
     <a href="{% url 'product_detail' product.slug %}">
-      <img src="{{ img.url|default:'/static/img/no-photo.png' }}"
+      <img src="{% if img %}{{ img.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"
            alt="{{ product.title }}"
-           class="w-full h-40 object-contain mb-3">
+           class="w-full h-40 object-contain mb-3"
+           loading="lazy"
+           onerror="this.src='{% static 'img/no-photo.svg' %}'">
     </a>
   {% endwith %}
   <p class="text-xs text-gray-400 mb-1">{{ product.brand }}</p>
   <a href="{% url 'product_detail' product.slug %}"
-     class="font-semibold text-sm text-gray-800 hover:text-accent line-clamp-2 mb-2">
+     class="font-semibold text-sm text-gray-800 hover:text-accent line-clamp-2 mb-2 flex-1">
     {{ product.title }}
   </a>
-  {% if product.stock.in_stock %}
-    <span class="text-xs text-green-600 font-semibold mb-2">В наличии</span>
-  {% else %}
-    <span class="text-xs text-gray-400 mb-2">Нет в наличии</span>
-  {% endif %}
   <div class="mt-auto">
+    {% if product.stock.in_stock %}
+      <span class="inline-block text-xs text-green-600 font-semibold mb-2">● В наличии</span>
+    {% else %}
+      <span class="inline-block text-xs text-gray-400 mb-2">● Нет в наличии</span>
+    {% endif %}
     {% if product.ric %}
       <p class="text-xs text-gray-400">РИЦ: {{ product.ric|floatformat:0 }} ₽</p>
     {% endif %}
     {% if show_price and product.price_wholesale %}
-      <p class="text-lg font-bold text-accent">
+      <p class="text-lg font-bold text-accent mb-2">
         {{ product.price_wholesale|floatformat:0 }} ₽
       </p>
+      {% if product.stock.in_stock %}
+        <form hx-post="/cart/add/" hx-target="#cart-msg-{{ product.pk }}" hx-swap="innerHTML">
+          {% csrf_token %}
+          <input type="hidden" name="product_id" value="{{ product.pk }}">
+          <input type="hidden" name="quantity" value="1">
+          <button class="btn-accent w-full py-1.5 rounded-lg text-sm font-semibold">
+            В корзину
+          </button>
+        </form>
+        <div id="cart-msg-{{ product.pk }}" class="text-xs text-green-600 mt-1 text-center"></div>
+      {% endif %}
     {% elif not show_price %}
-      <p class="text-sm text-gray-400 italic">Цена — после регистрации</p>
+      <a href="/auth/register/"
+         class="block text-center text-xs text-accent hover:underline mt-1">
+        Цена — после регистрации
+      </a>
     {% endif %}
   </div>
 </div>

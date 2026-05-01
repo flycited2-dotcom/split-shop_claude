@@ -5,11 +5,18 @@ from .filters import ProductFilter
 
 
 def home(request):
-    brands = Brand.objects.all()[:12]
+    brands = Brand.objects.all().order_by('order', 'title')[:16]
+    categories = Category.objects.filter(parent=None).prefetch_related('children').order_by('order')
     featured = Product.objects.filter(
         is_active=True, stock__quantity__gt=0
-    ).select_related('brand', 'stock')[:8]
-    return render(request, 'home.html', {'brands': brands, 'featured': featured})
+    ).select_related('brand', 'stock').prefetch_related('images')[:8]
+    show_price = request.user.is_authenticated and getattr(request.user, 'is_approved', False)
+    return render(request, 'home.html', {
+        'brands': brands,
+        'categories': categories,
+        'featured': featured,
+        'show_price': show_price,
+    })
 
 
 def catalog(request):

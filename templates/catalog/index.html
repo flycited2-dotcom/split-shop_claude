@@ -2,41 +2,81 @@
 {% block title %}Каталог климатической техники — Oasis{% endblock %}
 {% block content %}
 <div class="flex gap-6">
-  <!-- Фильтры -->
-  <aside class="w-64 shrink-0">
+  <!-- Боковая панель -->
+  <aside class="w-64 shrink-0 space-y-4">
+
+    <!-- Категории -->
+    <div class="card p-5">
+      <h2 class="font-bold text-lg mb-3">Категории</h2>
+      <ul class="space-y-1 text-sm">
+        <li>
+          <a href="/catalog/" class="block px-2 py-1 rounded-lg font-semibold
+            {% if not request.GET.category %}text-accent{% else %}text-gray-700 hover:text-accent{% endif %}">
+            Все товары
+          </a>
+        </li>
+        {% for cat in categories %}
+          <li>
+            <a href="?category={{ cat.pk }}"
+               class="block px-2 py-1 rounded-lg font-semibold
+               {% if request.GET.category == cat.pk|stringformat:'s' %}text-accent bg-orange-50{% else %}text-gray-700 hover:text-accent{% endif %}">
+              {{ cat.title }}
+            </a>
+            {% if cat.children.all %}
+              <ul class="ml-3 mt-1 space-y-1">
+                {% for child in cat.children.all %}
+                  <li>
+                    <a href="?category={{ child.pk }}"
+                       class="block px-2 py-1 rounded text-gray-500 hover:text-accent text-xs
+                       {% if request.GET.category == child.pk|stringformat:'s' %}text-accent font-semibold{% endif %}">
+                      {{ child.title }}
+                    </a>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Фильтры -->
     <div class="card p-5">
       <h2 class="font-bold text-lg mb-4">Фильтры</h2>
       <form method="get">
+        {% if request.GET.category %}
+          <input type="hidden" name="category" value="{{ request.GET.category }}">
+        {% endif %}
         <div class="mb-4">
-          <label class="block text-sm font-semibold mb-1">Поиск</label>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Поиск</label>
           {{ filter.form.q }}
         </div>
         <div class="mb-4">
-          <label class="block text-sm font-semibold mb-1">Бренд</label>
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Бренд</label>
           {{ filter.form.brand }}
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-semibold mb-1">Категория</label>
-          {{ filter.form.category }}
         </div>
         <div class="mb-4 flex items-center gap-2">
           {{ filter.form.in_stock }}
-          <label class="text-sm">Только в наличии</label>
+          <label class="text-sm text-gray-700 cursor-pointer">Только в наличии</label>
         </div>
-        <button type="submit" class="btn-accent w-full py-2 rounded-lg font-semibold">
+        <button type="submit" class="btn-accent w-full py-2 rounded-lg font-semibold text-sm">
           Применить
         </button>
-        <a href="/catalog/" class="block text-center text-sm text-gray-400 mt-2">
-          Сбросить
+        <a href="/catalog/" class="block text-center text-xs text-gray-400 mt-2 hover:text-accent">
+          Сбросить фильтры
         </a>
       </form>
     </div>
+
   </aside>
+
   <!-- Товары -->
-  <div class="flex-1">
-    <p class="text-sm text-gray-400 mb-4">
-      Найдено: {{ page_obj.paginator.count }} товаров
-    </p>
+  <div class="flex-1 min-w-0">
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-sm text-gray-400">
+        Найдено: <span class="font-semibold text-gray-700">{{ page_obj.paginator.count }}</span> товаров
+      </p>
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {% for product in page_obj %}
         {% include 'partials/product_card.html' with show_price=show_price %}
@@ -48,14 +88,14 @@
     {% if page_obj.has_other_pages %}
       <div class="flex justify-center gap-2 mt-8">
         {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}"
+          <a href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}"
              class="px-4 py-2 card text-sm hover:text-accent">← Назад</a>
         {% endif %}
-        <span class="px-4 py-2 bg-accent text-white rounded-card text-sm">
+        <span class="px-4 py-2 bg-accent text-white rounded-card text-sm font-semibold">
           {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
         </span>
         {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}"
+          <a href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}"
              class="px-4 py-2 card text-sm hover:text-accent">Вперёд →</a>
         {% endif %}
       </div>
