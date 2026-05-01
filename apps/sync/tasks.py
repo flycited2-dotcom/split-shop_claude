@@ -27,6 +27,8 @@ def sync_categories():
         item_id = int(item['id'])
         raw_slug = item.get('chpu') or slugify(item.get('title', ''), allow_unicode=True)
         slug = raw_slug or f"cat-{item_id}"
+        if Category.objects.filter(slug=slug).exclude(breez_id=item_id).exists():
+            slug = f"{slug}-{item_id}"
         _, is_new = Category.objects.update_or_create(
             breez_id=item_id,
             defaults={
@@ -66,6 +68,9 @@ def sync_brands():
         item_id = int(item['id'])
         raw_slug = item.get('chpu') or slugify(item.get('title', ''), allow_unicode=True)
         slug = raw_slug or f"brand-{item_id}"
+        # Ensure slug uniqueness across different breez_ids
+        if Brand.objects.filter(slug=slug).exclude(breez_id=item_id).exists():
+            slug = f"{slug}-{item_id}"
         _, is_new = Brand.objects.update_or_create(
             breez_id=item_id,
             defaults={
