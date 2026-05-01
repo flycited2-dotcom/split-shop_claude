@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 10px; color: #111; }
+    h1 { color: #F97316; font-size: 18px; margin-bottom: 4px; }
+    .meta { color: #666; font-size: 9px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #F97316; color: white; padding: 6px 8px; text-align: left; font-size: 9px; }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; }
+    tr:nth-child(even) { background: #F5F7FA; }
+    .price { font-weight: bold; color: #F97316; }
+  </style>
+</head>
+<body>
+  <h1>OASIS — Прайс-лист</h1>
+  <p class="meta">
+    Для: {{ user.company_name }} | ИНН: {{ user.inn }} |
+    Дата: {% now "d.m.Y" %} | oasis.com.ru
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Артикул</th>
+        <th>Название</th>
+        <th>Бренд</th>
+        <th>Остаток</th>
+        <th>РИЦ</th>
+        <th>Опт. цена</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td>{{ item.articul }}</td>
+          <td>{{ item.title }}</td>
+          <td>{{ item.brand }}</td>
+          <td>{{ item.stock }}</td>
+          <td>{% if item.ric %}{{ item.ric }} ₽{% endif %}</td>
+          <td class="price">{% if item.price %}{{ item.price }} ₽{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
