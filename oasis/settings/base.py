@@ -18,7 +18,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     'django_htmx',
-    'django_filter',
+    'django_filters',
     'django_celery_beat',
 ]
 
