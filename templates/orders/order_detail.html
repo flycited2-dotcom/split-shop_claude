@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Заказ #{{ order.pk }} — Oasis{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <div class="flex items-center gap-4 mb-6">
+    <h1 class="text-2xl font-bold">Заказ #{{ order.pk }}</h1>
+    <span class="px-3 py-1 bg-orange-100 text-accent rounded-full text-sm font-semibold">
+      {{ order.get_status_display }}
+    </span>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="card p-4">
+      <p class="text-sm text-gray-400 mb-1">Дата оформления</p>
+      <p class="font-semibold">{{ order.created_at|date:"d.m.Y H:i" }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-sm text-gray-400 mb-1">Адрес доставки</p>
+      <p class="font-semibold">{{ order.delivery_address }}</p>
+    </div>
+  </div>
+  {% if order.comment %}
+    <div class="card p-4 mb-6">
+      <p class="text-sm text-gray-400 mb-1">Комментарий</p>
+      <p>{{ order.comment }}</p>
+    </div>
+  {% endif %}
+  <div class="card overflow-hidden mb-6">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left">Товар</th>
+          <th class="px-4 py-3 text-center">Кол-во</th>
+          <th class="px-4 py-3 text-right">Цена</th>
+          <th class="px-4 py-3 text-right">Сумма</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items.all %}
+          <tr class="border-t">
+            <td class="px-4 py-3">
+              <p class="font-semibold">{{ item.product.title }}</p>
+              <p class="text-xs text-gray-400">{{ item.product.articul }}</p>
+            </td>
+            <td class="px-4 py-3 text-center">{{ item.quantity }}</td>
+            <td class="px-4 py-3 text-right">{{ item.price_at_order|floatformat:0 }} ₽</td>
+            <td class="px-4 py-3 text-right font-bold">
+              {{ item.price_at_order|floatformat:0 }} ₽
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="bg-gray-50">
+        <tr>
+          <td colspan="3" class="px-4 py-3 font-bold">Итого:</td>
+          <td class="px-4 py-3 text-right font-extrabold text-accent text-lg">
+            {{ order.total|floatformat:0 }} ₽
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <a href="/account/orders/" class="text-accent hover:underline text-sm">← Все заказы</a>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Оформление заказа — Oasis{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6">Оформление заказа</h1>
+  <div class="card p-6 mb-6">
+    <h2 class="font-bold text-lg mb-4">Состав заказа</h2>
+    <div class="space-y-3">
+      {% for item in cart.items.all %}
+        <div class="flex justify-between text-sm">
+          <span>{{ item.product.title }} × {{ item.quantity }}</span>
+          <span class="font-semibold">{{ item.subtotal|floatformat:0 }} ₽</span>
+        </div>
+      {% endfor %}
+      <div class="border-t pt-3 flex justify-between font-bold">
+        <span>Итого:</span>
+        <span class="text-accent text-lg">{{ cart.total|floatformat:0 }} ₽</span>
+      </div>
+    </div>
+  </div>
+  <div class="card p-6">
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          <label class="block text-sm font-semibold mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn-accent w-full py-3 rounded-lg font-bold mt-4">
+        Оформить заказ
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

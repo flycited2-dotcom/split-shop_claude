@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Корзина — Oasis{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Корзина</h1>
+{% if cart.items.exists %}
+  <div id="cart-content">
+    {% include 'orders/partials/cart_table.html' %}
+  </div>
+  <div class="flex justify-end mt-6">
+    <a href="/cart/checkout/"
+       class="btn-accent px-8 py-3 rounded-lg font-bold text-lg">
+      Оформить заказ →
+    </a>
+  </div>
+{% else %}
+  <div class="card p-12 text-center">
+    <p class="text-gray-400 text-lg mb-4">Корзина пуста</p>
+    <a href="/catalog/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
+      Перейти в каталог
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

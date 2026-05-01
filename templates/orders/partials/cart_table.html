@@ -1,0 +1,57 @@
+<div class="card overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left">Товар</th>
+        <th class="px-4 py-3 text-center">Кол-во</th>
+        <th class="px-4 py-3 text-right">Цена</th>
+        <th class="px-4 py-3 text-right">Сумма</th>
+        <th class="px-4 py-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cart.items.all %}
+        <tr class="border-t" id="row-{{ item.pk }}">
+          <td class="px-4 py-3">
+            <a href="/product/{{ item.product.slug }}/"
+               class="font-semibold hover:text-accent">
+              {{ item.product.title }}
+            </a>
+            <p class="text-xs text-gray-400">{{ item.product.articul }}</p>
+          </td>
+          <td class="px-4 py-3 text-center">
+            <form hx-post="/cart/update/{{ item.pk }}/"
+                  hx-target="#cart-content" hx-swap="innerHTML">
+              {% csrf_token %}
+              <input type="number" name="quantity" value="{{ item.quantity }}"
+                     min="1" onchange="this.form.requestSubmit()"
+                     class="w-16 border rounded px-2 py-1 text-center">
+            </form>
+          </td>
+          <td class="px-4 py-3 text-right">
+            {{ item.product.price_wholesale|floatformat:0 }} ₽
+          </td>
+          <td class="px-4 py-3 text-right font-bold">
+            {{ item.subtotal|floatformat:0 }} ₽
+          </td>
+          <td class="px-4 py-3 text-center">
+            <form hx-post="/cart/remove/{{ item.pk }}/"
+                  hx-target="#cart-content" hx-swap="innerHTML">
+              {% csrf_token %}
+              <button class="text-red-400 hover:text-red-600">✕</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="bg-gray-50">
+      <tr>
+        <td colspan="3" class="px-4 py-3 font-bold">Итого:</td>
+        <td class="px-4 py-3 text-right font-extrabold text-accent text-lg">
+          {{ cart.total|floatformat:0 }} ₽
+        </td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
