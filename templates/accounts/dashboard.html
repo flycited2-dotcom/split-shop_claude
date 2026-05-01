@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Личный кабинет — Oasis{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Личный кабинет</h1>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <div class="card p-6">
+    <p class="text-sm text-gray-400 mb-1">Компания</p>
+    <p class="font-bold">{{ user.company_name }}</p>
+  </div>
+  <div class="card p-6">
+    <p class="text-sm text-gray-400 mb-1">ИНН</p>
+    <p class="font-bold">{{ user.inn }}</p>
+  </div>
+  <div class="card p-6">
+    <p class="text-sm text-gray-400 mb-1">Скидка</p>
+    <p class="font-bold text-accent">{{ user.discount_percent }}%</p>
+  </div>
+</div>
+<div class="flex gap-4 mb-6">
+  <a href="/export/price/excel/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
+    📊 Скачать прайс Excel
+  </a>
+  <a href="/export/price/pdf/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
+    📄 Скачать прайс PDF
+  </a>
+</div>
+<h2 class="text-xl font-bold mb-4">Мои заказы</h2>
+{% if orders %}
+  <div class="card overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left">№</th>
+          <th class="px-4 py-3 text-left">Дата</th>
+          <th class="px-4 py-3 text-left">Статус</th>
+          <th class="px-4 py-3 text-right">Сумма</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr class="border-t hover:bg-gray-50">
+            <td class="px-4 py-3">#{{ order.pk }}</td>
+            <td class="px-4 py-3">{{ order.created_at|date:"d.m.Y" }}</td>
+            <td class="px-4 py-3">{{ order.get_status_display }}</td>
+            <td class="px-4 py-3 text-right font-bold">{{ order.total|floatformat:0 }} ₽</td>
+            <td class="px-4 py-3">
+              <a href="/account/orders/{{ order.pk }}/" class="text-accent hover:underline">
+                Детали
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-gray-400">Заказов пока нет.</p>
+{% endif %}
+{% endblock %}

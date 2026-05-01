@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация дилера — Oasis{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="card p-8">
+    <h1 class="text-2xl font-bold mb-6">Регистрация дилера</h1>
+    <p class="text-sm text-gray-500 mb-6">
+      Только для юридических лиц. После регистрации менеджер проверит данные
+      и откроет доступ к оптовым ценам.
+    </p>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      {% for field in form %}
+        <div>
+          <label class="block text-sm font-semibold mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn-accent w-full py-3 rounded-lg font-bold mt-4">
+        Отправить заявку
+      </button>
+    </form>
+    <p class="text-center text-sm text-gray-400 mt-4">
+      Уже есть аккаунт? <a href="/auth/login/" class="text-accent">Войти</a>
+    </p>
+  </div>
+</div>
+{% endblock %}
