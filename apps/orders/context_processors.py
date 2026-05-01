@@ -1,4 +1,5 @@
 from django.db import models as db_models
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def cart_count(request):
@@ -12,5 +13,5 @@ def cart_count(request):
             total=db_models.Sum('quantity')
         )['total'] or 0
         return {'cart_count': count}
-    except Exception:
+    except ObjectDoesNotExist:
         return {'cart_count': 0}

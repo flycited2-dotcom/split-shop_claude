@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.conf import settings
 from apps.catalog.models import Product
@@ -21,7 +23,10 @@ class Cart(models.Model):
 
     @property
     def total(self):
-        return sum(item.subtotal for item in self.items.select_related('product'))
+        return sum(
+            (item.subtotal for item in self.items.select_related('product', 'cart__user')),
+            Decimal('0')
+        )
 
     @property
     def count(self):
@@ -45,7 +50,7 @@ class CartItem(models.Model):
     @property
     def subtotal(self):
         price = self.cart.user.get_wholesale_price(self.product.price_wholesale)
-        return (price or 0) * self.quantity
+        return (price if price is not None else Decimal('0')) * self.quantity
 
 
 class Order(models.Model):
