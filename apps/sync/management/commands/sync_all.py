@@ -25,9 +25,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'Остатки: {result}'))
             return
 
-        if not options['catalog_only']:
-            self.stdout.write('Синхронизация каталога...')
-
+        self.stdout.write('Синхронизация каталога...')
         result = sync_catalog()
         self.stdout.write(self.style.SUCCESS(f'Каталог: {result}'))
 

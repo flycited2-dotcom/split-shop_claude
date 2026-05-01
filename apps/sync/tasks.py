@@ -1,11 +1,10 @@
 import logging
 from celery import shared_task
+from django.db import transaction
 from django.utils.text import slugify
 
 from apps.sync.client import BreezClient
-from apps.catalog.models import (
-    Category, Brand, Product, ProductImage, TechSpec, ProductTech
-)
+from apps.catalog.models import Category, Brand, Product, ProductImage
 from apps.stock.models import Stock
 
 logger = logging.getLogger(__name__)
@@ -94,63 +93,64 @@ def sync_products():
     nc_codes_seen = set()
     created = updated = 0
 
-    for item in data:
-        nc = item.get('nc')
-        if not nc:
-            continue
-        nc_codes_seen.add(nc)
+    with transaction.atomic():
+        for item in data:
+            nc = item.get('nc')
+            if not nc:
+                continue
+            nc_codes_seen.add(nc)
 
-        category = Category.objects.filter(breez_id=item.get('category_id')).first() \
-            if item.get('category_id') else None
-        brand = Brand.objects.filter(title=item.get('brand', '')).first() \
-            if item.get('brand') else None
+            category = Category.objects.filter(breez_id=item.get('category_id')).first() \
+                if item.get('category_id') else None
+            brand = Brand.objects.filter(title=item.get('brand', '')).first() \
+                if item.get('brand') else None
 
-        articul = item.get('articul', '')
-        title = item.get('title', '') or articul or nc
+            articul = item.get('articul', '')
+            title = item.get('title', '') or articul or nc
 
-        brand_part = slugify(brand.title, allow_unicode=True) if brand else ''
-        if brand_part and articul:
-            slug = f"{brand_part}-{slugify(articul, allow_unicode=True)}-{nc}"
-        else:
-            slug = f"{slugify(title, allow_unicode=True)}-{nc}"
-        slug = slug[:500] or f"product-{nc}"
+            brand_part = slugify(brand.title, allow_unicode=True) if brand else ''
+            if brand_part and articul:
+                slug = f"{brand_part}-{slugify(articul, allow_unicode=True)}-{nc}"
+            else:
+                slug = f"{slugify(title, allow_unicode=True)}-{nc}"
+            slug = slug[:500] or f"product-{nc}"
 
-        obj, is_new = Product.objects.update_or_create(
-            nc_code=nc,
-            defaults={
-                'articul': articul,
-                'category': category,
-                'brand': brand,
-                'series': item.get('series', ''),
-                'title': title,
-                'slug': slug,
-                'price_wholesale': item.get('price') or None,
-                'ric': item.get('ric') or None,
-                'ric_currency': item.get('ric_currency', 'RUB'),
-                'description': item.get('description', ''),
-                'booklet_url': item.get('booklet', ''),
-                'manual_url': item.get('manual', ''),
-                'video_youtube': item.get('video_youtube', ''),
-                'video_rutube': item.get('video_rutube', ''),
-                'is_active': True,
-            }
-        )
-        if is_new:
-            created += 1
-        else:
-            updated += 1
+            obj, is_new = Product.objects.update_or_create(
+                nc_code=nc,
+                defaults={
+                    'articul': articul,
+                    'category': category,
+                    'brand': brand,
+                    'series': item.get('series', ''),
+                    'title': title,
+                    'slug': slug,
+                    'price_wholesale': item.get('price') or None,
+                    'ric': item.get('ric') or None,
+                    'ric_currency': item.get('ric_currency', 'RUB'),
+                    'description': item.get('description', ''),
+                    'booklet_url': item.get('booklet', ''),
+                    'manual_url': item.get('manual', ''),
+                    'video_youtube': item.get('video_youtube', ''),
+                    'video_rutube': item.get('video_rutube', ''),
+                    'is_active': True,
+                }
+            )
+            if is_new:
+                created += 1
+            else:
+                updated += 1
 
-        # Sync images
-        images = item.get('images') or []
-        if images:
-            obj.images.all().delete()
-            ProductImage.objects.bulk_create([
-                ProductImage(product=obj, url=url, order=i)
-                for i, url in enumerate(images)
-            ])
+            # Sync images: always replace when API returns a list (even empty)
+            images = item.get('images')
+            if images is not None:
+                obj.images.all().delete()
+                if images:
+                    ProductImage.objects.bulk_create([
+                        ProductImage(product=obj, url=url, order=i)
+                        for i, url in enumerate(images)
+                    ])
 
-    # Deactivate products no longer in API response
-    deactivated = Product.objects.exclude(nc_code__in=nc_codes_seen).update(is_active=False)
+        deactivated = Product.objects.exclude(nc_code__in=nc_codes_seen).update(is_active=False)
 
     logger.info("sync_products: created=%d updated=%d deactivated=%d",
                 created, updated, deactivated)
@@ -165,7 +165,7 @@ def sync_stock():
         logger.warning("sync_stock: no data returned from API")
         return {'updated': 0}
 
-    updated = 0
+    created = updated = 0
     for item in data:
         nc = item.get('nc') or item.get('nc_code') or item.get('articul')
         if not nc:
@@ -173,7 +173,7 @@ def sync_stock():
         product = Product.objects.filter(nc_code=nc).first()
         if not product:
             continue
-        Stock.objects.update_or_create(
+        _, is_new = Stock.objects.update_or_create(
             product=product,
             defaults={
                 'quantity': item.get('quantity', 0),
@@ -181,10 +181,13 @@ def sync_stock():
                 'price_base': item.get('price') or None,
             }
         )
-        updated += 1
+        if is_new:
+            created += 1
+        else:
+            updated += 1
 
-    logger.info("sync_stock: updated=%d", updated)
-    return {'updated': updated}
+    logger.info("sync_stock: created=%d updated=%d", created, updated)
+    return {'created': created, 'updated': updated}
 
 
 @shared_task(name='sync.sync_catalog')
