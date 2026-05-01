@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Django dev server",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "run", "--rm", "--service-ports", "web",
+                      "python", "manage.py", "runserver", "0.0.0.0:8000"],
+      "port": 8000
+    },
+    {
+      "name": "Celery worker",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "celery"],
+      "port": 0
+    }
+  ]
+}
