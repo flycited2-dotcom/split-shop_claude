@@ -34,7 +34,7 @@ class CustomUserAdmin(UserAdmin):
             user.approved_by = request.user
             user.save()
             count += 1
-            if getattr(settings, 'MANAGER_EMAIL', ''):
+            if user.email:
                 send_mail(
                     subject='Ваш аккаунт одобрен — Oasis',
                     message=(

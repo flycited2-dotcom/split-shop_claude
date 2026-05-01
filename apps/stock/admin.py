@@ -8,4 +8,5 @@ class StockAdmin(admin.ModelAdmin):
     list_filter = ['warehouse']
     search_fields = ['product__title', 'product__articul', 'product__nc_code']
     readonly_fields = ['updated_at']
+    list_select_related = True
     list_per_page = 100

@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class CustomUser(AbstractUser):
@@ -17,7 +18,8 @@ class CustomUser(AbstractUser):
         related_name='approved_users'
     )
     discount_percent = models.DecimalField(
-        'Скидка %', max_digits=5, decimal_places=2, default=0
+        'Скидка %', max_digits=5, decimal_places=2, default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
     )
 
     class Meta:
@@ -31,5 +33,7 @@ class CustomUser(AbstractUser):
         """Return wholesale price after applying user discount."""
         if price is None:
             return None
-        discount = self.discount_percent / 100
-        return round(float(price) * (1 - float(discount)), 2)
+        from decimal import Decimal, ROUND_HALF_UP
+        price = price if isinstance(price, Decimal) else Decimal(str(price))
+        factor = (Decimal('100') - self.discount_percent) / Decimal('100')
+        return (price * factor).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
