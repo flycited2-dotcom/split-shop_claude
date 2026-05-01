@@ -29,8 +29,8 @@ class Brand(models.Model):
     breez_id = models.IntegerField(unique=True)
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
-    logo_url = models.URLField(blank=True)
-    site_url = models.URLField(blank=True)
+    logo_url = models.URLField(max_length=500, blank=True)
+    site_url = models.URLField(max_length=500, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -50,7 +50,7 @@ class Brand(models.Model):
 
 class Product(models.Model):
     nc_code = models.CharField(max_length=50, unique=True)
-    articul = models.CharField(max_length=100, blank=True)
+    articul = models.CharField(max_length=200, blank=True)
     category = models.ForeignKey(Category, null=True, blank=True,
                                  on_delete=models.SET_NULL, related_name='products')
     brand = models.ForeignKey(Brand, null=True, blank=True,
@@ -64,10 +64,10 @@ class Product(models.Model):
                               null=True, blank=True)
     ric_currency = models.CharField(max_length=10, default='RUB')
     description = models.TextField(blank=True)
-    booklet_url = models.URLField(blank=True)
-    manual_url = models.URLField(blank=True)
-    video_youtube = models.URLField(blank=True)
-    video_rutube = models.URLField(blank=True)
+    booklet_url = models.URLField(max_length=500, blank=True)
+    manual_url = models.URLField(max_length=500, blank=True)
+    video_youtube = models.URLField(max_length=500, blank=True)
+    video_rutube = models.URLField(max_length=500, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
