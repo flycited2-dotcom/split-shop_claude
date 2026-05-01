@@ -11,4 +11,4 @@ gunicorn==21.2.0
 python-decouple==3.8
 requests==2.31.0
 django-htmx==1.17.3
-django-celery-beat==2.7.0
+django-celery-beat>=2.8.0
