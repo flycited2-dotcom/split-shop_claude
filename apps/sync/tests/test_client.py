@@ -77,6 +77,16 @@ class BreezClientTest(TestCase):
         self.assertEqual(called_params, {'nc': 'ABC123'})
 
     @patch('apps.sync.client.requests.get')
+    def test_returns_empty_list_on_json_error(self, mock_get):
+        import requests as req
+        mock_resp = Mock()
+        mock_resp.raise_for_status = Mock()
+        mock_resp.json.side_effect = req.exceptions.JSONDecodeError('', '', 0)
+        mock_get.return_value = mock_resp
+        result = self.client.get_categories()
+        self.assertEqual(result, [])
+
+    @patch('apps.sync.client.requests.get')
     def test_auth_header_sent(self, mock_get):
         mock_get.return_value = Mock(
             status_code=200,

@@ -38,14 +38,14 @@ class BreezClient:
         except requests.exceptions.Timeout:
             logger.error("Breez API timeout for %s", url)
             return []
+        except requests.exceptions.JSONDecodeError as exc:
+            logger.error("Breez API JSON decode error for %s: %s", url, exc)
+            return []
         except requests.exceptions.HTTPError as exc:
             logger.error("Breez API HTTP error for %s: %s", url, exc)
             return []
         except requests.exceptions.RequestException as exc:
             logger.error("Breez API request failed for %s: %s", url, exc)
-            return []
-        except ValueError as exc:
-            logger.error("Breez API JSON decode error for %s: %s", url, exc)
             return []
 
     def get_categories(self):
