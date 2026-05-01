@@ -24,14 +24,15 @@ def sync_categories():
 
     created = updated = 0
     for item in data:
+        item_id = int(item['id'])
         raw_slug = item.get('chpu') or slugify(item.get('title', ''), allow_unicode=True)
-        slug = raw_slug or f"cat-{item['id']}"
+        slug = raw_slug or f"cat-{item_id}"
         _, is_new = Category.objects.update_or_create(
-            breez_id=item['id'],
+            breez_id=item_id,
             defaults={
                 'title': item.get('title', ''),
                 'slug': slug,
-                'order': item.get('order', 0),
+                'order': int(item.get('order', 0) or 0),
             }
         )
         if is_new:
@@ -41,10 +42,11 @@ def sync_categories():
 
     # Second pass: wire up parent relationships
     for item in data:
+        item_id = int(item['id'])
         parent_breez_id = item.get('level')
-        if parent_breez_id:
-            Category.objects.filter(breez_id=item['id']).update(
-                parent=Category.objects.filter(breez_id=parent_breez_id).first()
+        if parent_breez_id and int(parent_breez_id) != 0:
+            Category.objects.filter(breez_id=item_id).update(
+                parent=Category.objects.filter(breez_id=int(parent_breez_id)).first()
             )
 
     logger.info("sync_categories: created=%d updated=%d", created, updated)
@@ -61,16 +63,17 @@ def sync_brands():
 
     created = updated = 0
     for item in data:
+        item_id = int(item['id'])
         raw_slug = item.get('chpu') or slugify(item.get('title', ''), allow_unicode=True)
-        slug = raw_slug or f"brand-{item['id']}"
+        slug = raw_slug or f"brand-{item_id}"
         _, is_new = Brand.objects.update_or_create(
-            breez_id=item['id'],
+            breez_id=item_id,
             defaults={
                 'title': item.get('title', ''),
                 'slug': slug,
                 'logo_url': item.get('image', ''),
                 'site_url': item.get('url', ''),
-                'order': item.get('order', 0),
+                'order': int(item.get('order', 0) or 0),
             }
         )
         if is_new:
@@ -100,10 +103,18 @@ def sync_products():
                 continue
             nc_codes_seen.add(nc)
 
-            category = Category.objects.filter(breez_id=item.get('category_id')).first() \
-                if item.get('category_id') else None
-            brand = Brand.objects.filter(title=item.get('brand', '')).first() \
-                if item.get('brand') else None
+            cat_id = item.get('category_id')
+            category = Category.objects.filter(breez_id=int(cat_id)).first() \
+                if cat_id else None
+
+            brand_id = item.get('brand')
+            brand = Brand.objects.filter(breez_id=int(brand_id)).first() \
+                if brand_id else None
+
+            # price is a dict {"ric": "...", "ric_currency": "..."} or None
+            price_data = item.get('price') or {}
+            ric_val = price_data.get('ric') if isinstance(price_data, dict) else None
+            ric_currency = price_data.get('ric_currency', 'RUB') if isinstance(price_data, dict) else 'RUB'
 
             articul = item.get('articul', '')
             title = item.get('title', '') or articul or nc
@@ -124,9 +135,9 @@ def sync_products():
                     'series': item.get('series', ''),
                     'title': title,
                     'slug': slug,
-                    'price_wholesale': item.get('price') or None,
-                    'ric': item.get('ric') or None,
-                    'ric_currency': item.get('ric_currency', 'RUB'),
+                    'price_wholesale': ric_val or None,
+                    'ric': ric_val or None,
+                    'ric_currency': ric_currency,
                     'description': item.get('description', ''),
                     'booklet_url': item.get('booklet', ''),
                     'manual_url': item.get('manual', ''),
@@ -167,18 +178,32 @@ def sync_stock():
 
     created = updated = 0
     for item in data:
-        nc = item.get('nc') or item.get('nc_code') or item.get('articul')
+        nc = item.get('nc') or item.get('nc_code')
         if not nc:
             continue
         product = Product.objects.filter(nc_code=nc).first()
         if not product:
             continue
+
+        # stocks is a list of {stock: name, quantity: int}
+        stocks_list = item.get('stocks') or []
+        total_qty = sum(int(s.get('quantity', 0) or 0) for s in stocks_list if isinstance(s, dict))
+
+        # price is a list [{base: ..., base_currency: ...}, {ric: ..., ...}]
+        price_list = item.get('price') or []
+        price_base = None
+        if isinstance(price_list, list):
+            for p in price_list:
+                if isinstance(p, dict) and 'base' in p:
+                    price_base = p['base']
+                    break
+
         _, is_new = Stock.objects.update_or_create(
             product=product,
             defaults={
-                'quantity': item.get('quantity', 0),
-                'warehouse': item.get('warehouse', ''),
-                'price_base': item.get('price') or None,
+                'quantity': total_qty,
+                'warehouse': '',
+                'price_base': price_base,
             }
         )
         if is_new:

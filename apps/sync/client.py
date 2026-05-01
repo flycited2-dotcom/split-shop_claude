@@ -33,6 +33,15 @@ class BreezClient:
                 return []
             if isinstance(data, list):
                 return data
+            if isinstance(data, dict):
+                # API returns {id: {...item...}} — flatten to [{id, ...item}]
+                result = []
+                for key, val in data.items():
+                    if isinstance(val, dict):
+                        item = {'id': key}
+                        item.update(val)
+                        result.append(item)
+                return result
             logger.warning("Breez API unexpected response type for %s: %s", url, type(data))
             return []
         except requests.exceptions.Timeout:
