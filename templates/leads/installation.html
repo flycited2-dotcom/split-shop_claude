@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Заявка на монтаж{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-10 px-4">
+  <h1 class="text-2xl font-bold mb-2">Заявка на монтаж кондиционера</h1>
+  <p class="text-gray-600 mb-6">Оставьте заявку — наш мастер выедет на замер и рассчитает стоимость монтажа.</p>
+  <div class="card p-6">
+    <div id="installation-result">
+      {% include "leads/partials/installation_form.html" %}
+    </div>
+  </div>
+</div>
+{% endblock %}

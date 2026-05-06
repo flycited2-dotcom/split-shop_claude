@@ -57,6 +57,10 @@
             </button>
           </form>
           <div id="cart-msg" class="mt-2 text-sm text-green-600"></div>
+          <button onclick="document.getElementById('quick-order-modal').classList.remove('hidden')"
+                  class="mt-2 text-sm text-accent hover:underline font-semibold">
+            Купить в 1 клик
+          </button>
         {% endif %}
       {% endif %}
     {% else %}
@@ -67,6 +71,14 @@
         </p>
       </div>
     {% endif %}
+    <div class="flex flex-wrap gap-3 mt-3">
+      <a href="/selection/" class="text-sm text-gray-600 hover:text-accent border border-gray-300 rounded-lg px-3 py-1.5">
+        🔍 Подобрать кондиционер
+      </a>
+      <a href="/installation/" class="text-sm text-gray-600 hover:text-accent border border-gray-300 rounded-lg px-3 py-1.5">
+        🔧 Заказать монтаж
+      </a>
+    </div>
     <div class="flex gap-3 mt-4">
       {% if product.booklet_url %}
         <a href="{{ product.booklet_url }}" target="_blank"
@@ -92,4 +104,43 @@
     </div>
   </div>
 {% endif %}
+
+<!-- Модал: Купить в 1 клик -->
+<div id="quick-order-modal"
+     class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+     onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative">
+    <button onclick="document.getElementById('quick-order-modal').classList.add('hidden')"
+            class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">
+      &times;
+    </button>
+    <h3 class="text-xl font-bold mb-4">Купить в 1 клик</h3>
+    <p class="text-sm text-gray-500 mb-4">{{ product.title }}</p>
+    <div id="quick-order-result">
+      <form hx-post="/leads/quick-order/" hx-target="#quick-order-result" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ product.pk }}">
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Ваше имя</label>
+          <input type="text" name="name" required placeholder="Иван Иванов"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+          <input type="text" name="phone" required placeholder="+7 999 123-45-67"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
+          <textarea name="comment" rows="2" placeholder="Любые пожелания..."
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"></textarea>
+        </div>
+        <button type="submit"
+                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg">
+          Отправить заявку
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}

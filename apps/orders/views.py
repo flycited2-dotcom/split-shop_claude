@@ -94,14 +94,48 @@ def checkout(request):
                     ric_at_order=item.product.ric,
                 )
             cart.items.all().delete()
+            # Формируем состав заказа для уведомлений
+            order_items = order.items.select_related('product')
+            lines = []
+            for item in order_items:
+                sku = item.product.articul or item.product.nc_code
+                lines.append(f'• {sku} × {item.quantity} = {item.subtotal:,.0f} ₽')
+            items_text = '\n'.join(lines)
+
+            # Email менеджеру
             if settings.MANAGER_EMAIL:
+                email_body = (
+                    f'Заказ #{order.pk}\n'
+                    f'Компания: {request.user.company_name}\n'
+                    f'Телефон: {request.user.phone}\n'
+                    f'Email: {request.user.email}\n'
+                    f'Адрес доставки: {order.delivery_address}\n\n'
+                    f'Состав заказа:\n{items_text}\n\n'
+                    f'Итого: {order.total:,.0f} ₽\n'
+                    f'Комментарий: {order.comment or "—"}\n'
+                )
                 send_mail(
                     subject=f'Новый заказ #{order.pk} — {request.user.company_name}',
-                    message=f'Заказ #{order.pk} на сумму {order.total} ₽',
+                    message=email_body,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[settings.MANAGER_EMAIL],
                     fail_silently=True,
                 )
+
+            # Telegram менеджеру
+            from apps.notifications.telegram import send_telegram
+            tg_text = (
+                f'🛒 <b>Новый заказ #{order.pk}</b>\n'
+                f'👤 {request.user.company_name}\n'
+                f'📞 {request.user.phone or "—"}\n'
+                f'📧 {request.user.email}\n'
+                f'📍 {order.delivery_address}\n\n'
+                f'{items_text}\n\n'
+                f'💰 Итого: {order.total:,.0f} ₽\n'
+                f'💬 {order.comment or "—"}\n'
+                f'🔗 /admin/orders/order/{order.pk}/change/'
+            )
+            send_telegram(tg_text)
             messages.success(request, f'Заказ #{order.pk} успешно оформлен!')
             return redirect('order_detail', pk=order.pk)
     else:

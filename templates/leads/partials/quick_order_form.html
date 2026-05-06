@@ -1,0 +1,14 @@
+<form hx-post="/leads/quick-order/" hx-target="#quick-order-result" hx-swap="innerHTML">
+  {% csrf_token %}
+  <input type="hidden" name="product_id" value="{{ product_id }}">
+  {% for field in form %}
+    <div class="mb-3">
+      <label class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<p class="text-red-500 text-xs mt-1">{{ field.errors|join:", " }}</p>{% endif %}
+    </div>
+  {% endfor %}
+  <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg">
+    Отправить заявку
+  </button>
+</form>
