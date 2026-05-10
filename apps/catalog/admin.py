@@ -30,12 +30,16 @@ class ProductTechInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ['title', 'articul', 'nc_code', 'brand', 'category',
-                    'price_wholesale', 'ric', 'is_active']
+                    'price_wholesale', 'ric', 'is_active', 'has_rusklimat_guid']
     list_filter = ['brand', 'category', 'is_active']
-    search_fields = ['title', 'articul', 'nc_code']
+    search_fields = ['title', 'articul', 'nc_code', 'rusklimat_guid']
     readonly_fields = ['slug', 'nc_code', 'created_at', 'updated_at']
     inlines = [ProductImageInline, ProductTechInline]
     list_per_page = 50
+
+    @admin.display(boolean=True, description='Rusklimat')
+    def has_rusklimat_guid(self, obj):
+        return bool(obj.rusklimat_guid)
 
 
 @admin.register(TechSpec)

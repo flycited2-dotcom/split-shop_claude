@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils.text import slugify
 
 from apps.sync.client import BreezClient
+from apps.sync.rusklimat_client import RusklimatClient
 from apps.catalog.models import Category, Brand, Product, ProductImage
 from apps.stock.models import Stock
 
@@ -229,3 +230,77 @@ def sync_catalog():
     logger.info("sync_catalog complete: cats=%s brands=%s products=%s",
                 cats, brands, products)
     return {'categories': cats, 'brands': brands, 'products': products}
+
+
+_AC_CATEGORY_KEYWORDS = [
+    'сплит', 'split', 'кондиционер', 'мультисплит', 'инвертор',
+    'полупромышленн', 'мобильн', 'он-офф',
+]
+
+
+def _ac_products_qs():
+    """QuerySet of products belonging to AC/split-system categories only."""
+    from django.db.models import Q
+    q = Q()
+    for kw in _AC_CATEGORY_KEYWORDS:
+        q |= Q(category__title__icontains=kw)
+    return Product.objects.filter(q, is_active=True)
+
+
+@shared_task(name='sync.build_rusklimat_mapping')
+def build_rusklimat_mapping(limit=None):
+    """Populate rusklimat_guid for AC/split-system products via Rusklimat API."""
+    client = RusklimatClient()
+    if not client.token or not client.contractor_guid:
+        logger.warning('build_rusklimat_mapping: Rusklimat credentials not configured')
+        return {'mapped': 0, 'skipped': 0}
+
+    qs = _ac_products_qs().filter(rusklimat_guid='')
+    if limit:
+        qs = qs[:limit]
+
+    mapped = skipped = 0
+    for product in qs:
+        guid = None
+        if product.nc_code:
+            guid = client.find_product_by_nc(product.nc_code)
+        if not guid and product.articul:
+            guid = client.find_product_by_articul(product.articul)
+        if guid:
+            Product.objects.filter(pk=product.pk).update(rusklimat_guid=guid)
+            mapped += 1
+            logger.debug('Mapped %s → %s', product.nc_code, guid)
+        else:
+            skipped += 1
+
+    logger.info('build_rusklimat_mapping: mapped=%d skipped=%d', mapped, skipped)
+    return {'mapped': mapped, 'skipped': skipped}
+
+
+@shared_task(name='sync.sync_rusklimat_stock')
+def sync_rusklimat_stock():
+    """
+    Scrape AC catalog from b2b.rusklimat.com and update stock by NC code.
+    Covers: сплит-системы, мультисплит, полупромышленные, он-офф, мобильные.
+    """
+    from apps.sync.rusklimat_scraper import RusklimatScraper
+
+    stock_data = RusklimatScraper().get_ac_stock()
+    if not stock_data:
+        logger.warning('sync_rusklimat_stock: no data returned from scraper')
+        return {'updated': 0, 'skipped': 0}
+
+    updated = skipped = 0
+    for nc_code, qty in stock_data.items():
+        product = Product.objects.filter(nc_code=nc_code).first()
+        if not product:
+            skipped += 1
+            continue
+        Stock.objects.update_or_create(
+            product=product,
+            defaults={'quantity': qty, 'warehouse': 'rusklimat'},
+        )
+        updated += 1
+
+    logger.info('sync_rusklimat_stock: updated=%d skipped=%d', updated, skipped)
+    return {'updated': updated, 'skipped': skipped}

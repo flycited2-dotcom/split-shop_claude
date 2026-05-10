@@ -106,6 +106,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'sync.sync_catalog',
         'schedule': crontab(minute=0, hour='*/4'),
     },
+    'sync-rusklimat-stock-hourly': {
+        'task': 'sync.sync_rusklimat_stock',
+        'schedule': crontab(minute=15),
+    },
 }
 
 STATIC_URL = '/static/'
@@ -122,6 +126,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BREEZ_AUTH_HEADER = config('BREEZ_AUTH_HEADER')
 BREEZ_BASE_URL = config('BREEZ_BASE_URL', default='https://api.breez.ru/v1/')
+
+RUSKLIMAT_JWT_TOKEN = config('RUSKLIMAT_JWT_TOKEN', default='')
+RUSKLIMAT_CONTRACTOR_GUID = config('RUSKLIMAT_CONTRACTOR_GUID', default='')
+RUSKLIMAT_LOGIN = config('RUSKLIMAT_LOGIN', default='')
+RUSKLIMAT_PASSWORD = config('RUSKLIMAT_PASSWORD', default='')
+RUSKLIMAT_AC_CATALOG_URL = config(
+    'RUSKLIMAT_AC_CATALOG_URL',
+    default='https://b2b.rusklimat.com/catalog/1162450-konditsionery-bytovye/',
+)
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='')
