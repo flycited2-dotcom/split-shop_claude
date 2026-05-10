@@ -1,5 +1,9 @@
 {% extends 'base.html' %}
 {% block title %}{{ product.title }} — Oasis{% endblock %}
+{% block meta_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Арт: {{ product.articul }}. Купить оптом на B2B-портале Oasis.{% endblock %}
+{% block og_title %}{{ product.title }} — Oasis{% endblock %}
+{% block og_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Купить оптом.{% endblock %}
+{% if product.images.first %}{% block og_image %}{{ product.images.first.url }}{% endblock %}{% endif %}
 {% block content %}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
   <!-- Галерея -->
@@ -143,4 +147,16 @@
     </div>
   </div>
 </div>
+{% if YANDEX_METRIKA_ID %}
+<script>
+window.dataLayer = window.dataLayer || [];
+dataLayer.push({ecommerce:{detail:{products:[{
+  id:'{{ product.articul|default:product.nc_code }}',
+  name:'{{ product.title|escapejs }}',
+  brand:'{{ product.brand|default:""|escapejs }}',
+  category:'{{ product.category|default:""|escapejs }}',
+  {% if product.price_wholesale %}price:{{ product.price_wholesale|floatformat:2 }},{% endif %}
+}]}}});
+</script>
+{% endif %}
 {% endblock %}

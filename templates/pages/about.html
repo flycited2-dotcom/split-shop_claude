@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}О компании — Oasis{% endblock %}
+{% block meta_description %}Oasis — B2B-портал оптовой поставки климатической техники. Кондиционеры, вентиляция, тепловые насосы ведущих мировых брендов.{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-extrabold mb-6">О компании</h1>
+
+  <div class="card p-6 mb-4">
+    <p class="text-gray-600 text-lg leading-relaxed mb-4">
+      <strong>OASIS</strong> — оптовый поставщик климатической техники для профессионального рынка. Мы работаем с дилерами, монтажными организациями и строительными компаниями по всей России.
+    </p>
+    <p class="text-gray-600 leading-relaxed">
+      В нашем каталоге — кондиционеры, мультисплит-системы, VRF-системы, вентиляционное оборудование и тепловые насосы ведущих мировых брендов.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+    <div class="card p-6 text-center">
+      <p class="text-3xl font-extrabold text-accent mb-1">10+</p>
+      <p class="text-sm text-gray-600">лет на рынке</p>
+    </div>
+    <div class="card p-6 text-center">
+      <p class="text-3xl font-extrabold text-accent mb-1">500+</p>
+      <p class="text-sm text-gray-600">позиций в каталоге</p>
+    </div>
+    <div class="card p-6 text-center">
+      <p class="text-3xl font-extrabold text-accent mb-1">200+</p>
+      <p class="text-sm text-gray-600">активных дилеров</p>
+    </div>
+  </div>
+
+  <div class="card p-6 mb-4">
+    <h2 class="text-xl font-bold mb-3">Наши преимущества</h2>
+    <ul class="space-y-2 text-gray-600">
+      <li class="flex items-start gap-2">
+        <span class="text-accent font-bold">✓</span>
+        <span>Официальные поставки от производителей и авторизованных дистрибьюторов</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-accent font-bold">✓</span>
+        <span>Собственный склад — отгрузка в день оплаты</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-accent font-bold">✓</span>
+        <span>B2B-портал с актуальными ценами и остатками в режиме реального времени</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-accent font-bold">✓</span>
+        <span>Персональный менеджер для каждого дилера</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-accent font-bold">✓</span>
+        <span>Гибкие условия сотрудничества и отсрочка платежа для постоянных клиентов</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card p-6 bg-orange-50">
+    <h2 class="text-xl font-bold mb-2">Стать дилером</h2>
+    <p class="text-gray-600 mb-4">Зарегистрируйтесь на портале и получите доступ к оптовым ценам, актуальным остаткам и персональному менеджеру.</p>
+    <a href="/auth/register/" class="btn-accent inline-block px-6 py-2 rounded-lg font-semibold text-sm">
+      Регистрация дилера
+    </a>
+  </div>
+</div>
+{% endblock %}

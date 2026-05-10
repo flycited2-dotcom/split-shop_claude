@@ -14,6 +14,7 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',
 ]
 
 THIRD_PARTY_APPS = [
@@ -58,6 +59,7 @@ TEMPLATES = [{
             'django.contrib.auth.context_processors.auth',
             'django.contrib.messages.context_processors.messages',
             'apps.orders.context_processors.cart_count',
+            'apps.catalog.context_processors.yandex_metrika',
         ],
     },
 }]
@@ -131,3 +133,4 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@oasis.com.ru'
 MANAGER_EMAIL = config('MANAGER_EMAIL', default='')
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')
+YANDEX_METRIKA_ID = config('YANDEX_METRIKA_ID', default='')

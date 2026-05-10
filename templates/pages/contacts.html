@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Контакты — Oasis{% endblock %}
+{% block meta_description %}Контакты B2B-портала Oasis. Телефон, email, адрес склада. Климатическая техника оптом.{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-extrabold mb-6">Контакты</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="card p-6">
+      <h2 class="text-lg font-bold mb-4">Отдел продаж</h2>
+      <div class="space-y-3 text-sm text-gray-600">
+        <div class="flex items-start gap-3">
+          <span class="text-xl">📞</span>
+          <div>
+            <p class="font-semibold text-gray-800">Телефон</p>
+            <a href="tel:+78001234567" class="hover:text-accent">+7 (800) 123-45-67</a>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-xl">✉️</span>
+          <div>
+            <p class="font-semibold text-gray-800">Email</p>
+            <a href="mailto:manager@oasis.com.ru" class="hover:text-accent">manager@oasis.com.ru</a>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-xl">🕐</span>
+          <div>
+            <p class="font-semibold text-gray-800">Режим работы</p>
+            <p>Пн–Пт: 9:00 – 18:00</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <h2 class="text-lg font-bold mb-4">Склад и самовывоз</h2>
+      <div class="space-y-3 text-sm text-gray-600">
+        <div class="flex items-start gap-3">
+          <span class="text-xl">📍</span>
+          <div>
+            <p class="font-semibold text-gray-800">Адрес</p>
+            <p>Уточняйте у менеджера</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3">
+          <span class="text-xl">🕐</span>
+          <div>
+            <p class="font-semibold text-gray-800">Часы работы склада</p>
+            <p>Пн–Пт: 9:00 – 17:00</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <h2 class="text-lg font-bold mb-4">Стать дилером</h2>
+    <p class="text-gray-600 mb-4">Для получения доступа к B2B-порталу, оптовым ценам и условиям сотрудничества — зарегистрируйтесь как дилер.</p>
+    <a href="/auth/register/" class="btn-accent inline-block px-6 py-2 rounded-lg font-semibold text-sm">
+      Регистрация дилера
+    </a>
+  </div>
+</div>
+{% endblock %}

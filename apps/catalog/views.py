@@ -19,12 +19,22 @@ def home(request):
     })
 
 
+_ORDERING_MAP = {
+    'price': 'price_wholesale',
+    '-price': '-price_wholesale',
+    '-created': '-created_at',
+    'stock': '-stock__quantity',
+}
+
+
 def catalog(request):
     qs = Product.objects.filter(is_active=True).select_related(
         'brand', 'category', 'stock'
     ).prefetch_related('images')
     f = ProductFilter(request.GET, queryset=qs)
-    paginator = Paginator(f.qs, 24)
+    ordering_key = request.GET.get('ordering', '')
+    ordered_qs = f.qs.order_by(_ORDERING_MAP.get(ordering_key, 'title'))
+    paginator = Paginator(ordered_qs, 24)
     page = paginator.get_page(request.GET.get('page'))
     categories = Category.objects.filter(parent=None).prefetch_related('children')
     show_price = request.user.is_authenticated and request.user.is_approved
@@ -33,6 +43,7 @@ def catalog(request):
         'page_obj': page,
         'categories': categories,
         'show_price': show_price,
+        'current_ordering': ordering_key,
     })
 
 

@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Оплата — Oasis{% endblock %}
+{% block meta_description %}Способы оплаты климатической техники в B2B-портале Oasis: безналичный расчёт, счёт на оплату, постоплата.{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-3xl font-extrabold mb-6">Оплата</h1>
+
+  <div class="card p-6 mb-4">
+    <h2 class="text-xl font-bold mb-3">Безналичный расчёт</h2>
+    <p class="text-gray-600 mb-2">Основной способ оплаты для юридических лиц и ИП. Счёт выставляется после оформления заказа на портале.</p>
+    <ul class="list-disc list-inside text-gray-600 space-y-1">
+      <li>Счёт формируется автоматически после подтверждения заказа</li>
+      <li>Оплата в течение 3 банковских дней с момента выставления счёта</li>
+      <li>Отгрузка — после поступления оплаты на расчётный счёт</li>
+    </ul>
+  </div>
+
+  <div class="card p-6 mb-4">
+    <h2 class="text-xl font-bold mb-3">Постоплата (для постоянных клиентов)</h2>
+    <p class="text-gray-600 mb-2">Для проверенных партнёров возможна отсрочка платежа.</p>
+    <p class="text-gray-600">Условия постоплаты обсуждаются индивидуально с менеджером.</p>
+  </div>
+
+  <div class="card p-6 mb-4">
+    <h2 class="text-xl font-bold mb-3">Документы</h2>
+    <p class="text-gray-600 mb-2">После оплаты вы получаете:</p>
+    <ul class="list-disc list-inside text-gray-600 space-y-1">
+      <li>Товарная накладная (ТОРГ-12)</li>
+      <li>Счёт-фактура (при необходимости)</li>
+      <li>УПД по запросу</li>
+    </ul>
+  </div>
+
+  <div class="card p-6 bg-blue-50">
+    <h2 class="text-xl font-bold mb-2">Реквизиты для оплаты</h2>
+    <p class="text-gray-600">Реквизиты компании указаны в выставленном счёте. По вопросам оплаты обращайтесь к вашему менеджеру.</p>
+  </div>
+</div>
+{% endblock %}

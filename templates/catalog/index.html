@@ -72,10 +72,26 @@
 
   <!-- Товары -->
   <div class="flex-1 min-w-0">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <p class="text-sm text-gray-400">
         Найдено: <span class="font-semibold text-gray-700">{{ page_obj.paginator.count }}</span> товаров
       </p>
+      <form method="get" class="flex items-center gap-2">
+        {% for key, val in request.GET.items %}
+          {% if key != 'ordering' and key != 'page' %}
+            <input type="hidden" name="{{ key }}" value="{{ val }}">
+          {% endif %}
+        {% endfor %}
+        <label class="text-sm text-gray-500">Сортировка:</label>
+        <select name="ordering" onchange="this.form.submit()"
+                class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400">
+          <option value="" {% if not current_ordering %}selected{% endif %}>По названию</option>
+          <option value="price" {% if current_ordering == 'price' %}selected{% endif %}>Цена ↑</option>
+          <option value="-price" {% if current_ordering == '-price' %}selected{% endif %}>Цена ↓</option>
+          <option value="-created" {% if current_ordering == '-created' %}selected{% endif %}>Новинки</option>
+          <option value="stock" {% if current_ordering == 'stock' %}selected{% endif %}>По наличию</option>
+        </select>
+      </form>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {% for product in page_obj %}
