@@ -296,6 +296,15 @@ def build_rusklimat_mapping(limit=None):
     return {'mapped': mapped, 'skipped': skipped}
 
 
+@shared_task(name='sync.sync_rusklimat_catalog')
+def sync_rusklimat_catalog():
+    """Download full Rusklimat catalog CSV and import AC products into DB."""
+    from apps.sync.rusklimat_catalog import RusklimatCatalogSync
+    result = RusklimatCatalogSync().sync_catalog()
+    logger.info('sync_rusklimat_catalog: %s', result)
+    return result
+
+
 @shared_task(name='sync.sync_rusklimat_stock')
 def sync_rusklimat_stock():
     """

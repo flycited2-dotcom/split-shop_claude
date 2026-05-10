@@ -3,7 +3,7 @@ from django.utils.text import slugify
 
 
 class Category(models.Model):
-    breez_id = models.IntegerField(unique=True)
+    breez_id = models.IntegerField(unique=True, null=True, blank=True)
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
     parent = models.ForeignKey('self', null=True, blank=True,
@@ -31,7 +31,7 @@ class Category(models.Model):
 
 
 class Brand(models.Model):
-    breez_id = models.IntegerField(unique=True)
+    breez_id = models.IntegerField(unique=True, null=True, blank=True)
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
     logo_url = models.URLField(max_length=500, blank=True)

@@ -110,6 +110,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'sync.sync_rusklimat_stock',
         'schedule': crontab(minute=15),
     },
+    'sync-rusklimat-catalog-daily': {
+        'task': 'sync.sync_rusklimat_catalog',
+        'schedule': crontab(minute=30, hour=3),
+    },
 }
 
 STATIC_URL = '/static/'
