@@ -9,6 +9,11 @@ class Category(models.Model):
     parent = models.ForeignKey('self', null=True, blank=True,
                                on_delete=models.SET_NULL, related_name='children')
     order = models.PositiveIntegerField(default=0)
+    sync_enabled = models.BooleanField(
+        default=False,
+        verbose_name='Синхронизировать',
+        help_text='Импортировать товары этой категории из Breeze',
+    )
 
     class Meta:
         ordering = ['order', 'title']

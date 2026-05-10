@@ -1,5 +1,4 @@
 import logging
-import re
 from celery import shared_task
 from django.db import transaction
 from django.utils.text import slugify
@@ -11,21 +10,13 @@ from apps.stock.models import Stock
 
 logger = logging.getLogger(__name__)
 
-_AC_RE = re.compile(
-    r'сплит|split|кондиционер|мультисплит|инвертор|полупромышленн|мобильн|он.офф',
-    re.I | re.UNICODE,
-)
-
-
-def _is_ac_category(category):
-    """Return True if the category (or its parent) is AC-related."""
+def _is_ac_category(category, allowed_ids=None):
+    """Return True if this category should be synced."""
     if category is None:
         return False
-    if _AC_RE.search(category.title):
-        return True
-    if category.parent and _AC_RE.search(category.parent.title):
-        return True
-    return False
+    if allowed_ids is not None:
+        return category.id in allowed_ids
+    return category.sync_enabled
 
 
 def _get_client():
@@ -109,13 +100,18 @@ def sync_brands():
 
 
 @shared_task(name='sync.sync_products')
-def sync_products():
+def sync_products(category_ids=None):
+    """
+    Sync products from Breeze.
+    category_ids: list of Category PKs to sync (manual run). None = use sync_enabled flag.
+    """
     client = _get_client()
     data = client.get_products()
     if not data:
         logger.warning("sync_products: no data returned from API")
         return {'created': 0, 'updated': 0, 'deactivated': 0}
 
+    allowed_ids = set(category_ids) if category_ids else None
     nc_codes_seen = set()
     created = updated = skipped = 0
 
@@ -129,8 +125,7 @@ def sync_products():
             category = Category.objects.filter(breez_id=int(cat_id)).first() \
                 if cat_id else None
 
-            # Only import AC/split-system categories
-            if not _is_ac_category(category):
+            if not _is_ac_category(category, allowed_ids):
                 skipped += 1
                 continue
 
