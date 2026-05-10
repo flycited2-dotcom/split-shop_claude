@@ -1,4 +1,5 @@
 import logging
+import re
 from celery import shared_task
 from django.db import transaction
 from django.utils.text import slugify
@@ -9,6 +10,22 @@ from apps.catalog.models import Category, Brand, Product, ProductImage
 from apps.stock.models import Stock
 
 logger = logging.getLogger(__name__)
+
+_AC_RE = re.compile(
+    r'сплит|split|кондиционер|мультисплит|инвертор|полупромышленн|мобильн|он.офф',
+    re.I | re.UNICODE,
+)
+
+
+def _is_ac_category(category):
+    """Return True if the category (or its parent) is AC-related."""
+    if category is None:
+        return False
+    if _AC_RE.search(category.title):
+        return True
+    if category.parent and _AC_RE.search(category.parent.title):
+        return True
+    return False
 
 
 def _get_client():
@@ -100,18 +117,24 @@ def sync_products():
         return {'created': 0, 'updated': 0, 'deactivated': 0}
 
     nc_codes_seen = set()
-    created = updated = 0
+    created = updated = skipped = 0
 
     with transaction.atomic():
         for item in data:
             nc = item.get('nc')
             if not nc:
                 continue
-            nc_codes_seen.add(nc)
 
             cat_id = item.get('category_id')
             category = Category.objects.filter(breez_id=int(cat_id)).first() \
                 if cat_id else None
+
+            # Only import AC/split-system categories
+            if not _is_ac_category(category):
+                skipped += 1
+                continue
+
+            nc_codes_seen.add(nc)
 
             brand_id = item.get('brand')
             brand = Brand.objects.filter(breez_id=int(brand_id)).first() \
@@ -167,11 +190,12 @@ def sync_products():
                         for i, url in enumerate(images)
                     ])
 
+        # Deactivate products not seen in this sync (includes non-AC products)
         deactivated = Product.objects.exclude(nc_code__in=nc_codes_seen).update(is_active=False)
 
-    logger.info("sync_products: created=%d updated=%d deactivated=%d",
-                created, updated, deactivated)
-    return {'created': created, 'updated': updated, 'deactivated': deactivated}
+    logger.info("sync_products: created=%d updated=%d deactivated=%d skipped(non-AC)=%d",
+                created, updated, deactivated, skipped)
+    return {'created': created, 'updated': updated, 'deactivated': deactivated, 'skipped': skipped}
 
 
 @shared_task(name='sync.sync_stock')
