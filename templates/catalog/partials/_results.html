@@ -1,0 +1,63 @@
+{% comment %}
+The right-hand results column. id="catalog-results" is the HTMX swap target.
+Includes the sort dropdown, product grid, and pagination — all of which
+need to stay in sync with the filter sidebar on every change.
+{% endcomment %}
+<main id="catalog-results" class="flex-1 min-w-0">
+
+  <!-- Шапка с сортировкой -->
+  <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+    <p class="text-sm text-gray-500">
+      Найдено: <span class="font-semibold text-gray-800">{{ page_obj.paginator.count }}</span> товаров
+      {% if request.GET.in_stock %}<span class="ml-2 text-green-600 text-xs font-semibold">● в наличии</span>{% endif %}
+    </p>
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-gray-500">Сортировка:</label>
+      <select name="ordering"
+              hx-get="{% url 'catalog' %}"
+              hx-target="#catalog-results"
+              hx-swap="outerHTML"
+              hx-push-url="true"
+              hx-include="#catalog-filters-form"
+              hx-trigger="change"
+              class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400">
+        <option value="" {% if not current_ordering %}selected{% endif %}>В наличии первыми</option>
+        <option value="price" {% if current_ordering == 'price' %}selected{% endif %}>Цена ↑</option>
+        <option value="-price" {% if current_ordering == '-price' %}selected{% endif %}>Цена ↓</option>
+        <option value="-created" {% if current_ordering == '-created' %}selected{% endif %}>Новинки</option>
+        <option value="title" {% if current_ordering == 'title' %}selected{% endif %}>По названию</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    {% for product in page_obj %}
+      {% include 'partials/product_card.html' with show_price=show_price %}
+    {% empty %}
+      <p class="col-span-4 text-gray-400 text-center py-16">
+        Товары не найдены.
+        <a href="{% url 'catalog' %}" class="text-accent hover:underline">Сбросить фильтры</a>
+      </p>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+    <div class="flex justify-center gap-2 mt-8">
+      {% if page_obj.has_previous %}
+        <a hx-get="{% url 'catalog' %}?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+           hx-target="#catalog-results" hx-swap="outerHTML" hx-push-url="true"
+           href="?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
+           class="px-4 py-2 card text-sm hover:text-accent cursor-pointer">← Назад</a>
+      {% endif %}
+      <span class="px-4 py-2 bg-accent text-white rounded-card text-sm font-semibold">
+        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+      </span>
+      {% if page_obj.has_next %}
+        <a hx-get="{% url 'catalog' %}?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+           hx-target="#catalog-results" hx-swap="outerHTML" hx-push-url="true"
+           href="?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
+           class="px-4 py-2 card text-sm hover:text-accent cursor-pointer">Вперёд →</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</main>

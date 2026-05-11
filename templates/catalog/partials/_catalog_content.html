@@ -1,0 +1,8 @@
+{% comment %}
+HTMX partial rendered when request.headers['HX-Request'] == 'true'.
+Returns both the results block (primary target) and the filters block
+(out-of-band swap by id="catalog-filters-card"). Together they keep the
+sidebar facet counts and the product grid in sync after every filter change.
+{% endcomment %}
+{% include 'catalog/partials/_results.html' %}
+{% include 'catalog/partials/_filters.html' %}
