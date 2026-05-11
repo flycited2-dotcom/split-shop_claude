@@ -61,7 +61,7 @@
             </button>
           </form>
           <div id="cart-msg" class="mt-2 text-sm text-green-600"></div>
-          <button onclick="document.getElementById('quick-order-modal').classList.remove('hidden')"
+          <button onclick="openModal('quick-order-modal')"
                   class="mt-2 text-sm text-accent hover:underline font-semibold">
             Купить в 1 клик
           </button>
@@ -112,16 +112,16 @@
 <!-- Модал: Купить в 1 клик -->
 <div id="quick-order-modal"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-     onclick="if(event.target===this)this.classList.add('hidden')">
+     onclick="if(event.target===this)closeModal('quick-order-modal')">
   <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative">
-    <button onclick="document.getElementById('quick-order-modal').classList.add('hidden')"
+    <button onclick="closeModal('quick-order-modal')"
             class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">
       &times;
     </button>
     <h3 class="text-xl font-bold mb-4">Купить в 1 клик</h3>
     <p class="text-sm text-gray-500 mb-4">{{ product.title }}</p>
-    <div id="quick-order-result">
-      <form hx-post="/leads/quick-order/" hx-target="#quick-order-result" hx-swap="innerHTML">
+    <div id="quick-order-result" aria-live="polite">
+      <form hx-post="{% url 'quick_order_submit' %}" hx-target="#quick-order-result" hx-swap="innerHTML">
         {% csrf_token %}
         <input type="hidden" name="product_id" value="{{ product.pk }}">
         <div class="mb-3">
@@ -147,6 +147,17 @@
     </div>
   </div>
 </div>
+<script>
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('[id$="-modal"]:not(.hidden)').forEach(function(m) {
+      m.classList.add('hidden');
+    });
+  }
+});
+</script>
 {% if YANDEX_METRIKA_ID %}
 <script>
 window.dataLayer = window.dataLayer || [];

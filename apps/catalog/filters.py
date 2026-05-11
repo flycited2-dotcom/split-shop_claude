@@ -14,7 +14,7 @@ class ProductFilter(django_filters.FilterSet):
         widget=forms.Select(attrs={'class': _select_cls}),
     )
     category = django_filters.ModelChoiceFilter(
-        queryset=Category.objects.all().order_by('title'),
+        queryset=Category.objects.filter(sync_enabled=True).order_by('title'),
         label='Категория',
         empty_label='Все категории',
         widget=forms.Select(attrs={'class': _select_cls}),

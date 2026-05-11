@@ -2,12 +2,63 @@
 {% block title %}Заявка на монтаж{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto py-10 px-4">
-  <h1 class="text-2xl font-bold mb-2">Заявка на монтаж кондиционера</h1>
-  <p class="text-gray-600 mb-6">Оставьте заявку — наш мастер выедет на замер и рассчитает стоимость монтажа.</p>
-  <div class="card p-6">
-    <div id="installation-result">
-      {% include "leads/partials/installation_form.html" %}
+  <h1 class="text-3xl font-bold text-gray-900 mb-2">Заявка на монтаж</h1>
+  <p class="text-gray-500 mb-8">Опишите объект — мы рассчитаем стоимость и свяжемся с вами.</p>
+  <form hx-post="{% url 'installation_submit' %}" hx-target="#installation-result" hx-swap="innerHTML"
+        class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Имя *</label>
+        <input type="text" name="name" required
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Телефон *</label>
+        <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
     </div>
-  </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Адрес объекта *</label>
+      <textarea name="address" rows="2" required
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Тип оборудования</label>
+        <input type="text" name="equipment_type" placeholder="Сплит-система, мульти..."
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Этаж</label>
+        <input type="number" name="floor" min="1"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Тип стены</label>
+        <input type="text" name="wall_type" placeholder="Кирпич, бетон, гипсокартон..."
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div class="flex items-center gap-2 pt-5">
+        <input type="checkbox" name="has_equipment" id="has_equipment" class="rounded">
+        <label for="has_equipment" class="text-sm text-gray-700">Кондиционер уже куплен</label>
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="checkbox" name="needs_channel" id="needs_channel" class="rounded">
+        <label for="needs_channel" class="text-sm text-gray-700">Нужна закладка трассы</label>
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
+      <textarea name="comment" rows="3"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+    </div>
+    <button type="submit"
+            class="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm font-medium hover:bg-blue-700 transition-colors">
+      Отправить заявку
+    </button>
+  </form>
+  <div id="installation-result" aria-live="polite" class="mt-4"></div>
 </div>
 {% endblock %}

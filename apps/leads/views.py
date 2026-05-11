@@ -17,12 +17,15 @@ SUCCESS_HTML = '<p class="text-green-600 font-semibold py-4">✅ Заявка п
 def quick_order_submit(request):
     form = QuickOrderForm(request.POST)
     if not form.is_valid():
-        return render(request, 'leads/partials/quick_order_form.html', {'form': form})
+        return render(request, 'leads/partials/quick_order_form.html', {
+            'form': form,
+            'product_id': request.POST.get('product_id', ''),
+        })
 
     product = None
     try:
         product_id = int(request.POST.get('product_id', ''))
-        product = Product.objects.filter(pk=product_id).first()
+        product = Product.objects.filter(pk=product_id, is_active=True).first()
     except (ValueError, TypeError):
         pass
 

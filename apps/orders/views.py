@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -8,6 +10,9 @@ from django.conf import settings
 from .models import Cart, CartItem, Order, OrderItem
 from .forms import CheckoutForm
 from apps.catalog.models import Product
+from apps.notifications.telegram import send_telegram
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -123,19 +128,25 @@ def checkout(request):
                 )
 
             # Telegram менеджеру
-            from apps.notifications.telegram import send_telegram
-            tg_text = (
-                f'🛒 <b>Новый заказ #{order.pk}</b>\n'
-                f'👤 {request.user.company_name}\n'
-                f'📞 {request.user.phone or "—"}\n'
-                f'📧 {request.user.email}\n'
-                f'📍 {order.delivery_address}\n\n'
-                f'{items_text}\n\n'
-                f'💰 Итого: {order.total:,.0f} ₽\n'
-                f'💬 {order.comment or "—"}\n'
-                f'🔗 /admin/orders/order/{order.pk}/change/'
-            )
-            send_telegram(tg_text)
+            try:
+                created_str = order.created_at.strftime('%d.%m.%Y %H:%M')
+                company = request.user.company_name or request.user.email
+                phone = request.user.phone or '—'
+                comment_line = f'\n💬 Комментарий: {order.comment}' if order.comment else ''
+                tg_text = (
+                    f'🛒 Новый заказ #{order.pk}\n'
+                    f'📅 {created_str}\n'
+                    f'👤 {company}\n'
+                    f'📞 {phone}\n'
+                    f'📧 {request.user.email}\n\n'
+                    f'Состав:\n{items_text}'
+                    f'\n\n💰 Итого: {order.total:,.0f} ₽'
+                    f'{comment_line}\n\n'
+                    f'🔗 /admin/orders/order/{order.pk}/change/'
+                )
+                send_telegram(tg_text)
+            except Exception as exc:
+                logger.warning('Telegram order notification failed: %s', exc)
             messages.success(request, f'Заказ #{order.pk} успешно оформлен!')
             return redirect('order_detail', pk=order.pk)
     else:

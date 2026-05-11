@@ -28,15 +28,23 @@ _ORDERING_MAP = {
 
 
 def catalog(request):
-    qs = Product.objects.filter(is_active=True).select_related(
-        'brand', 'category', 'stock'
-    ).prefetch_related('images')
+    from django.db.models import Count, Q
+    qs = Product.objects.filter(
+        is_active=True, category__sync_enabled=True
+    ).select_related('brand', 'category', 'stock').prefetch_related('images')
     f = ProductFilter(request.GET, queryset=qs)
-    ordering_key = request.GET.get('ordering', '')
-    ordered_qs = f.qs.order_by(_ORDERING_MAP.get(ordering_key, 'title'))
+    ordering_key = request.GET.get('ordering', 'stock')
+    ordered_qs = f.qs.order_by(_ORDERING_MAP.get(ordering_key, '-stock__quantity'))
     paginator = Paginator(ordered_qs, 24)
     page = paginator.get_page(request.GET.get('page'))
-    categories = Category.objects.filter(parent=None).prefetch_related('children')
+    # Only show categories that actually have active products
+    categories = (
+        Category.objects
+        .filter(sync_enabled=True)
+        .annotate(product_count=Count('products', filter=Q(products__is_active=True)))
+        .filter(product_count__gt=0)
+        .order_by('-product_count')
+    )
     show_price = request.user.is_authenticated and request.user.is_approved
     return render(request, 'catalog/index.html', {
         'filter': f,

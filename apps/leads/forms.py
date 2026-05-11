@@ -17,7 +17,7 @@ class SelectionRequestForm(forms.Form):
                             widget=forms.TextInput(attrs={'placeholder': '+7 999 123-45-67'}))
     city = forms.CharField(label='Город', max_length=100, required=False,
                            widget=forms.TextInput(attrs={'placeholder': 'Москва'}))
-    area_sqm = forms.IntegerField(label='Площадь помещения, м²', required=False,
+    area_sqm = forms.IntegerField(label='Площадь помещения, м²', required=False, min_value=1,
                                   widget=forms.NumberInput(attrs={'placeholder': '25', 'min': 1}))
     room_type = forms.CharField(label='Тип помещения', max_length=100, required=False,
                                 widget=forms.TextInput(attrs={'placeholder': 'Квартира, офис, магазин...'}))
@@ -40,7 +40,7 @@ class InstallationRequestForm(forms.Form):
     equipment_type = forms.CharField(label='Тип оборудования', max_length=150, required=False,
                                      widget=forms.TextInput(attrs={'placeholder': 'Сплит-система 12000 BTU'}))
     has_equipment = forms.BooleanField(label='Кондиционер уже куплен', required=False)
-    floor = forms.IntegerField(label='Этаж', required=False,
+    floor = forms.IntegerField(label='Этаж', required=False, min_value=1,
                                widget=forms.NumberInput(attrs={'placeholder': '5', 'min': 1}))
     wall_type = forms.CharField(label='Тип стены', max_length=100, required=False,
                                 widget=forms.TextInput(attrs={'placeholder': 'Кирпич, бетон, газоблок...'}))

@@ -1,7 +1,12 @@
+import logging
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.mail import send_mail
 from django.conf import settings
+from apps.notifications.telegram import send_telegram
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender='accounts.CustomUser')
@@ -24,13 +29,14 @@ def notify_manager_on_registration(sender, instance, created, **kwargs):
             recipient_list=[manager_email],
             fail_silently=True,
         )
-    from apps.notifications.telegram import send_telegram
-    tg_text = (
-        f'🔔 <b>Новая регистрация</b>\n'
-        f'👤 {instance.company_name or instance.username}\n'
-        f'📞 {instance.phone or "—"}\n'
-        f'🆔 ИНН: {instance.inn or "—"}\n'
-        f'✉️ {instance.email}\n'
-        f'🔗 /admin/accounts/customuser/{instance.pk}/change/'
-    )
-    send_telegram(tg_text)
+    try:
+        tg_text = (
+            f'🔔 Новая регистрация\n'
+            f'👤 {instance.company_name or instance.username}\n'
+            f'📞 {instance.phone or "—"}\n'
+            f'🆔 ИНН: {instance.inn or "—"}\n'
+            f'✉️ /admin/accounts/customuser/{instance.pk}/change/'
+        )
+        send_telegram(tg_text)
+    except Exception as exc:
+        logger.warning('Telegram registration notification failed: %s', exc)
