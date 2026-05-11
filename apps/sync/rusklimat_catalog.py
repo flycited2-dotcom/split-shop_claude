@@ -228,6 +228,7 @@ class RusklimatCatalogSync:
                         'manual_url': manual_url,
                         'price_wholesale': price,
                         'ric': price,
+                        'source': 'rusklimat',
                         'is_active': True,
                     }
                     if rusklimat_guid:

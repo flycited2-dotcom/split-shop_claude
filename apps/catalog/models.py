@@ -74,6 +74,7 @@ class Product(models.Model):
     video_youtube = models.URLField(max_length=500, blank=True)
     video_rutube = models.URLField(max_length=500, blank=True)
     rusklimat_guid = models.CharField(max_length=36, blank=True, db_index=True)
+    source = models.CharField(max_length=20, default='breeze', db_index=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -185,8 +185,8 @@ def sync_products(category_ids=None):
                         for i, url in enumerate(images)
                     ])
 
-        # Deactivate products not seen in this sync (includes non-AC products)
-        deactivated = Product.objects.exclude(nc_code__in=nc_codes_seen).update(is_active=False)
+        # Deactivate Breeze products not seen in this sync (never touch Rusklimat products)
+        deactivated = Product.objects.filter(source='breeze').exclude(nc_code__in=nc_codes_seen).update(is_active=False)
 
     logger.info("sync_products: created=%d updated=%d deactivated=%d skipped(non-AC)=%d",
                 created, updated, deactivated, skipped)
