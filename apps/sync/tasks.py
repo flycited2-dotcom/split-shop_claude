@@ -307,15 +307,12 @@ def sync_rusklimat_catalog():
 
 @shared_task(name='sync.sync_rusklimat_stock')
 def sync_rusklimat_stock():
-    """
-    Scrape AC catalog from b2b.rusklimat.com and update stock by NC code.
-    Covers: сплит-системы, мультисплит, полупромышленные, он-офф, мобильные.
-    """
-    from apps.sync.rusklimat_scraper import RusklimatScraper
+    """Download Rusklimat price YML and update stock quantities by NC code."""
+    from apps.sync.rusklimat_stock import RusklimatStockSync
 
-    stock_data = RusklimatScraper().get_ac_stock()
+    stock_data = RusklimatStockSync().get_stock()
     if not stock_data:
-        logger.warning('sync_rusklimat_stock: no data returned from scraper')
+        logger.warning('sync_rusklimat_stock: no data returned')
         return {'updated': 0, 'skipped': 0}
 
     updated = skipped = 0
