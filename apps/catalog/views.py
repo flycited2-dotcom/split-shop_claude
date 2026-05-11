@@ -60,12 +60,20 @@ def catalog(request):
         .order_by('-product_count')
     )
     show_price = request.user.is_authenticated and request.user.is_approved
+    btu_options = [
+        ('7', '7 000 BTU (до 20 м²)'),
+        ('9', '9 000 BTU (до 25 м²)'),
+        ('12', '12 000 BTU (до 35 м²)'),
+        ('18', '18 000 BTU (до 50 м²)'),
+        ('24', '24 000 BTU (до 70 м²)'),
+    ]
     return render(request, 'catalog/index.html', {
         'filter': f,
         'page_obj': page,
         'categories': categories,
         'show_price': show_price,
         'current_ordering': ordering_key,
+        'btu_options': btu_options,
     })
 
 
