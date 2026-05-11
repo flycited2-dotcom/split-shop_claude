@@ -57,7 +57,7 @@ def catalog(request):
         .filter(sync_enabled=True)
         .annotate(product_count=Count('products', filter=Q(products__is_active=True)))
         .filter(product_count__gt=0)
-        .order_by('-product_count')
+        .order_by('order', 'title')
     )
     show_price = request.user.is_authenticated and request.user.is_approved
     btu_options = [
@@ -88,8 +88,3 @@ def product_detail(request, slug):
         'product': product,
         'show_price': show_price,
     })
-
-
-def brands_list(request):
-    brands = Brand.objects.all()
-    return render(request, 'catalog/brands.html', {'brands': brands})
