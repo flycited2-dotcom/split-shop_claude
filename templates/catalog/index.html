@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
-{% block title %}Каталог климатической техники — Oasis{% endblock %}
+{% block title %}Каталог кондиционеров — Oasis{% endblock %}
 {% block content %}
 <div class="flex gap-6">
   <!-- Боковая панель -->
   <aside class="w-64 shrink-0 space-y-4">
 
-    <!-- Категории -->
+    <!-- Тип оборудования -->
     <div class="card p-5">
-      <h2 class="font-bold text-lg mb-3">Тип оборудования</h2>
+      <h2 class="font-bold text-base mb-3 text-gray-800">Тип оборудования</h2>
       <ul class="space-y-0.5 text-sm">
         <li>
           <a href="/catalog/" class="flex items-center justify-between px-2 py-1.5 rounded-lg font-semibold
@@ -31,27 +31,44 @@
 
     <!-- Фильтры -->
     <div class="card p-5">
-      <h2 class="font-bold text-lg mb-4">Фильтры</h2>
+      <h2 class="font-bold text-base mb-4 text-gray-800">Фильтры</h2>
       <form method="get">
         {% if request.GET.category %}
           <input type="hidden" name="category" value="{{ request.GET.category }}">
         {% endif %}
+
+        <!-- Поиск -->
         <div class="mb-4">
           <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Поиск</label>
           {{ filter.form.q }}
         </div>
+
+        <!-- Бренд -->
         <div class="mb-4">
           <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Бренд</label>
           {{ filter.form.brand }}
         </div>
+
+        <!-- Цена -->
+        <div class="mb-4">
+          <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Цена, ₽</label>
+          <div class="flex gap-2">
+            {{ filter.form.price_min }}
+            {{ filter.form.price_max }}
+          </div>
+        </div>
+
+        <!-- В наличии -->
         <div class="mb-4 flex items-center gap-2">
           {{ filter.form.in_stock }}
           <label class="text-sm text-gray-700 cursor-pointer">Только в наличии</label>
         </div>
+
         <button type="submit" class="btn-accent w-full py-2 rounded-lg font-semibold text-sm">
           Применить
         </button>
-        <a href="/catalog/" class="block text-center text-xs text-gray-400 mt-2 hover:text-accent">
+        <a href="/catalog/{% if request.GET.category %}?category={{ request.GET.category }}{% endif %}"
+           class="block text-center text-xs text-gray-400 mt-2 hover:text-accent">
           Сбросить фильтры
         </a>
       </form>
@@ -62,8 +79,9 @@
   <!-- Товары -->
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-      <p class="text-sm text-gray-400">
-        Найдено: <span class="font-semibold text-gray-700">{{ page_obj.paginator.count }}</span> товаров
+      <p class="text-sm text-gray-500">
+        Найдено: <span class="font-semibold text-gray-800">{{ page_obj.paginator.count }}</span> товаров
+        {% if request.GET.in_stock %}<span class="ml-2 text-green-600 text-xs font-semibold">● в наличии</span>{% endif %}
       </p>
       <form method="get" class="flex items-center gap-2">
         {% for key, val in request.GET.items %}
@@ -74,21 +92,23 @@
         <label class="text-sm text-gray-500">Сортировка:</label>
         <select name="ordering" onchange="this.form.submit()"
                 class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400">
-          <option value="" {% if not current_ordering %}selected{% endif %}>По названию</option>
+          <option value="" {% if not current_ordering %}selected{% endif %}>В наличии первыми</option>
           <option value="price" {% if current_ordering == 'price' %}selected{% endif %}>Цена ↑</option>
           <option value="-price" {% if current_ordering == '-price' %}selected{% endif %}>Цена ↓</option>
           <option value="-created" {% if current_ordering == '-created' %}selected{% endif %}>Новинки</option>
-          <option value="stock" {% if current_ordering == 'stock' %}selected{% endif %}>По наличию</option>
+          <option value="title" {% if current_ordering == 'title' %}selected{% endif %}>По названию</option>
         </select>
       </form>
     </div>
+
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {% for product in page_obj %}
         {% include 'partials/product_card.html' with show_price=show_price %}
       {% empty %}
-        <p class="col-span-4 text-gray-400 text-center py-12">Товары не найдены</p>
+        <p class="col-span-4 text-gray-400 text-center py-16">Товары не найдены. <a href="/catalog/" class="text-accent hover:underline">Сбросить фильтры</a></p>
       {% endfor %}
     </div>
+
     <!-- Пагинация -->
     {% if page_obj.has_other_pages %}
       <div class="flex justify-center gap-2 mt-8">

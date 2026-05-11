@@ -1,15 +1,28 @@
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
+from django.db.models import Count, Q, F
 from .models import Product, Category, Brand
 from .filters import ProductFilter
 
 
 def home(request):
     brands = Brand.objects.all().order_by('order', 'title')[:16]
-    categories = Category.objects.filter(parent=None).prefetch_related('children').order_by('order')
-    featured = Product.objects.filter(
-        is_active=True, stock__quantity__gt=0
-    ).select_related('brand', 'stock').prefetch_related('images')[:8]
+    # Only show AC categories that have products
+    categories = (
+        Category.objects
+        .filter(sync_enabled=True)
+        .annotate(product_count=Count('products', filter=Q(products__is_active=True)))
+        .filter(product_count__gt=0)
+        .order_by('-product_count')[:8]
+    )
+    # Featured: only AC products in stock, sorted by stock quantity
+    featured = (
+        Product.objects
+        .filter(is_active=True, category__sync_enabled=True, stock__quantity__gt=0)
+        .select_related('brand', 'stock')
+        .prefetch_related('images')
+        .order_by(F('stock__quantity').desc(nulls_last=True))[:8]
+    )
     show_price = request.user.is_authenticated and getattr(request.user, 'is_approved', False)
     return render(request, 'home.html', {
         'brands': brands,
@@ -19,22 +32,23 @@ def home(request):
     })
 
 
-_ORDERING_MAP = {
-    'price': 'price_wholesale',
-    '-price': '-price_wholesale',
-    '-created': '-created_at',
-    'stock': '-stock__quantity',
-}
-
-
 def catalog(request):
-    from django.db.models import Count, Q
     qs = Product.objects.filter(
         is_active=True, category__sync_enabled=True
     ).select_related('brand', 'category', 'stock').prefetch_related('images')
     f = ProductFilter(request.GET, queryset=qs)
-    ordering_key = request.GET.get('ordering', 'stock')
-    ordered_qs = f.qs.order_by(_ORDERING_MAP.get(ordering_key, '-stock__quantity'))
+    ordering_key = request.GET.get('ordering', '')
+    ordering_map = {
+        'price': F('price_wholesale').asc(nulls_last=True),
+        '-price': F('price_wholesale').desc(nulls_last=True),
+        '-created': F('created_at').desc(),
+        'title': F('title').asc(),
+    }
+    if ordering_key in ordering_map:
+        ordered_qs = f.qs.order_by(ordering_map[ordering_key])
+    else:
+        # Default: in-stock first, then by title
+        ordered_qs = f.qs.order_by(F('stock__quantity').desc(nulls_last=True), 'title')
     paginator = Paginator(ordered_qs, 24)
     page = paginator.get_page(request.GET.get('page'))
     # Only show categories that actually have active products
