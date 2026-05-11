@@ -5,19 +5,12 @@
   <!-- Боковая панель -->
   <aside class="w-64 shrink-0 space-y-4">
 
-    <!-- Тип оборудования -->
+    <!-- Каталог -->
     <div class="card p-5">
-      <h2 class="font-bold text-base mb-3 text-gray-800">Тип оборудования</h2>
+      <h2 class="font-bold text-base mb-3 text-gray-800">Каталог</h2>
       <ul class="space-y-0.5 text-sm">
-        <li>
-          <a href="/catalog/" class="flex items-center justify-between px-2 py-1.5 rounded-lg font-semibold
-            {% if not request.GET.category %}text-accent bg-orange-50{% else %}text-gray-700 hover:text-accent hover:bg-gray-50{% endif %}">
-            <span>Все кондиционеры</span>
-            <span class="text-xs text-gray-400">{{ page_obj.paginator.count }}</span>
-          </a>
-        </li>
         {% for cat in categories %}
-          <li>
+          <li{% if forloop.last and not forloop.first %} class="border-t border-gray-200 pt-2 mt-2"{% endif %}>
             <a href="?category={{ cat.pk }}"
                class="flex items-center justify-between px-2 py-1.5 rounded-lg
                {% if request.GET.category == cat.pk|stringformat:'s' %}text-accent font-semibold bg-orange-50{% else %}text-gray-600 hover:text-accent hover:bg-gray-50{% endif %}">
