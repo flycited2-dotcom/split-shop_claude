@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
+from django.utils.text import slugify
 from apps.catalog.models import Product, Category
-from apps.sync.rusklimat_catalog import _resolve_master_category
+from apps.sync.rusklimat_catalog import _resolve_master_category, _make_unique_slug
 
 
 class Command(BaseCommand):
@@ -32,7 +33,11 @@ class Command(BaseCommand):
                 new_cat = cat_cache[value]
             elif kind == 'master':
                 if value not in cat_cache:
-                    cat_cache[value] = Category.objects.filter(title__iexact=value).first()
+                    obj = Category.objects.filter(title__iexact=value).first()
+                    if not obj:
+                        slug = _make_unique_slug(Category, slugify(value, allow_unicode=True) or 'category')
+                        obj = Category.objects.create(title=value, slug=slug, breez_id=None, sync_enabled=True)
+                    cat_cache[value] = obj
                 new_cat = cat_cache[value]
 
             if new_cat is None:
