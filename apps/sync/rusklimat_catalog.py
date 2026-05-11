@@ -80,36 +80,76 @@ def _get_or_create_brand(title, cache):
     return brand
 
 
+# Maps a Rusklimat category path to a master category.
+# Rules are checked in order; first match wins.
+# 'breez:N' → use existing Breeze category with breez_id=N
+# 'master:Title' → get-or-create a named master category (no breez_id)
+_CATEGORY_RULES = [
+    (re.compile(r'мультисплит|мульти.?сплит|multi.?split', re.I | re.UNICODE),
+     'breez:9'),
+    (re.compile(r'мобильн', re.I | re.UNICODE),
+     'breez:10'),
+    (re.compile(r'полупромышленн', re.I | re.UNICODE),
+     'master:Полупромышленные кондиционеры'),
+    (re.compile(r'канальн', re.I | re.UNICODE),
+     'master:Канальные кондиционеры'),
+    (re.compile(r'кассетн', re.I | re.UNICODE),
+     'master:Кассетные кондиционеры'),
+    (re.compile(r'напольн|потолочн', re.I | re.UNICODE),
+     'master:Напольно-потолочные кондиционеры'),
+    (re.compile(r'он.?офф|on.?off', re.I | re.UNICODE),
+     'master:Он-офф кондиционеры'),
+    (re.compile(r'аксессуар|запчаст|монтаж|комплектующ|расходн', re.I | re.UNICODE),
+     'master:Аксессуары для кондиционеров'),
+    # Default: any remaining AC path → настенные/бытовые
+    (re.compile(r'сплит|split|кондиционер|инвертор|настенн|бытов', re.I | re.UNICODE),
+     'breez:2'),
+]
+
+
+def _resolve_master_category(path):
+    """Return (kind, value): kind='breez_id'|'master', value=int|str."""
+    for pattern, target in _CATEGORY_RULES:
+        if pattern.search(path):
+            kind, val = target.split(':', 1)
+            if kind == 'breez':
+                return 'breez_id', int(val)
+            return 'master', val
+    return None, None
+
+
 def _get_or_create_category(path, cache):
     if not path:
         return None
     if path in cache:
         return cache[path]
 
-    parts = [p.strip() for p in path.split(' - ') if p.strip()]
-    leaf = parts[-1] if parts else path
-    parent_title = parts[-2] if len(parts) >= 2 else None
+    kind, value = _resolve_master_category(path)
 
-    cat = Category.objects.filter(title__iexact=leaf).first()
-    if not cat:
-        parent = None
-        if parent_title:
-            parent = Category.objects.filter(title__iexact=parent_title).first()
-            if not parent:
-                p_slug = _make_unique_slug(
-                    Category,
-                    slugify(parent_title, allow_unicode=True) or 'category',
-                )
-                parent = Category.objects.create(
-                    title=parent_title, slug=p_slug,
-                    breez_id=None, sync_enabled=True,
-                )
-        slug = _make_unique_slug(Category, slugify(leaf, allow_unicode=True) or 'category')
-        cat = Category.objects.create(
-            title=leaf, slug=slug,
-            breez_id=None, parent=parent, sync_enabled=True,
-        )
-        logger.debug('Created Rusklimat category: %s', leaf)
+    if kind == 'breez_id':
+        cat = Category.objects.filter(breez_id=value).first()
+        if not cat:
+            logger.warning('Breeze category breez_id=%s not found, skipping path: %s', value, path)
+            cache[path] = None
+            return None
+    elif kind == 'master':
+        cat = Category.objects.filter(title__iexact=value).first()
+        if not cat:
+            slug = _make_unique_slug(Category, slugify(value, allow_unicode=True) or 'category')
+            cat = Category.objects.create(
+                title=value, slug=slug, breez_id=None, sync_enabled=True,
+            )
+            logger.info('Created master category: %s', value)
+    else:
+        # Path doesn't match any rule — keep original leaf-based creation as fallback
+        parts = [p.strip() for p in path.split(' - ') if p.strip()]
+        leaf = parts[-1] if parts else path
+        cat = Category.objects.filter(title__iexact=leaf).first()
+        if not cat:
+            slug = _make_unique_slug(Category, slugify(leaf, allow_unicode=True) or 'category')
+            cat = Category.objects.create(
+                title=leaf, slug=slug, breez_id=None, sync_enabled=True,
+            )
 
     cache[path] = cat
     return cat
