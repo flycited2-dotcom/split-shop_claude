@@ -3,6 +3,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q, F
 from .models import Product, Category, Brand
 from .filters import ProductFilter
+from .facets import compute_facets
 
 
 def home(request):
@@ -33,10 +34,12 @@ def home(request):
 
 
 def catalog(request):
-    qs = Product.objects.filter(
-        is_active=True, category__sync_enabled=True
+    base_qs = Product.objects.filter(
+        is_active=True, category__sync_enabled=True,
     ).select_related('brand', 'category', 'stock').prefetch_related('images')
-    f = ProductFilter(request.GET, queryset=qs)
+
+    f = ProductFilter(request.GET, queryset=base_qs)
+
     ordering_key = request.GET.get('ordering', '')
     ordering_map = {
         'price': F('price_wholesale').asc(nulls_last=True),
@@ -47,11 +50,11 @@ def catalog(request):
     if ordering_key in ordering_map:
         ordered_qs = f.qs.order_by(ordering_map[ordering_key])
     else:
-        # Default: in-stock first, then by title
         ordered_qs = f.qs.order_by(F('stock__quantity').desc(nulls_last=True), 'title')
+
     paginator = Paginator(ordered_qs, 24)
     page = paginator.get_page(request.GET.get('page'))
-    # Only show categories that actually have active products
+
     categories = (
         Category.objects
         .filter(sync_enabled=True)
@@ -59,22 +62,24 @@ def catalog(request):
         .filter(product_count__gt=0)
         .order_by('order', 'title')
     )
-    show_price = request.user.is_authenticated and request.user.is_approved
-    btu_options = [
-        ('7', '7 000 BTU (до 20 м²)'),
-        ('9', '9 000 BTU (до 25 м²)'),
-        ('12', '12 000 BTU (до 35 м²)'),
-        ('18', '18 000 BTU (до 50 м²)'),
-        ('24', '24 000 BTU (до 70 м²)'),
-    ]
-    return render(request, 'catalog/index.html', {
+
+    facets = compute_facets(request.GET, base_qs)
+
+    context = {
         'filter': f,
         'page_obj': page,
         'categories': categories,
-        'show_price': show_price,
+        'show_price': request.user.is_authenticated and request.user.is_approved,
         'current_ordering': ordering_key,
-        'btu_options': btu_options,
-    })
+        'facets': facets,
+    }
+
+    template = (
+        'catalog/partials/_catalog_content.html'
+        if request.headers.get('HX-Request') == 'true'
+        else 'catalog/index.html'
+    )
+    return render(request, template, context)
 
 
 def product_detail(request, slug):
