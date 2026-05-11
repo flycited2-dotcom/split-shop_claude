@@ -80,29 +80,35 @@ def _get_or_create_brand(title, cache):
     return brand
 
 
-# Maps a Rusklimat category path to a master category.
+# Maps a category path (Rusklimat or Breeze) to one of 5 master categories.
 # Rules are checked in order; first match wins.
 # 'breez:N' → use existing Breeze category with breez_id=N
 # 'master:Title' → get-or-create a named master category (no breez_id)
+#
+# Final master categories shown in the catalog sidebar:
+#   1. Бытовые сплит-системы (breez_id=2)
+#   2. Мульти-сплит системы (breez_id=9) — поглощает внутренние + наружные блоки мульти-сплит
+#   3. Полупромышленные кондиционеры — поглощает п/п сплит-системы, канальные, кассетные, напольно-потолочные
+#   4. Мобильные кондиционеры (breez_id=10)
+#   5. Аксессуары для кондиционеров — поглощает аксессуары для сплит-систем
 _CATEGORY_RULES = [
-    (re.compile(r'мультисплит|мульти.?сплит|multi.?split', re.I | re.UNICODE),
+    (re.compile(
+        r'мультисплит|мульти.?сплит|multi.?split|'
+        r'внутренн\w*\s+блок|наружн\w*\s+блок|indoor.?unit|outdoor.?unit',
+        re.I | re.UNICODE,
+     ),
      'breez:9'),
     (re.compile(r'мобильн', re.I | re.UNICODE),
      'breez:10'),
-    (re.compile(r'полупромышленн', re.I | re.UNICODE),
+    (re.compile(r'полупромышленн|канальн|кассетн|напольн|потолочн|кровельн',
+                re.I | re.UNICODE),
      'master:Полупромышленные кондиционеры'),
-    (re.compile(r'канальн', re.I | re.UNICODE),
-     'master:Канальные кондиционеры'),
-    (re.compile(r'кассетн', re.I | re.UNICODE),
-     'master:Кассетные кондиционеры'),
-    (re.compile(r'напольн|потолочн', re.I | re.UNICODE),
-     'master:Напольно-потолочные кондиционеры'),
-    (re.compile(r'он.?офф|on.?off', re.I | re.UNICODE),
-     'master:Он-офф кондиционеры'),
-    (re.compile(r'аксессуар|запчаст|монтаж|комплектующ|расходн', re.I | re.UNICODE),
+    (re.compile(r'аксессуар|запчаст|комплектующ|расходн',
+                re.I | re.UNICODE),
      'master:Аксессуары для кондиционеров'),
-    # Default: any remaining AC path → настенные/бытовые
-    (re.compile(r'сплит|split|кондиционер|инвертор|настенн|бытов', re.I | re.UNICODE),
+    # Default: any remaining AC/split path → бытовые сплит-системы (incl. on-off)
+    (re.compile(r'сплит|split|кондиционер|инвертор|настенн|бытов|он.?офф|on.?off',
+                re.I | re.UNICODE),
      'breez:2'),
 ]
 
