@@ -1,39 +1,42 @@
 <!-- templates/partials/footer.html -->
-<footer class="bg-white border-t mt-12 py-8">
-  <div class="max-w-7xl mx-auto px-4 text-sm text-gray-500">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+{% load static %}
+<footer class="mt-16 border-t border-black/5 bg-white/60 backdrop-blur-md">
+  <div class="max-w-7xl mx-auto px-4 py-10 text-sm text-ink-2">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
       <div class="col-span-2 md:col-span-1">
-        <p class="font-bold text-gray-700 mb-2 text-base">OASIS</p>
-        <p class="text-xs">B2B-портал климатической техники</p>
-        <p class="text-xs mt-1">oasis.com.ru</p>
+        <div class="flex items-center gap-2 mb-3">
+          <img src="{% static 'img/swirl.png' %}" alt="СплитХаб" class="w-8 h-8">
+          <span class="font-bold text-ink text-lg tracking-tight">СплитХаб</span>
+        </div>
+        <p class="text-xs text-ink-3 leading-relaxed">Продажа и монтаж кондиционеров по всему Крыму: Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.</p>
       </div>
       <div>
-        <p class="font-semibold text-gray-700 mb-2">Каталог</p>
-        <ul class="space-y-1">
-          <li><a href="/catalog/" class="hover:text-accent">Все товары</a></li>
-          <li><a href="/selection/" class="hover:text-accent">Подбор кондиционера</a></li>
-          <li><a href="/installation/" class="hover:text-accent">Заказать монтаж</a></li>
+        <p class="font-semibold text-ink mb-3">Каталог</p>
+        <ul class="space-y-2 text-ink-3">
+          <li><a href="/catalog/" class="hover:text-accent transition">Все кондиционеры</a></li>
+          <li><a href="/selection/" class="hover:text-accent transition">Подбор по площади</a></li>
+          <li><a href="/installation/" class="hover:text-accent transition">Заказать монтаж</a></li>
         </ul>
       </div>
       <div>
-        <p class="font-semibold text-gray-700 mb-2">Покупателям</p>
-        <ul class="space-y-1">
-          <li><a href="/delivery/" class="hover:text-accent">Доставка</a></li>
-          <li><a href="/payment/" class="hover:text-accent">Оплата</a></li>
-          <li><a href="/warranty/" class="hover:text-accent">Гарантия</a></li>
+        <p class="font-semibold text-ink mb-3">Покупателям</p>
+        <ul class="space-y-2 text-ink-3">
+          <li><a href="/delivery/" class="hover:text-accent transition">Доставка</a></li>
+          <li><a href="/payment/" class="hover:text-accent transition">Оплата</a></li>
+          <li><a href="/warranty/" class="hover:text-accent transition">Гарантия</a></li>
         </ul>
       </div>
       <div>
-        <p class="font-semibold text-gray-700 mb-2">Компания</p>
-        <ul class="space-y-1">
-          <li><a href="/about/" class="hover:text-accent">О компании</a></li>
-          <li><a href="/contacts/" class="hover:text-accent">Контакты</a></li>
-          <li><a href="/auth/register/" class="hover:text-accent">Стать дилером</a></li>
+        <p class="font-semibold text-ink mb-3">Компания</p>
+        <ul class="space-y-2 text-ink-3">
+          <li><a href="/about/" class="hover:text-accent transition">О нас</a></li>
+          <li><a href="/contacts/" class="hover:text-accent transition">Контакты</a></li>
         </ul>
       </div>
     </div>
-    <div class="border-t pt-4 text-xs text-gray-400 text-center">
-      © 2026 OASIS — климатическая техника. Все права защищены.
+    <div class="border-t border-black/5 pt-4 text-xs text-ink-3 flex flex-col md:flex-row gap-2 justify-between">
+      <span>© 2026 СплитХаб. Кондиционеры по всему Крыму.</span>
+      <span class="text-ink-3/70">Все права защищены.</span>
     </div>
   </div>
 </footer>

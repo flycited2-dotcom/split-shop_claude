@@ -36,11 +36,11 @@ class CustomUserAdmin(UserAdmin):
             count += 1
             if user.email:
                 send_mail(
-                    subject='Ваш аккаунт одобрен — Oasis',
+                    subject='Ваш аккаунт одобрен — СплитХаб',
                     message=(
                         f'Здравствуйте, {user.company_name}!\n\n'
-                        f'Ваш аккаунт одобрен. Теперь вы можете видеть оптовые '
-                        f'цены и оформлять заказы на oasis.com.ru'
+                        f'Ваш аккаунт одобрен. Теперь вы можете оформлять заказы '
+                        f'на сайте СплитХаб.'
                     ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],

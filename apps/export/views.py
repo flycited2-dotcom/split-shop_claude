@@ -15,7 +15,7 @@ def export_excel(request):
         buf.getvalue(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    response['Content-Disposition'] = f'attachment; filename="oasis-price-{date}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="splithub-price-{date}.xlsx"'
     return response
 
 
@@ -26,5 +26,5 @@ def export_pdf(request):
     buf = generate_price_pdf(request.user, request)
     date = datetime.date.today().strftime('%Y-%m-%d')
     response = HttpResponse(buf.getvalue(), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="oasis-price-{date}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="splithub-price-{date}.pdf"'
     return response

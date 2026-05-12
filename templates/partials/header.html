@@ -1,38 +1,40 @@
 <!-- templates/partials/header.html -->
-<header class="bg-white shadow-sm sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="/" class="text-2xl font-extrabold text-accent">OASIS</a>
-    <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-gray-600">
+{% load static %}
+<header class="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-black/5">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-6">
+    <a href="/" class="flex items-center gap-2 shrink-0">
+      <img src="{% static 'img/swirl.png' %}" alt="СплитХаб" class="w-9 h-9">
+      <span class="text-xl font-bold tracking-tight text-ink">СплитХаб</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-ink-2">
       <a href="/catalog/" class="hover:text-accent transition">Каталог</a>
       <a href="/selection/" class="hover:text-accent transition">Подбор</a>
       <a href="/installation/" class="hover:text-accent transition">Монтаж</a>
+      <a href="/delivery/" class="hover:text-accent transition">Доставка</a>
+      <a href="/contacts/" class="hover:text-accent transition">Контакты</a>
     </nav>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3">
       {% if user.is_authenticated %}
         {% if user.is_approved %}
-          <a href="/cart/" class="relative hover:text-accent transition">
-            🛒
+          <a href="/cart/" class="relative w-10 h-10 rounded-full bg-white border border-black/5 hover:border-accent/40 transition flex items-center justify-center" aria-label="Корзина">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             {% if cart_count > 0 %}
-              <span class="absolute -top-2 -right-2 bg-accent text-white text-xs
-                           rounded-full w-5 h-5 flex items-center justify-center">
+              <span class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-white text-[11px] font-semibold flex items-center justify-center" style="background: var(--grad-primary);">
                 {{ cart_count }}
               </span>
             {% endif %}
           </a>
         {% endif %}
-        <a href="/account/" class="text-sm font-semibold hover:text-accent">
+        <a href="/account/" class="text-sm font-semibold text-ink hover:text-accent">
           {{ user.company_name|default:user.username }}
         </a>
         <form method="post" action="/auth/logout/">
           {% csrf_token %}
-          <button class="text-sm text-gray-400 hover:text-red-500">Выйти</button>
+          <button class="text-sm text-ink-3 hover:text-red-500">Выйти</button>
         </form>
       {% else %}
-        <a href="/auth/login/" class="text-sm font-semibold hover:text-accent">Войти</a>
-        <a href="/auth/register/"
-           class="btn-accent px-4 py-2 rounded-lg text-sm font-semibold">
-          Регистрация
-        </a>
+        <a href="/auth/login/" class="text-sm font-semibold text-ink hover:text-accent">Войти</a>
+        <a href="/auth/register/" class="btn btn-primary btn-sm">Регистрация</a>
       {% endif %}
     </div>
   </div>

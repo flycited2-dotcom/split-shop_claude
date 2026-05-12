@@ -1,41 +1,48 @@
 <!-- templates/base.html -->
+{% load static %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Oasis — климатическая техника{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}Oasis — B2B-портал оптовой поставки климатической техники. Кондиционеры, вентиляция, тепловые насосы.{% endblock %}">
+  <title>{% block title %}СплитХаб — кондиционеры и сплит-системы в Крыму{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}СплитХаб — продажа, доставка и монтаж кондиционеров по всему Крыму. Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.{% endblock %}">
+  <link rel="icon" type="image/png" href="{% static 'img/swirl.png' %}">
   <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Oasis">
+  <meta property="og:site_name" content="СплитХаб">
   <meta property="og:title" content="{% block og_title %}{% block og_title_inner %}{% endblock %}{% endblock %}">
-  <meta property="og:description" content="{% block og_description %}Oasis — B2B-портал оптовой поставки климатической техники.{% endblock %}">
-  <meta property="og:image" content="{% block og_image %}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}СплитХаб — продажа и монтаж кондиционеров по всему Крыму.{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{% static 'img/swirl.png' %}{% endblock %}">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          colors: { accent: '#F97316' },
-          fontFamily: { sans: ['Nunito Sans', 'sans-serif'] },
-          borderRadius: { card: '12px' }
+          colors: {
+            accent: '#2e7cf6',
+            'accent-dark': '#1e5bd1',
+            teal: '#1fc8c5',
+            ink: '#0e1a2b',
+            'ink-2': '#3a4a60',
+            'ink-3': '#7a8a9f',
+            surface: '#f4f8fc'
+          },
+          fontFamily: { sans: ['Onest', 'sans-serif'] },
+          borderRadius: { card: '18px' }
         }
       }
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/splithub.css' %}">
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-  <style>
-    body { background-color: #F5F7FA; font-family: 'Nunito Sans', sans-serif; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .btn-accent { background: #F97316; color: white; transition: all .2s; }
-    .btn-accent:hover { background: #ea6c0a; }
-  </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="text-gray-900 min-h-screen flex flex-col">
+<body class="text-ink min-h-screen flex flex-col">
 {% if YANDEX_METRIKA_ID %}
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">
@@ -55,7 +62,7 @@ ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBo
         <div class="mb-4 p-4 rounded-card
           {% if message.tags == 'error' %}bg-red-100 text-red-700
           {% elif message.tags == 'success' %}bg-green-100 text-green-700
-          {% else %}bg-blue-100 text-blue-700{% endif %}">
+          {% else %}bg-blue-100 text-accent-dark{% endif %}">
           {{ message }}
         </div>
       {% endfor %}

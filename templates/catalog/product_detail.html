@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}{{ product.title }} — Oasis{% endblock %}
-{% block meta_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Арт: {{ product.articul }}. Купить оптом на B2B-портале Oasis.{% endblock %}
-{% block og_title %}{{ product.title }} — Oasis{% endblock %}
+{% block title %}{{ product.title }} — СплитХаб{% endblock %}
+{% block meta_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Арт: {{ product.articul }}. Купить с доставкой и монтажом по Крыму — СплитХаб.{% endblock %}
+{% block og_title %}{{ product.title }} — СплитХаб{% endblock %}
 {% block og_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Купить оптом.{% endblock %}
 {% if product.images.first %}{% block og_image %}{{ product.images.first.url }}{% endblock %}{% endif %}
 {% block content %}

@@ -7,11 +7,11 @@ from apps.catalog.models import Product
 def generate_price_excel(user):
     wb = Workbook()
     ws = wb.active
-    ws.title = 'Прайс-лист Oasis'
+    ws.title = 'Прайс-лист СплитХаб'
 
     headers = ['Артикул', 'НС-код', 'Название', 'Бренд', 'Категория',
                'Остаток', 'РИЦ', 'Опт. цена']
-    header_fill = PatternFill(start_color='F97316', end_color='F97316', fill_type='solid')
+    header_fill = PatternFill(start_color='2E7CF6', end_color='2E7CF6', fill_type='solid')
     for col, h in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=h)
         cell.font = Font(bold=True, color='FFFFFF')
