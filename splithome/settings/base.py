@@ -46,7 +46,7 @@ MIDDLEWARE = [
     'django_htmx.middleware.HtmxMiddleware',
 ]
 
-ROOT_URLCONF = 'oasis.urls'
+ROOT_URLCONF = 'splithome.urls'
 
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -64,7 +64,7 @@ TEMPLATES = [{
     },
 }]
 
-WSGI_APPLICATION = 'oasis.wsgi.application'
+WSGI_APPLICATION = 'splithome.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -146,7 +146,7 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@oasis.com.ru')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@splithome.ru')
 MANAGER_EMAIL = config('MANAGER_EMAIL', default='')
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')

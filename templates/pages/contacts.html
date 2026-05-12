@@ -1,65 +1,60 @@
 {% extends 'base.html' %}
 {% block title %}Контакты — СплитХаб{% endblock %}
-{% block meta_description %}Контакты СплитХаб. Телефон, email, адрес. Продажа и монтаж кондиционеров по Крыму.{% endblock %}
+{% block meta_description %}Контакты СплитХаб. Телефон +7 978 579 29 95, email zakaz@splithome.ru. Симферополь, продажа и монтаж кондиционеров по всему Крыму.{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto">
-  <h1 class="text-3xl font-extrabold mb-6">Контакты</h1>
+<div class="max-w-4xl mx-auto">
+  <h1 class="text-4xl font-extrabold mb-2 tracking-tight">Контакты</h1>
+  <p class="text-ink-3 mb-8">Продажа, доставка и монтаж кондиционеров по всему Крыму.</p>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
     <div class="card p-6">
-      <h2 class="text-lg font-bold mb-4">Отдел продаж</h2>
-      <div class="space-y-3 text-sm text-gray-600">
-        <div class="flex items-start gap-3">
-          <span class="text-xl">📞</span>
-          <div>
-            <p class="font-semibold text-gray-800">Телефон</p>
-            <a href="tel:+78001234567" class="hover:text-accent">+7 (800) 123-45-67</a>
-          </div>
+      <h2 class="text-lg font-bold mb-4">Отдел заказов</h2>
+      <div class="space-y-4 text-sm">
+        <div>
+          <p class="text-ink-3 mb-1">Телефон</p>
+          <a href="tel:+79785792995" class="text-ink font-semibold text-lg hover:text-accent transition">+7 978 579-29-95</a>
         </div>
-        <div class="flex items-start gap-3">
-          <span class="text-xl">✉️</span>
-          <div>
-            <p class="font-semibold text-gray-800">Email</p>
-            <a href="mailto:manager@oasis.com.ru" class="hover:text-accent">manager@oasis.com.ru</a>
-          </div>
+        <div>
+          <p class="text-ink-3 mb-1">E-mail заказов</p>
+          <a href="mailto:zakaz@splithome.ru" class="text-ink font-semibold hover:text-accent transition">zakaz@splithome.ru</a>
         </div>
-        <div class="flex items-start gap-3">
-          <span class="text-xl">🕐</span>
-          <div>
-            <p class="font-semibold text-gray-800">Режим работы</p>
-            <p>Пн–Пт: 9:00 – 18:00</p>
-          </div>
+        <div>
+          <p class="text-ink-3 mb-1">Общие вопросы</p>
+          <a href="mailto:info@splithome.ru" class="text-ink font-semibold hover:text-accent transition">info@splithome.ru</a>
+        </div>
+        <div>
+          <p class="text-ink-3 mb-1">Режим работы</p>
+          <p class="text-ink font-semibold">Ежедневно, 7:00 – 22:00</p>
         </div>
       </div>
     </div>
 
     <div class="card p-6">
-      <h2 class="text-lg font-bold mb-4">Склад и самовывоз</h2>
-      <div class="space-y-3 text-sm text-gray-600">
-        <div class="flex items-start gap-3">
-          <span class="text-xl">📍</span>
-          <div>
-            <p class="font-semibold text-gray-800">Адрес</p>
-            <p>Уточняйте у менеджера</p>
-          </div>
+      <h2 class="text-lg font-bold mb-4">Где мы работаем</h2>
+      <div class="space-y-4 text-sm">
+        <div>
+          <p class="text-ink-3 mb-1">Адрес</p>
+          <p class="text-ink font-semibold">Республика Крым, г. Симферополь</p>
         </div>
-        <div class="flex items-start gap-3">
-          <span class="text-xl">🕐</span>
-          <div>
-            <p class="font-semibold text-gray-800">Часы работы склада</p>
-            <p>Пн–Пт: 9:00 – 17:00</p>
-          </div>
+        <div>
+          <p class="text-ink-3 mb-1">Доставка</p>
+          <p class="text-ink font-semibold">По всему Крыму</p>
+          <p class="text-ink-3 text-xs mt-1">Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь и любые другие населённые пункты</p>
+        </div>
+        <div>
+          <p class="text-ink-3 mb-1">Монтаж</p>
+          <p class="text-ink font-semibold">Выезд бригады по всему Крыму</p>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card p-6">
-    <h2 class="text-lg font-bold mb-4">Стать дилером</h2>
-    <p class="text-gray-600 mb-4">Для получения доступа к B2B-порталу, оптовым ценам и условиям сотрудничества — зарегистрируйтесь как дилер.</p>
-    <a href="/auth/register/" class="btn-accent inline-block px-6 py-2 rounded-lg font-semibold text-sm">
-      Регистрация дилера
-    </a>
+  <div class="glass-strong p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold mb-1">Нужна консультация?</h2>
+      <p class="text-ink-3 text-sm">Подберём кондиционер по площади и бюджету, расскажем про монтаж.</p>
+    </div>
+    <a href="/selection/" class="btn btn-primary">Подобрать кондиционер</a>
   </div>
 </div>
 {% endblock %}

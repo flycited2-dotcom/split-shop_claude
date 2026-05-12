@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Деплой Oasis B2B портала ==="
+echo "=== Деплой СплитХаб ==="
 
 docker compose pull
 docker compose build
@@ -19,4 +19,4 @@ if [ "$CREATE_SU" = "y" ]; then
     docker compose run --rm web python manage.py createsuperuser
 fi
 
-echo "=== Деплой завершён. Сайт доступен на https://oasis.com.ru ==="
+echo "=== Деплой завершён. Сайт доступен на https://splithome.ru ==="

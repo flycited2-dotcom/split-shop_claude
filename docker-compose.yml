@@ -23,7 +23,7 @@ services:
 
   web:
     build: .
-    command: gunicorn oasis.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60
+    command: gunicorn splithome.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60
     volumes:
       - static_files:/app/staticfiles
       - media_files:/app/media
@@ -38,7 +38,7 @@ services:
 
   celery:
     build: .
-    command: celery -A oasis worker -l info -c 2
+    command: celery -A splithome worker -l info -c 2
     env_file: .env
     depends_on:
       db:
@@ -48,7 +48,7 @@ services:
 
   beat:
     build: .
-    command: celery -A oasis beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A splithome beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
     depends_on:
       db:
