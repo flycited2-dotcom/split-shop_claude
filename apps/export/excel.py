@@ -7,7 +7,7 @@ from apps.catalog.models import Product
 def generate_price_excel(user):
     wb = Workbook()
     ws = wb.active
-    ws.title = 'Прайс-лист СплитХаб'
+    ws.title = 'Прайс-лист SplitHome'
 
     headers = ['Артикул', 'НС-код', 'Название', 'Бренд', 'Категория',
                'Остаток', 'РИЦ', 'Опт. цена']

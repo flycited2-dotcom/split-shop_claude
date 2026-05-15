@@ -36,11 +36,11 @@ class CustomUserAdmin(UserAdmin):
             count += 1
             if user.email:
                 send_mail(
-                    subject='Ваш аккаунт одобрен — СплитХаб',
+                    subject='Ваш аккаунт одобрен — SplitHome',
                     message=(
                         f'Здравствуйте, {user.company_name}!\n\n'
                         f'Ваш аккаунт одобрен. Теперь вы можете оформлять заказы '
-                        f'на сайте СплитХаб.'
+                        f'на сайте SplitHome.'
                     ),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],

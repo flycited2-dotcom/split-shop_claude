@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Деплой СплитХаб ==="
+echo "=== Деплой SplitHome ==="
 
 docker compose pull
 docker compose build

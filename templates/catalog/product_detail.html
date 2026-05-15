@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}{{ product.title }} — СплитХаб{% endblock %}
-{% block meta_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Арт: {{ product.articul }}. Купить с доставкой и монтажом по Крыму — СплитХаб.{% endblock %}
-{% block og_title %}{{ product.title }} — СплитХаб{% endblock %}
+{% block title %}{{ product.title }} — SplitHome{% endblock %}
+{% block meta_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Арт: {{ product.articul }}. Купить с доставкой и монтажом по Крыму — SplitHome.{% endblock %}
+{% block og_title %}{{ product.title }} — SplitHome{% endblock %}
 {% block og_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Купить оптом.{% endblock %}
 {% if product.images.first %}{% block og_image %}{{ product.images.first.url }}{% endblock %}{% endif %}
 {% block content %}
