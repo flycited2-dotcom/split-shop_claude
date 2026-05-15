@@ -1,15 +1,17 @@
-# HANDOFF: СплитХаб — Передача проекта
+# HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-16
-**Прогресс:** 12/12 базовых задач + расширения (Rusklimat sync, leads, Telegram, ребренд)
-**Ветка:** `develop` (запушена в GitHub)
+**Дата обновления:** 2026-05-16 (вечер, после деплоя)
+**Прогресс:** 12/12 базовых задач + расширения + ребренд SplitHome + production-деплой
+**Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
+**Production HEAD на VPS:** `fc406e9` (chore(brand): rename СплитХаб → SplitHome)
+**Production URL:** http://splithome.ru/ (HTTP 200 ✅, HTTPS — TODO)
 
 ---
 
 ## 1. Что это за проект
 
-**СплитХаб** — сайт продажи и монтажа сплит-систем по Крыму. Изначально стартовал как B2B-портал «Oasis» под оптовых клиентов (юрлица, скидки после одобрения менеджером), с 2026-05-12 ведётся полная переверстка под B2C-розницу по дизайн-прототипу `flycited2-dotcom/SplitHub_roznica`. B2B-функционал (регистрация юрлиц, корзина с оптовыми ценами, личный кабинет) сохранён и продолжает работать.
+**SplitHome** — сайт продажи и монтажа сплит-систем по Крыму. Изначально стартовал как B2B-портал «Oasis» под оптовых клиентов (юрлица, скидки после одобрения менеджером), затем переименовался в «СплитХаб» (кириллицей), 2026-05-16 финально переведён на «SplitHome» (латиницей). С 2026-05-12 ведётся полная переверстка под B2C-розницу по дизайн-прототипу `flycited2-dotcom/SplitHub_roznica`. B2B-функционал (регистрация юрлиц, корзина с оптовыми ценами, личный кабинет) сохранён и продолжает работать.
 
 **Домен:** `splithome.ru` (плюс `www.splithome.ru`).
 **География:** весь Крым — Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.
@@ -36,7 +38,7 @@
 | Контейнеризация | Docker + Docker Compose |
 | Экспорт | openpyxl (Excel), WeasyPrint (PDF) |
 
-**Дизайн-система СплитХаб (steps 1-2 завершены, далее по плану переверстки):**
+**Дизайн-система SplitHome (steps 1-2 завершены, далее по плану переверстки):**
 - Палитра: primary `#2E7CF6`, accent `#1FC8C5`, ink `#0E1A2B`, surface `#F4F8FC`.
 - Шрифт Onest 400–800. Радиусы 8/12/18/24/32.
 - Логотип — вихрь `assets/swirl.png` из архива макета.
@@ -164,12 +166,17 @@ Django-пакет: `splithome/` (после ребренда; в репозит�
 
 ## 6. Что осталось / open items
 
+### Срочное на завтра (после деплоя 2026-05-16)
+1. **HTTPS для splithome.ru** — отдельного vhost на 443 нет, certbot не выпускался. Сайт сейчас только по HTTP. Команда: `certbot --nginx -d splithome.ru -d www.splithome.ru`. Затем обновить nginx-конфиг `/etc/nginx/conf.d/oasis_main.conf` либо создать новый `splithome.conf` с listen 443 ssl.
+2. **Дроп stash после убеждения, что прод стабилен.** На сервере висит `git stash` с локальными правками от прежних base64-загрузок (`stash@{0}: On develop: pre-deploy-2026-05-16 server-side edits`, 40 файлов, 782+/456-). После пары дней эксплуатации без регрессов: `ssh root@213.109.202.45 'cd /opt/oasis && git stash drop'`.
+3. **Бэкап-папки на VPS** — `templates.bak.1778621726/`, `static.bak.1778621726/`, `backups/`. После убеждения в стабильности можно удалить.
+
 ### Технический долг
 1. **Тесты только для BreezClient** (`apps/sync/tests/test_client.py`). Нет тестов для Celery-задач Rusklimat, моделей catalog/orders/accounts, views leads/orders, утилиты `send_telegram`.
-2. **Нет CI/CD** — деплой ручной через base64+SSH (см. memory `server_deploy.md`).
+2. **Нет CI/CD** — деплой ручной через base64+SSH или `git pull` (см. memory `server_deploy.md`). Можно настроить webhook → автодеплой.
 3. **API-ключ Бриз был залит в исходный handoff в репо** — ротировать при следующей возможности.
-4. **Несоответствие имён на сервере и локально:** локальный Django-пакет переименован в `splithome/`, на VPS код всё ещё в `/opt/oasis/` с настройками `oasis/settings/base.py`. При следующем полном деплое нужно либо переименовать путь на сервере, либо оставить разрыв сознательно (тогда — задокументировать).
-5. **Docker-volume для статики ≠ путь nginx** — нужна ручная `rsync` после `collectstatic` (см. server_deploy.md).
+4. **Несоответствие путей: dir `/opt/oasis/` vs пакет `splithome/`** — директория на сервере сознательно не переименована (чтобы сохранить docker-volumes `oasis_postgres_data`, `oasis_static_files`, `oasis_media_files`, `oasis_redis_data`). Контейнеры теперь `oasis-web-1` / `oasis-celery-1` / `oasis-beat-1`, но команды внутри них — `gunicorn splithome.wsgi:application` и `celery -A splithome`. Не путать.
+5. **Docker-volume для статики ≠ путь nginx** — после `collectstatic` нужен `rsync -a /var/lib/docker/volumes/oasis_static_files/_data/ /opt/oasis/staticfiles/` (nginx читает из второго).
 6. **README.md** в репозитории отсутствует.
 
 ### Продуктовый бэклог (B2C-переверстка)
@@ -267,17 +274,25 @@ fcd1bb3  docs: project spec and implementation plan
 
 ## 10. Контакты сервера и деплой
 
-**Сервер:** `213.109.202.45` (IP-первый, DNS `splithome.ru` направить на этот IP).
+**Сервер:** `213.109.202.45` (DNS `splithome.ru` уже указывает сюда A-записью, без IPv6).
 **SSH:** root / пароль в memory `server_deploy.md`.
-**Проект на сервере:** `/opt/oasis/` (имя директории не переименовано вслед за пакетом).
+**Проект на сервере:** `/opt/oasis/` (имя директории сознательно не переименовано в `/opt/splithome/` — docker-volumes привязаны к префиксу `oasis_`, перенос потерял бы данные БД/media/статики).
+**Production HEAD:** `fc406e9` (от 2026-05-16).
+**Контейнеры:** `oasis-web-1` (gunicorn splithome.wsgi, 2 workers), `oasis-celery-1`, `oasis-beat-1`, `oasis-db-1` (postgres 16), `oasis-redis-1`.
 
-**Процедура деплоя:**
-- SFTP не работает (`SSHException: EOF during negotiation`) — заливать файлы через base64 по SSH.
-- После заливки кода — **обязательно `docker compose build web && docker compose up -d`**. Просто `restart web` НЕ применяет изменения (код запечён в образ).
-- После `collectstatic` — `rsync` из docker-volume в `/opt/oasis/staticfiles/` (nginx читает оттуда, не из volume).
-- Точка входа: nginx на `213.109.202.45:80` → `127.0.0.1:8000`. Параллельно на сервере живут Apache (8443/8081/8084) и Node `climat-simf.ru:3001` — их не трогать.
+**Процедура деплоя (актуальная, после 2026-05-16):**
+1. Локально закоммитить и `git push origin develop`.
+2. На сервере: `cd /opt/oasis && git stash push -u -m "pre-deploy" && git pull --ff-only origin develop` (или `git reset --hard origin/develop` если рабочая копия грязная).
+3. `docker compose build` (web/celery/beat). Только `restart` НЕ применит изменения — код запечён в образ.
+4. `docker compose run --rm web python manage.py migrate --noinput`.
+5. `docker compose run --rm web python manage.py collectstatic --noinput`.
+6. `docker compose up -d`.
+7. `rsync -a /var/lib/docker/volumes/oasis_static_files/_data/ /opt/oasis/staticfiles/` — обязательно, nginx читает оттуда, не из volume.
+8. Smoke: `curl -I --resolve splithome.ru:80:213.109.202.45 http://splithome.ru/` → ожидать HTTP 200.
 
-Полная процедура и скрипт paramiko — в memory `server_deploy.md`.
+**Старая база (если git pull недоступен):** SFTP не работает (`SSHException: EOF during negotiation`) — заливать файлы через base64 по SSH. Скрипт paramiko в memory `server_deploy.md`.
+
+**Сосуществующие сервисы на VPS:** Apache (8443/8081/8084), Node `climat-simf.ru:3001`, CRM на 8090 (перехватывает прямой IP через `crm_ip_proxy.conf`). Не трогать.
 
 ---
 
