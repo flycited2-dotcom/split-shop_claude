@@ -30,6 +30,10 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    extra_hosts:
+      # провайдер VPS блокирует IPv4 api.telegram.org; tg_proxy на хосте
+      # форвардит TCP в IPv6-endpoint Telegram, SNI остаётся api.telegram.org
+      - "api.telegram.org:host-gateway"
     depends_on:
       db:
         condition: service_healthy
@@ -55,6 +59,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+
+  tg_proxy:
+    image: alpine/socat:latest
+    command: TCP4-LISTEN:8443,bind=172.17.0.1,fork,reuseaddr TCP6:api.telegram.org:443
+    network_mode: host
+    restart: unless-stopped
 
 volumes:
   postgres_data:

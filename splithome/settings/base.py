@@ -150,4 +150,5 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@splithome.ru'
 MANAGER_EMAIL = config('MANAGER_EMAIL', default='')
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')
+TELEGRAM_API_URL = config('TELEGRAM_API_URL', default='https://api.telegram.org')
 YANDEX_METRIKA_ID = config('YANDEX_METRIKA_ID', default='')
