@@ -63,7 +63,7 @@ services:
 
   tg_proxy:
     image: alpine/socat:latest
-    command: TCP4-LISTEN:8443,bind=172.30.0.1,fork,reuseaddr TCP6:api.telegram.org:443
+    command: TCP4-LISTEN:9443,bind=172.30.0.1,fork,reuseaddr TCP6:api.telegram.org:443
     network_mode: host
     restart: unless-stopped
 
