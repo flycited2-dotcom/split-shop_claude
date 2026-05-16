@@ -114,6 +114,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'sync.sync_rusklimat_catalog',
         'schedule': crontab(minute=30, hour=3),
     },
+    'sync-daichi-hourly': {
+        'task': 'sync.sync_daichi',
+        'schedule': crontab(minute=25),
+    },
 }
 
 STATIC_URL = '/static/'
@@ -139,6 +143,10 @@ RUSKLIMAT_AC_CATALOG_URL = config(
     'RUSKLIMAT_AC_CATALOG_URL',
     default='https://b2b.rusklimat.com/catalog/1162450-konditsionery-bytovye/',
 )
+
+DAICHI_ACCESS_TOKEN = config('DAICHI_ACCESS_TOKEN', default='')
+DAICHI_BASE_URL = config('DAICHI_BASE_URL', default='https://api.daichi.ru/b2b/v1/')
+DAICHI_STORE_ID = config('DAICHI_STORE_ID', default='default')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = config('EMAIL_HOST', default='')

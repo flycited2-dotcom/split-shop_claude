@@ -305,6 +305,15 @@ def sync_rusklimat_catalog():
     return result
 
 
+@shared_task(name='sync.sync_daichi')
+def sync_daichi():
+    """Pull Daichi B2B API: products, prices and stock in one request."""
+    from apps.sync.daichi_catalog import sync_catalog as daichi_sync
+    result = daichi_sync()
+    logger.info('sync_daichi: %s', result)
+    return result
+
+
 @shared_task(name='sync.sync_rusklimat_stock')
 def sync_rusklimat_stock():
     """Download Rusklimat price YML and update stock quantities by NC code."""
