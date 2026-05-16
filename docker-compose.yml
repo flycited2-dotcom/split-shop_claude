@@ -32,8 +32,9 @@ services:
     env_file: .env
     extra_hosts:
       # провайдер VPS блокирует IPv4 api.telegram.org; tg_proxy на хосте
-      # форвардит TCP в IPv6-endpoint Telegram, SNI остаётся api.telegram.org
-      - "api.telegram.org:host-gateway"
+      # форвардит TCP в IPv6-endpoint Telegram, SNI остаётся api.telegram.org.
+      # IP = gateway фиксированной default-network (см. блок networks ниже).
+      - "api.telegram.org:172.30.0.1"
     depends_on:
       db:
         condition: service_healthy
@@ -62,7 +63,7 @@ services:
 
   tg_proxy:
     image: alpine/socat:latest
-    command: TCP4-LISTEN:8443,bind=172.17.0.1,fork,reuseaddr TCP6:api.telegram.org:443
+    command: TCP4-LISTEN:8443,bind=172.30.0.1,fork,reuseaddr TCP6:api.telegram.org:443
     network_mode: host
     restart: unless-stopped
 
@@ -71,3 +72,11 @@ volumes:
   redis_data:
   static_files:
   media_files:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
