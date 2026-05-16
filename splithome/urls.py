@@ -38,6 +38,7 @@ urlpatterns = [
     path('leads/', include('apps.leads.urls')),
     path('selection/', views_leads.selection_page, name='selection'),
     path('installation/', views_leads.installation_page, name='installation'),
+    path('quiz/', views_leads.quiz_page, name='quiz'),
     # Static pages
     path('delivery/', TemplateView.as_view(template_name='pages/delivery.html'), name='delivery'),
     path('payment/', TemplateView.as_view(template_name='pages/payment.html'), name='payment'),

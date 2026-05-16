@@ -7,7 +7,8 @@ from django.conf import settings
 from apps.catalog.models import Product
 from apps.notifications.telegram import send_telegram
 from .forms import QuickOrderForm, SelectionRequestForm, InstallationRequestForm
-from .models import QuickOrder, SelectionRequest, InstallationRequest
+from .models import QuickOrder, SelectionRequest, InstallationRequest, QuizResult
+from . import quiz_logic
 
 
 SUCCESS_HTML = '<p class="text-green-600 font-semibold py-4">✅ Заявка принята! Менеджер свяжется с вами в ближайшее время.</p>'
@@ -162,3 +163,113 @@ def selection_page(request):
 def installation_page(request):
     form = InstallationRequestForm()
     return render(request, 'leads/installation.html', {'form': form})
+
+
+ROOM_OPTIONS = [
+    ('apartment', 'Квартира', '🏠'),
+    ('office', 'Офис', '💼'),
+    ('shop', 'Магазин', '🏪'),
+]
+BUDGET_OPTIONS = [
+    ('30000', 'до 30 000 ₽'),
+    ('50000', 'до 50 000 ₽'),
+    ('80000', 'до 80 000 ₽'),
+    ('0', 'Не важно'),
+]
+
+
+def _quiz_ctx_base(step, post=None):
+    post = post or {}
+    return {
+        'step': step,
+        'area_sqm': post.get('area_sqm', ''),
+        'room_type': post.get('room_type', ''),
+        'budget': post.get('budget', ''),
+        'inverter': post.get('inverter', ''),
+        'heating': post.get('heating', ''),
+        'room_options': ROOM_OPTIONS,
+        'budget_options': BUDGET_OPTIONS,
+    }
+
+
+def quiz_page(request):
+    return render(request, 'leads/quiz.html', _quiz_ctx_base(1))
+
+
+def _quiz_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+@require_POST
+def quiz_step(request):
+    current = _quiz_int(request.POST.get('step'), 1)
+    next_step = current + 1
+    ctx = _quiz_ctx_base(next_step, request.POST)
+
+    if next_step <= 5:
+        return render(request, 'leads/partials/_quiz_step.html', ctx)
+
+    area = max(5, _quiz_int(ctx['area_sqm'], 25))
+    btu = quiz_logic.btu_from_area(area)
+    budget_max = _quiz_int(ctx['budget']) or None
+    needs_inverter = ctx['inverter'] == 'yes'
+    needs_heating = ctx['heating'] == 'yes'
+
+    products = quiz_logic.recommend_products(
+        btu, budget_max=budget_max, needs_inverter=needs_inverter,
+    )
+
+    quiz = QuizResult.objects.create(
+        area_sqm=area,
+        room_type=ctx['room_type'] or 'apartment',
+        budget_max=budget_max,
+        needs_inverter=needs_inverter,
+        needs_heating=needs_heating,
+        recommended_btu=btu,
+        recommended_product_ids=[p.id for p in products],
+    )
+
+    ctx.update({
+        'step': 'result',
+        'btu': btu,
+        'products': products,
+        'quiz_id': quiz.id,
+        'budget_max': budget_max,
+    })
+    return render(request, 'leads/partials/_quiz_step.html', ctx)
+
+
+@require_POST
+def quiz_lead(request, quiz_id):
+    name = request.POST.get('name', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    if not name or not phone:
+        return HttpResponse(
+            '<p class="text-red-500 text-sm py-2">Заполните имя и телефон</p>',
+            status=400,
+        )
+
+    quiz = QuizResult.objects.filter(pk=quiz_id).first()
+    if not quiz:
+        return HttpResponse(
+            '<p class="text-red-500 text-sm py-2">Сессия квиза истекла, начните заново</p>',
+            status=404,
+        )
+
+    quiz.contact_name = name
+    quiz.contact_phone = phone
+    quiz.save(update_fields=['contact_name', 'contact_phone'])
+
+    send_telegram(
+        f'🎯 <b>Quiz: подбор</b>\n'
+        f'👤 {name} | 📞 {phone}\n'
+        f'📐 {quiz.area_sqm} м² | {quiz.get_room_type_display()}\n'
+        f'💰 Бюджет: {f"до {quiz.budget_max:,} ₽".replace(",", " ") if quiz.budget_max else "любой"}\n'
+        f'⚙️ BTU: {quiz.recommended_btu}k · Инвертор: {"да" if quiz.needs_inverter else "нет"} · Обогрев: {"да" if quiz.needs_heating else "нет"}\n'
+        f'🔗 /admin/leads/quizresult/{quiz.id}/'
+    )
+
+    return render(request, 'leads/partials/_quiz_thanks.html', {'name': name})

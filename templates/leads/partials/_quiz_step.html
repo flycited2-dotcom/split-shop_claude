@@ -1,0 +1,193 @@
+{% load static %}
+
+{% if step == 'result' %}
+  {# === Результат подбора === #}
+  <div class="space-y-6">
+    <div class="text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-sm font-semibold mb-3">
+        <span>✓</span> Подбор готов
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-bold mb-2">
+        Рекомендуем кондиционер на <span class="text-accent">{{ btu }} 000 BTU</span>
+      </h2>
+      <p class="text-ink-3 text-sm sm:text-base">
+        Под площадь {{ area_sqm }} м²{% if budget_max %} и бюджет до {{ budget_max }} ₽{% endif %}.
+        {% if inverter == 'yes' %} С тихим инверторным компрессором.{% endif %}
+      </p>
+    </div>
+
+    {% if products %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% for p in products %}
+          <a href="{% url 'product_detail' p.slug %}" class="block rounded-2xl border border-ink/10 bg-white p-4 hover:border-accent/40 hover:shadow-md transition">
+            <div class="aspect-square bg-surface rounded-xl mb-3 overflow-hidden flex items-center justify-center">
+              {% with img=p.images.first %}
+                {% if img %}
+                  <img src="{{ img.url }}" alt="{{ p.title }}" class="w-full h-full object-contain">
+                {% else %}
+                  <span class="text-ink-3 text-sm">нет фото</span>
+                {% endif %}
+              {% endwith %}
+            </div>
+            <div class="text-xs text-ink-3 mb-1">{{ p.brand.title|default:"" }}</div>
+            <div class="font-semibold text-sm leading-snug mb-2 line-clamp-2">{{ p.title }}</div>
+            {% if p.ric %}
+              <div class="text-lg font-bold text-accent">{{ p.ric|floatformat:0 }} ₽</div>
+            {% else %}
+              <div class="text-sm text-ink-3">Цена по запросу</div>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="p-6 rounded-xl bg-amber-50 text-amber-900 text-sm">
+        Под ваши параметры точных моделей не нашлось в наличии. Оставьте заявку — менеджер подберёт варианты вручную.
+      </div>
+    {% endif %}
+
+    <div class="rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/5 to-teal/5 p-5 sm:p-6">
+      <div class="font-semibold text-lg mb-1">Хотите консультацию?</div>
+      <p class="text-ink-3 text-sm mb-4">Перезвоним за 15 минут, расскажем про модели, доставку и монтаж.</p>
+      <form hx-post="{% url 'quiz_lead' quiz_id %}" hx-target="#quiz-content" hx-swap="innerHTML" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {% csrf_token %}
+        <input type="text" name="name" required placeholder="Имя"
+               class="px-4 py-3 rounded-xl bg-white border border-ink/10 focus:border-accent focus:outline-none text-sm">
+        <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__"
+               class="px-4 py-3 rounded-xl bg-white border border-ink/10 focus:border-accent focus:outline-none text-sm">
+        <button type="submit" class="sm:col-span-2 btn btn-primary justify-center">
+          Жду звонок
+        </button>
+      </form>
+    </div>
+
+    <div class="text-center pt-2">
+      <a href="{% url 'quiz' %}" class="text-sm text-ink-3 hover:text-accent transition">↻ Пройти заново</a>
+    </div>
+  </div>
+
+{% else %}
+  {# === Шаги 1-5 wizard === #}
+  <form hx-post="{% url 'quiz_step' %}" hx-target="#quiz-content" hx-swap="innerHTML" class="space-y-6">
+    {% csrf_token %}
+    <input type="hidden" name="step" value="{{ step }}">
+    {% if step != 1 %}<input type="hidden" name="area_sqm" value="{{ area_sqm }}">{% endif %}
+    {% if step != 2 %}<input type="hidden" name="room_type" value="{{ room_type }}">{% endif %}
+    {% if step != 3 %}<input type="hidden" name="budget" value="{{ budget }}">{% endif %}
+    {% if step != 4 %}<input type="hidden" name="inverter" value="{{ inverter }}">{% endif %}
+    {% if step != 5 %}<input type="hidden" name="heating" value="{{ heating }}">{% endif %}
+
+    {# progress bar #}
+    <div class="flex items-center gap-2">
+      {% for i in "12345"|make_list %}
+        {% if forloop.counter < step %}
+          <div class="h-1.5 rounded-full flex-1 bg-accent"></div>
+        {% elif forloop.counter == step %}
+          <div class="h-1.5 rounded-full flex-1 bg-accent/40"></div>
+        {% else %}
+          <div class="h-1.5 rounded-full flex-1 bg-ink/10"></div>
+        {% endif %}
+      {% endfor %}
+      <span class="text-xs sm:text-sm text-ink-3 ml-2 whitespace-nowrap">{{ step }} / 5</span>
+    </div>
+
+    {% if step == 1 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какая площадь помещения?</h2>
+        <p class="text-ink-3 mb-5">Подберём мощность под ваш объём.</p>
+        <div class="relative">
+          <input type="number" name="area_sqm" min="5" max="200" required
+                 value="{{ area_sqm|default:'' }}"
+                 placeholder="25" autofocus
+                 class="w-full text-3xl font-bold px-5 py-5 rounded-xl bg-white border-2 border-ink/10 focus:border-accent focus:outline-none">
+          <span class="absolute right-5 top-1/2 -translate-y-1/2 text-ink-3 font-medium">м²</span>
+        </div>
+      </div>
+
+    {% elif step == 2 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Где будет работать?</h2>
+        <p class="text-ink-3 mb-5">Это влияет на режим нагрузки.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {% for v, label, emoji in room_options %}
+            <label class="relative cursor-pointer block">
+              <input type="radio" name="room_type" value="{{ v }}" required class="peer sr-only" {% if room_type == v %}checked{% endif %}>
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center">
+                <div class="text-4xl mb-2">{{ emoji }}</div>
+                <div class="font-semibold">{{ label }}</div>
+              </div>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+    {% elif step == 3 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какой бюджет?</h2>
+        <p class="text-ink-3 mb-5">За одну сплит-систему (без монтажа).</p>
+        <div class="grid grid-cols-2 gap-3">
+          {% for v, label in budget_options %}
+            <label class="relative cursor-pointer block">
+              <input type="radio" name="budget" value="{{ v }}" required class="peer sr-only" {% if budget == v %}checked{% endif %}>
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold">
+                {{ label }}
+              </div>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+    {% elif step == 4 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Тихий и экономичный?</h2>
+        <p class="text-ink-3 mb-5">Инвертор работает тише и тратит на 30–40% меньше электричества — но стоит дороже.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="inverter" value="yes" required class="peer sr-only" {% if inverter == 'yes' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition">
+              <div class="text-2xl mb-1">🌬️</div>
+              <div class="font-semibold mb-1">Инвертор</div>
+              <div class="text-sm text-ink-3">Тихий, экономный, точная температура</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="inverter" value="no" required class="peer sr-only" {% if inverter == 'no' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition">
+              <div class="text-2xl mb-1">💰</div>
+              <div class="font-semibold mb-1">Не важно, дешевле</div>
+              <div class="text-sm text-ink-3">Обычный он-офф компрессор</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+    {% elif step == 5 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Нужен прогрев зимой?</h2>
+        <p class="text-ink-3 mb-5">Тепловой насос греет помещение до −7…−15 °C — нужен для межсезонья.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="heating" value="yes" required class="peer sr-only" {% if heating == 'yes' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition">
+              <div class="text-2xl mb-1">🔥</div>
+              <div class="font-semibold">Да, и греть тоже</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="heating" value="no" required class="peer sr-only" {% if heating == 'no' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition">
+              <div class="text-2xl mb-1">❄️</div>
+              <div class="font-semibold">Только охлаждение</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="flex items-center justify-between gap-3 pt-2">
+      <span class="text-sm text-ink-3 hidden sm:inline">{{ step }} из 5</span>
+      <button type="submit" class="btn btn-primary ml-auto">
+        {% if step == 5 %}Показать подбор{% else %}Далее →{% endif %}
+      </button>
+    </div>
+  </form>
+{% endif %}

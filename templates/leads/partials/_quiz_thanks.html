@@ -1,0 +1,9 @@
+<div class="text-center py-8">
+  <div class="text-6xl mb-4">✅</div>
+  <h2 class="text-2xl sm:text-3xl font-bold mb-2">Спасибо, {{ name }}!</h2>
+  <p class="text-ink-3 mb-6">Менеджер перезвонит в течение 15 минут и подскажет про подобранные модели.</p>
+  <div class="flex flex-wrap items-center justify-center gap-3">
+    <a href="{% url 'catalog' %}" class="btn btn-primary">Смотреть весь каталог</a>
+    <a href="{% url 'quiz' %}" class="text-sm text-ink-3 hover:text-accent transition">↻ Пройти заново</a>
+  </div>
+</div>

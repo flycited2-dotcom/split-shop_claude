@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import QuickOrder, SelectionRequest, InstallationRequest
+from .models import QuickOrder, SelectionRequest, InstallationRequest, QuizResult
 
 
 @admin.register(QuickOrder)
@@ -24,3 +24,11 @@ class InstallationRequestAdmin(admin.ModelAdmin):
     list_filter = ('has_equipment', 'needs_channel', 'created_at')
     search_fields = ('name', 'phone', 'address')
     readonly_fields = ('created_at',)
+
+
+@admin.register(QuizResult)
+class QuizResultAdmin(admin.ModelAdmin):
+    list_display = ('area_sqm', 'room_type', 'recommended_btu', 'budget_max', 'contact_phone', 'created_at')
+    list_filter = ('room_type', 'needs_inverter', 'needs_heating', 'created_at')
+    search_fields = ('contact_name', 'contact_phone')
+    readonly_fields = ('created_at', 'recommended_product_ids')
