@@ -167,14 +167,26 @@ def installation_page(request):
 
 ROOM_OPTIONS = [
     ('apartment', 'Квартира', '🏠'),
+    ('house', 'Дом', '🏡'),
     ('office', 'Офис', '💼'),
-    ('shop', 'Магазин', '🏪'),
+    ('commercial', 'Коммерция', '🏪'),
 ]
 BUDGET_OPTIONS = [
     ('30000', 'до 30 000 ₽'),
+    ('40000', 'до 40 000 ₽'),
     ('50000', 'до 50 000 ₽'),
-    ('80000', 'до 80 000 ₽'),
+    ('70000', 'до 70 000 ₽'),
     ('0', 'Не важно'),
+]
+# Пилюли шага 1: (значение area_sqm, подпись). BTU считается на сервере через
+# quiz_logic.btu_candidates() — на границах автоматически добавится secondary.
+AREA_OPTIONS = [
+    ('20',  'до 20 м² (7 BTU)'),
+    ('25',  'до 25 м² (9 BTU)'),
+    ('35',  'до 35 м² (12 BTU)'),
+    ('45',  'до 45 м² (18 BTU)'),
+    ('65',  'до 65 м² (24 BTU)'),
+    ('100', 'более 65 м² (30 BTU)'),
 ]
 
 
@@ -187,8 +199,10 @@ def _quiz_ctx_base(step, post=None):
         'budget': post.get('budget', ''),
         'inverter': post.get('inverter', ''),
         'heating': post.get('heating', ''),
+        'color': post.get('color', ''),
         'room_options': ROOM_OPTIONS,
         'budget_options': BUDGET_OPTIONS,
+        'area_options': AREA_OPTIONS,
     }
 
 
@@ -209,17 +223,22 @@ def quiz_step(request):
     next_step = current + 1
     ctx = _quiz_ctx_base(next_step, request.POST)
 
-    if next_step <= 5:
+    if next_step <= 6:
         return render(request, 'leads/partials/_quiz_step.html', ctx)
 
     area = max(5, _quiz_int(ctx['area_sqm'], 25))
-    btu = quiz_logic.btu_from_area(area)
+    btu, secondary_btus = quiz_logic.btu_candidates(area)
     budget_max = _quiz_int(ctx['budget']) or None
     needs_inverter = ctx['inverter'] == 'yes'
     needs_heating = ctx['heating'] == 'yes'
+    needs_black = ctx['color'] == 'black'
 
-    products = quiz_logic.recommend_products(
-        btu, budget_max=budget_max, needs_inverter=needs_inverter,
+    products, relaxed = quiz_logic.recommend_products(
+        btu,
+        budget_max=budget_max,
+        needs_inverter=needs_inverter,
+        needs_black=needs_black,
+        secondary_btus=secondary_btus,
     )
 
     quiz = QuizResult.objects.create(
@@ -228,6 +247,7 @@ def quiz_step(request):
         budget_max=budget_max,
         needs_inverter=needs_inverter,
         needs_heating=needs_heating,
+        needs_black=needs_black,
         recommended_btu=btu,
         recommended_product_ids=[p.id for p in products],
     )
@@ -235,7 +255,9 @@ def quiz_step(request):
     ctx.update({
         'step': 'result',
         'btu': btu,
+        'secondary_btus': secondary_btus,
         'products': products,
+        'relaxed': relaxed,
         'quiz_id': quiz.id,
         'budget_max': budget_max,
     })
@@ -268,7 +290,9 @@ def quiz_lead(request, quiz_id):
         f'👤 {name} | 📞 {phone}\n'
         f'📐 {quiz.area_sqm} м² | {quiz.get_room_type_display()}\n'
         f'💰 Бюджет: {f"до {quiz.budget_max:,} ₽".replace(",", " ") if quiz.budget_max else "любой"}\n'
-        f'⚙️ BTU: {quiz.recommended_btu}k · Инвертор: {"да" if quiz.needs_inverter else "нет"} · Обогрев: {"да" if quiz.needs_heating else "нет"}\n'
+        f'⚙️ BTU: {quiz.recommended_btu}k · Инвертор: {"да" if quiz.needs_inverter else "нет"} · '
+        f'Обогрев: {"да" if quiz.needs_heating else "нет"} · '
+        f'Цвет: {"чёрный" if quiz.needs_black else "любой"}\n'
         f'🔗 /admin/leads/quizresult/{quiz.id}/'
     )
 

@@ -44,8 +44,10 @@ class SelectionRequest(models.Model):
 class QuizResult(models.Model):
     ROOM_TYPE_CHOICES = [
         ('apartment', 'Квартира'),
+        ('house', 'Дом'),
         ('office', 'Офис'),
-        ('shop', 'Магазин/HoReCa'),
+        ('commercial', 'Коммерция'),
+        ('shop', 'Магазин/HoReCa'),  # legacy: ранние записи до расширения choices
     ]
 
     area_sqm = models.PositiveIntegerField('Площадь, м²')
@@ -53,6 +55,7 @@ class QuizResult(models.Model):
     budget_max = models.PositiveIntegerField('Бюджет до, ₽', null=True, blank=True)
     needs_inverter = models.BooleanField('Тихий/инвертор', default=False)
     needs_heating = models.BooleanField('Нужен прогрев зимой', default=False)
+    needs_black = models.BooleanField('Чёрный цвет', default=False)
     recommended_btu = models.PositiveSmallIntegerField('Подобранный BTU, тыс.', null=True, blank=True)
     recommended_product_ids = models.JSONField('ID подобранных товаров', default=list, blank=True)
     contact_name = models.CharField('Имя', max_length=150, blank=True)
