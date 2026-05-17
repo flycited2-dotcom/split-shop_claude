@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.utils.text import slugify
 
-from apps.catalog.models import Brand, Category, Product
+from apps.catalog.models import Brand, Category, Product, ProductImage
 from apps.stock.models import Stock
 from apps.sync.daichi_client import DaichiClient
 
@@ -112,6 +112,40 @@ def _build_slug(brand, articul, xml_id):
     return slug[:500]
 
 
+def _fetch_all_productparams(client, page_size=500):
+    """Собирает все productparams Daichi постранично. Возвращает dict XML_ID → pp_dict."""
+    pp_map = {}
+    page = 1
+    while True:
+        resp = client.get_productparams(page_size=page_size, page=page)
+        data = resp.get('data') if isinstance(resp, dict) else None
+        if not data:
+            break
+        for pp in data.values():
+            xml = pp.get('XML_ID')
+            if xml:
+                pp_map[xml] = pp
+        total = resp.get('total_count') or 0
+        if page * page_size >= total:
+            break
+        page += 1
+    logger.info('Daichi productparams: fetched %d items across %d pages', len(pp_map), page)
+    return pp_map
+
+
+def _sync_images(product, photo_urls):
+    """Полностью перезаписывает картинки товара списком URL'ов из Daichi."""
+    if not photo_urls:
+        return
+    # Простой replace — sync идёт пакетно, дубликаты нам не нужны.
+    product.images.all().delete()
+    ProductImage.objects.bulk_create([
+        ProductImage(product=product, url=url, order=i)
+        for i, url in enumerate(photo_urls)
+        if isinstance(url, str) and url.startswith('http')
+    ])
+
+
 def sync_catalog():
     """Pull /products/get for the configured store, upsert Products + Stock."""
     from django.conf import settings as dj_settings
@@ -127,8 +161,12 @@ def sync_catalog():
         logger.warning('Daichi sync: empty /products/get response')
         return {'created': 0, 'updated': 0, 'skipped': 0, 'deactivated': 0}
 
+    # /products/get/ не отдаёт PHOTOES — они приходят только через /productparams/get/.
+    # Тянем все productparams заранее (10 страниц по 500) и матчим по XML_ID.
+    pp_map = _fetch_all_productparams(client)
+
     seen_xml_ids = set()
-    created = updated = skipped_no_category = skipped_not_kit = 0
+    created = updated = skipped_no_category = skipped_not_kit = images_synced = 0
 
     with transaction.atomic():
         for entry in products.values():
@@ -188,6 +226,13 @@ def sync_catalog():
             )
             seen_xml_ids.add(xml_id)
 
+            pp = pp_map.get(xml_id)
+            if pp:
+                photos = pp.get('PHOTOES') or pp.get('PHOTOES:') or []
+                if photos:
+                    _sync_images(product, photos)
+                    images_synced += 1
+
             store = entry.get('STORE') or entry.get('STORE:') or {}
             if isinstance(store, dict):
                 qty = store.get('STORE_AMOUNT')
@@ -217,8 +262,9 @@ def sync_catalog():
         )
 
     logger.info(
-        'Daichi sync: created=%d updated=%d skipped_not_kit=%d skipped_no_cat=%d deactivated=%d',
-        created, updated, skipped_not_kit, skipped_no_category, deactivated,
+        'Daichi sync: created=%d updated=%d skipped_not_kit=%d skipped_no_cat=%d '
+        'deactivated=%d images_synced=%d',
+        created, updated, skipped_not_kit, skipped_no_category, deactivated, images_synced,
     )
     return {
         'created': created,
@@ -226,4 +272,5 @@ def sync_catalog():
         'skipped_not_kit': skipped_not_kit,
         'skipped_no_category': skipped_no_category,
         'deactivated': deactivated,
+        'images_synced': images_synced,
     }
