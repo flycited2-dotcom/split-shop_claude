@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F
 from .models import Product, Category, Brand
-from .filters import ProductFilter
+from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
 from .facets import compute_facets
 
 
@@ -20,6 +20,7 @@ def home(request):
     featured = (
         Product.objects
         .filter(is_active=True, category__sync_enabled=True, stock__quantity__gt=0)
+        .exclude(MULTI_SPLIT_BLOCK_Q)
         .select_related('brand', 'stock')
         .prefetch_related('images')
         .order_by(F('stock__quantity').desc(nulls_last=True))[:8]
@@ -34,9 +35,12 @@ def home(request):
 
 
 def catalog(request):
-    base_qs = Product.objects.filter(
-        is_active=True, category__sync_enabled=True,
-    ).select_related('brand', 'category', 'stock').prefetch_related('images')
+    base_qs = (
+        Product.objects.filter(is_active=True, category__sync_enabled=True)
+        .exclude(MULTI_SPLIT_BLOCK_Q)
+        .select_related('brand', 'category', 'stock')
+        .prefetch_related('images')
+    )
 
     f = ProductFilter(request.GET, queryset=base_qs)
 

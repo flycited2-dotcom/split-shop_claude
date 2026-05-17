@@ -38,6 +38,15 @@ _COLOR_NEEDLES = {
     'green':  ['green'],
 }
 
+# Компоненты мульти-сплит-систем (внутренний/наружный блок) — не самостоятельные
+# кондиционеры. Их артикул содержит BTU-код, поэтому без явного исключения
+# розничный каталог и квиз засоряются ими (≈40% активных AC). Исключаются из:
+# catalog view, home featured, sitemap, quiz_logic.
+MULTI_SPLIT_BLOCK_Q = (
+    Q(title__iregex=r'мульти|multi')
+    | Q(title__iregex=r'блок\s+(внутренний|наружный)')
+)
+
 
 def _btu_q(code_keys):
     """Build an OR-Q over `articul__iregex` for the given BTU UI keys."""

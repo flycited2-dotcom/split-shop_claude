@@ -1,6 +1,7 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 from .models import Product, Category, Brand
+from .filters import MULTI_SPLIT_BLOCK_Q
 
 
 class ProductSitemap(Sitemap):
@@ -8,7 +9,7 @@ class ProductSitemap(Sitemap):
     priority = 0.8
 
     def items(self):
-        return Product.objects.filter(is_active=True)
+        return Product.objects.filter(is_active=True).exclude(MULTI_SPLIT_BLOCK_Q)
 
     def location(self, obj):
         return f'/product/{obj.slug}/'
