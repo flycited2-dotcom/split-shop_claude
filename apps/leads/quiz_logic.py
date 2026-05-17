@@ -71,13 +71,21 @@ def _btu_q(btus):
 
 _COLOR_BLACK_Q = Q(title__icontains='черн') | Q(title__icontains='black')
 
+# Компоненты мульти-сплит-систем (внутренние/наружные блоки) — не самостоятельные
+# кондиционеры. Их артикул содержит BTU-код, поэтому без явного исключения
+# подбор засоряется ими (≈40% каталога: 1710 из 4184 активных AC на 2026-05-18).
+_MULTI_SPLIT_Q = (
+    Q(title__iregex=r'мульти|multi')
+    | Q(title__iregex=r'блок\s+(внутренний|наружный)')
+)
+
 
 def _base_qs(btus, *, needs_inverter, budget_max, needs_black):
     qs = Product.objects.filter(
         _btu_q(btus),
         is_active=True,
         category__sync_enabled=True,
-    )
+    ).exclude(_MULTI_SPLIT_Q)
     if needs_inverter:
         qs = qs.filter(title__iregex=r'инвертор|inverter')
     if budget_max:
