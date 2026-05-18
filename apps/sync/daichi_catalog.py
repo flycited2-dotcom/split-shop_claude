@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.utils.text import slugify
 
-from apps.catalog.models import Brand, Category, Product, ProductImage
+from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 from apps.sync.daichi_client import DaichiClient
 
@@ -156,6 +156,57 @@ def _attr_value(pp_data, key):
     return None
 
 
+def _sync_tech_specs(product, pp_data, category, tech_cache):
+    """Пишет ProductTech-значения из ATTR_* для одного товара.
+
+    `tech_cache` — словарь title → TechSpec (общий между вызовами в рамках
+    одного sync_catalog, чтобы не плодить get_or_create-запросы).
+    Возвращает количество записанных пар.
+    """
+    # Replace-стратегия: удаляем старые tech_values для этого товара.
+    ProductTech.objects.filter(product=product).delete()
+
+    to_create = []
+    seen_specs = set()
+    for key, attr in pp_data.items():
+        if not key.startswith('ATTR_') or not isinstance(attr, dict):
+            continue
+        title = (attr.get('NAME') or '').strip()
+        raw_value = attr.get('VALUE')
+        if not title or raw_value is None or str(raw_value).strip() == '':
+            continue
+        group = (attr.get('GROUP') or '').strip()
+        value = str(raw_value).strip()
+
+        # Один и тот же title не должен возникнуть дважды у одного товара —
+        # unique_together(product, spec) защитит. Но дедуплицируем заранее
+        # чтобы не падать на bulk_create.
+        if title in seen_specs:
+            continue
+        seen_specs.add(title)
+
+        spec = tech_cache.get(title)
+        if spec is None:
+            spec, _created = TechSpec.objects.get_or_create(
+                title=title,
+                defaults={
+                    'unit': '',  # у Daichi unit уже включён в title («Вес нетто, кг»)
+                    'group': group,
+                    'category': category,
+                },
+            )
+            if not _created and not spec.group and group:
+                spec.group = group
+                spec.save(update_fields=['group'])
+            tech_cache[title] = spec
+
+        to_create.append(ProductTech(product=product, spec=spec, value=value))
+
+    if to_create:
+        ProductTech.objects.bulk_create(to_create)
+    return len(to_create)
+
+
 def _build_description(pp_data, series, brand_title):
     """Синтезирует human-readable текст из структурированных ATTR_* Daichi.
 
@@ -232,7 +283,9 @@ def sync_catalog():
     pp_map = _fetch_all_productparams(client)
 
     seen_xml_ids = set()
-    created = updated = skipped_no_category = skipped_not_kit = images_synced = 0
+    created = updated = skipped_no_category = skipped_not_kit = 0
+    images_synced = specs_synced = 0
+    tech_cache = {}  # title → TechSpec, общий для всего sync
 
     with transaction.atomic():
         for entry in products.values():
@@ -313,6 +366,9 @@ def sync_catalog():
                 if photos:
                     _sync_images(product, photos)
                     images_synced += 1
+                tech_count = _sync_tech_specs(product, pp, category, tech_cache)
+                if tech_count:
+                    specs_synced += 1
 
             store = entry.get('STORE') or entry.get('STORE:') or {}
             if isinstance(store, dict):
@@ -344,8 +400,9 @@ def sync_catalog():
 
     logger.info(
         'Daichi sync: created=%d updated=%d skipped_not_kit=%d skipped_no_cat=%d '
-        'deactivated=%d images_synced=%d',
-        created, updated, skipped_not_kit, skipped_no_category, deactivated, images_synced,
+        'deactivated=%d images_synced=%d specs_synced=%d',
+        created, updated, skipped_not_kit, skipped_no_category, deactivated,
+        images_synced, specs_synced,
     )
     return {
         'created': created,
@@ -354,4 +411,5 @@ def sync_catalog():
         'skipped_no_category': skipped_no_category,
         'deactivated': deactivated,
         'images_synced': images_synced,
+        'specs_synced': specs_synced,
     }
