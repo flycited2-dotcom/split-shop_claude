@@ -187,8 +187,8 @@
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
             {% for tv in product.tech_values.all %}
               <div class="flex justify-between gap-3 py-2 border-b border-ink/5">
-                <dt class="text-sm text-ink-3">{{ tv.spec.title }}</dt>
-                <dd class="text-sm font-semibold text-right">{{ tv.value }} {{ tv.spec.unit }}</dd>
+                <dt class="text-sm text-ink-3">{{ tv.spec.title|clean_description }}</dt>
+                <dd class="text-sm font-semibold text-right">{{ tv.value|clean_description }} {{ tv.spec.unit|clean_description }}</dd>
               </div>
             {% endfor %}
           </dl>
