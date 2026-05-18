@@ -16,6 +16,8 @@ RUSKLIMAT_JWT_TOKEN в .env. Auto-refresh пока не реализован (т
 API-учётных данных; phone+password из user-логина отдают «Invalid user/password»
 на /api/v1/auth/jwt/). При 401 — клиент бросает понятную ошибку.
 """
+import base64
+import json
 import logging
 import re
 import time
@@ -26,6 +28,19 @@ from django.db import transaction
 
 from apps.catalog.models import Brand, Category, Product, ProductImage
 from apps.stock.models import Stock
+
+
+def _jwt_payload(token):
+    """Декодирует payload (middle часть) JWT — без проверки подписи."""
+    try:
+        _, payload, _ = token.split('.', 2)
+    except ValueError:
+        return {}
+    payload += '=' * (-len(payload) % 4)
+    try:
+        return json.loads(base64.urlsafe_b64decode(payload).decode('utf-8'))
+    except Exception:
+        return {}
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +66,14 @@ class RusklimatRestClient:
 
     def __init__(self):
         self.jwt = settings.RUSKLIMAT_JWT_TOKEN
-        self.guid = settings.RUSKLIMAT_CONTRACTOR_GUID
         if not self.jwt:
             raise RuntimeError('RUSKLIMAT_JWT_TOKEN is not set')
+        # partnerId берём ИЗ JWT (поле `guid`), а не из .env — JWT привязан
+        # к конкретному партнёру, иначе будет 403 «PartnerId не соответствует JWT».
+        jwt_guid = _jwt_payload(self.jwt).get('guid')
+        self.guid = jwt_guid or settings.RUSKLIMAT_CONTRACTOR_GUID
         if not self.guid:
-            raise RuntimeError('RUSKLIMAT_CONTRACTOR_GUID is not set')
+            raise RuntimeError('Не удалось определить partnerId (JWT.guid + .env пусты)')
         self._request_key = None
         self._request_key_until = 0.0
         self._session = requests.Session()
