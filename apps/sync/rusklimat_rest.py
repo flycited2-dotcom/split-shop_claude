@@ -52,6 +52,11 @@ _AC_CATEGORY_RE = re.compile(
     r'кондицион|сплит.?систем|мульти.?сплит|мобильн\w*\s+кондицион',
     re.IGNORECASE,
 )
+# Исключаем категории-аксессуары / запчасти / комплектующие.
+_AC_EXCLUDE_RE = re.compile(
+    r'аксессуар|запчаст|комплектующ|расходн|чехл|абажур|пульт|фильтр',
+    re.IGNORECASE,
+)
 
 
 class RusklimatJWTExpired(RuntimeError):
@@ -149,11 +154,14 @@ class RusklimatRestClient:
 
 
 def _find_ac_categories(client):
-    """UUID категорий Rusklimat с AC-товарами (по name regex)."""
+    """UUID категорий Rusklimat с AC-товарами (по name regex).
+    Аксессуары и запчасти исключаются."""
     cats = client.get_categories()
     ids = set()
     for cat in cats:
         name = (cat.get('name') or '').strip()
+        if _AC_EXCLUDE_RE.search(name):
+            continue
         if _AC_CATEGORY_RE.search(name):
             ids.add(cat['id'])
     logger.info('Rusklimat REST: %d AC-категорий из %d', len(ids), len(cats))
@@ -342,14 +350,20 @@ def sync_rusklimat_rest(*, max_pages=None):
             break
         page += 1
 
-    # Деактивация Rusklimat-товаров, которые исчезли из API.
-    deactivated = (
-        Product.objects.filter(source=RUSKLIMAT_SOURCE)
-        .exclude(nc_code__in={
-            (ns if ns.startswith('НС-') else f'НС-{ns}') for ns in seen_ns
-        })
-        .update(is_active=False)
-    )
+    # Деактивация Rusklimat-товаров, которые исчезли из API. Только при ПОЛНОМ
+    # sync (max_pages=None) — иначе мы случайно отключаем товары, которые
+    # просто не попали в первые N страниц.
+    if max_pages is None:
+        deactivated = (
+            Product.objects.filter(source=RUSKLIMAT_SOURCE)
+            .exclude(nc_code__in={
+                (ns if ns.startswith('НС-') else f'НС-{ns}') for ns in seen_ns
+            })
+            .update(is_active=False)
+        )
+    else:
+        deactivated = 0
+        logger.info('Rusklimat REST: deactivation skipped (partial sync, max_pages=%s)', max_pages)
 
     summary = {
         'created': created,
