@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static catalog_extras %}
 {% block title %}SplitHome — кондиционеры и сплит-системы в Крыму{% endblock %}
 {% block content %}
 
@@ -40,11 +40,15 @@
       <span class="chip chip-accent">−20%</span>
     </div>
     {% if featured_one %}
+      {% btu_for featured_one as featured_btu %}
       <div class="mt-2">
         {% if featured_one.brand %}
           <span class="text-sm font-semibold text-ink-2">{{ featured_one.brand.title }}</span>
         {% endif %}
-        <h3 class="text-xl font-bold leading-tight line-clamp-2 mt-0.5">{{ featured_one.title|truncatechars:60 }}</h3>
+        <h3 class="text-lg font-bold leading-snug mt-0.5">{{ featured_one.title }}</h3>
+        {% if featured_btu %}
+          <p class="text-sm text-ink-2 mt-1 font-semibold">{{ featured_btu }}</p>
+        {% endif %}
         <span class="text-xs text-ink-3 mt-1 block">Арт. {{ featured_one.articul|default:featured_one.nc_code }}</span>
       </div>
       <div class="flex-1 flex items-center justify-center my-4 bg-surface rounded-2xl overflow-hidden">
@@ -202,8 +206,8 @@
     </div>
   </div>
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-    {% for product in featured|slice:":4" %}
-      {% include 'partials/product_card.html' with show_price=show_price %}
+    {% for product in featured|slice:":8" %}
+      {% include 'partials/product_card.html' %}
     {% endfor %}
   </div>
 </section>
@@ -254,10 +258,10 @@
 {% if categories %}
 <section class="mb-12">
   <h2 class="text-2xl font-bold mb-4">Категории</h2>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+  <div class="flex flex-wrap gap-3">
     {% for cat in categories %}
       <a href="/catalog/?category={{ cat.pk }}"
-         class="card p-4 flex flex-col items-center justify-center text-center hover:shadow-lg transition min-h-[80px]">
+         class="card p-4 flex-1 basis-[160px] flex flex-col items-center justify-center text-center hover:shadow-lg transition min-h-[80px]">
         <span class="font-semibold text-sm text-ink hover:text-accent">{{ cat.title }}</span>
         <span class="text-xs text-ink-3 mt-1">{{ cat.product_count }} моделей</span>
       </a>

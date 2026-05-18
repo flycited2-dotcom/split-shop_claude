@@ -28,13 +28,15 @@
         {% if images %}
           <img id="main-img" src="{{ images.0.url }}"
                alt="{{ product.title }}"
-               class="w-full h-72 sm:h-96 object-contain mb-4">
+               class="w-full h-72 sm:h-96 object-contain mb-4 cursor-zoom-in"
+               data-idx="0"
+               onclick="openLightbox(parseInt(this.dataset.idx || 0))">
           {% if images|length > 1 %}
             <div class="flex gap-2 flex-wrap">
               {% for img in images %}
                 <img src="{{ img.url }}" alt=""
                      class="w-16 h-16 object-contain cursor-pointer border-2 border-ink/10 rounded-lg hover:border-accent transition bg-surface"
-                     onclick="document.getElementById('main-img').src='{{ img.url }}'">
+                     onclick="setMainImage({{ forloop.counter0 }})">
               {% endfor %}
             </div>
           {% endif %}
@@ -225,6 +227,31 @@
 
 </div>
 
+{# === Lightbox для галереи === #}
+{% with images=product.images.all %}
+{% if images %}
+<div id="lightbox"
+     class="hidden fixed inset-0 bg-black/90 z-[60] flex items-center justify-center"
+     onclick="if(event.target===this)closeLightbox()">
+  <button onclick="closeLightbox()" aria-label="Закрыть"
+          class="absolute top-4 right-4 text-white text-3xl leading-none w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full">&times;</button>
+  {% if images|length > 1 %}
+    <button onclick="lightboxPrev()" aria-label="Предыдущее"
+            class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-3xl w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full">‹</button>
+    <button onclick="lightboxNext()" aria-label="Следующее"
+            class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-3xl w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-full">›</button>
+  {% endif %}
+  <img id="lightbox-img" src="" alt="{{ product.title }}"
+       class="max-w-[92vw] max-h-[92vh] object-contain"
+       onclick="lightboxNext()">
+  <div id="lightbox-counter"
+       class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/80 text-sm font-semibold">
+  </div>
+</div>
+<script id="lightbox-urls" type="application/json">[{% for img in images %}"{{ img.url|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+{% endif %}
+{% endwith %}
+
 {# === Quick-order modal === #}
 <div id="quick-order-modal"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -279,13 +306,67 @@
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
+// === Gallery: main thumb + lightbox ===
+var IMAGES = [];
+var currentIdx = 0;
+var urlsEl = document.getElementById('lightbox-urls');
+if (urlsEl) {
+  try { IMAGES = JSON.parse(urlsEl.textContent); } catch (e) { IMAGES = []; }
+}
+function setMainImage(i) {
+  if (!IMAGES[i]) return;
+  currentIdx = i;
+  var main = document.getElementById('main-img');
+  if (main) {
+    main.src = IMAGES[i];
+    main.dataset.idx = i;
+  }
+}
+function openLightbox(i) {
+  if (!IMAGES.length) return;
+  currentIdx = (typeof i === 'number') ? i : currentIdx;
+  var lb = document.getElementById('lightbox');
+  if (!lb) return;
+  document.getElementById('lightbox-img').src = IMAGES[currentIdx];
+  var counter = document.getElementById('lightbox-counter');
+  if (counter) counter.textContent = (currentIdx + 1) + ' / ' + IMAGES.length;
+  lb.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  var lb = document.getElementById('lightbox');
+  if (lb) lb.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function lightboxNext() {
+  if (!IMAGES.length) return;
+  currentIdx = (currentIdx + 1) % IMAGES.length;
+  document.getElementById('lightbox-img').src = IMAGES[currentIdx];
+  var counter = document.getElementById('lightbox-counter');
+  if (counter) counter.textContent = (currentIdx + 1) + ' / ' + IMAGES.length;
+}
+function lightboxPrev() {
+  if (!IMAGES.length) return;
+  currentIdx = (currentIdx - 1 + IMAGES.length) % IMAGES.length;
+  document.getElementById('lightbox-img').src = IMAGES[currentIdx];
+  var counter = document.getElementById('lightbox-counter');
+  if (counter) counter.textContent = (currentIdx + 1) + ' / ' + IMAGES.length;
+}
+
 document.addEventListener('keydown', function(e) {
+  var lb = document.getElementById('lightbox');
+  var lbOpen = lb && !lb.classList.contains('hidden');
   if (e.key === 'Escape') {
+    if (lbOpen) { closeLightbox(); return; }
     document.querySelectorAll('[id$="-modal"]:not(.hidden)').forEach(function(m) {
       m.classList.add('hidden');
     });
     var sm = document.getElementById('share-menu');
     if (sm) sm.classList.add('hidden');
+  } else if (lbOpen && e.key === 'ArrowRight') {
+    lightboxNext();
+  } else if (lbOpen && e.key === 'ArrowLeft') {
+    lightboxPrev();
   }
 });
 

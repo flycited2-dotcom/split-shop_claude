@@ -7,6 +7,7 @@ from .models import Product, Category, Brand
 from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
 from .facets import compute_facets
 from .btu import extract_btu
+from apps.leads.quiz_logic import _balance_by_source
 
 
 def home(request):
@@ -19,15 +20,18 @@ def home(request):
         .filter(product_count__gt=0)
         .order_by('-product_count')[:8]
     )
-    # Featured: only AC products in stock, sorted by stock quantity
-    featured = (
+    # Featured: 8 моделей, сбалансированных по поставщикам (round-robin
+    # breeze/rusklimat/daichi). Берём буфер из 40 топ-товаров по запасу
+    # и распределяем по 3 от каждого источника (4-й поставщик добавится позже).
+    featured_buffer = list(
         Product.objects
         .filter(is_active=True, category__sync_enabled=True, stock__quantity__gt=0)
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .select_related('brand', 'stock')
         .prefetch_related('images')
-        .order_by(F('stock__quantity').desc(nulls_last=True))[:8]
+        .order_by(F('stock__quantity').desc(nulls_last=True))[:40]
     )
+    featured = _balance_by_source(featured_buffer, per_source=3, total=8)
     show_price = request.user.is_authenticated and getattr(request.user, 'is_approved', False)
     return render(request, 'home.html', {
         'brands': brands,
