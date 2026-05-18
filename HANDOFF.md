@@ -1,11 +1,67 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-16 (вечер, после деплоя)
-**Прогресс:** 12/12 базовых задач + расширения + ребренд SplitHome + production-деплой
+**Дата обновления:** 2026-05-18 (после B2C-pivot + UX overhaul)
+**Прогресс:** базовый портал + Daichi-интеграция + Quiz + полная B2C-карточка + балансировка по поставщикам
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `fc406e9` (chore(brand): rename СплитХаб → SplitHome)
-**Production URL:** http://splithome.ru/ (HTTP 200 ✅, HTTPS — TODO)
+**Production HEAD на VPS:** `cf98375` (feat(sync): Daichi title = Brand + Articul + Series)
+**Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-18 — B2C-pivot + большой UX overhaul
+
+Владелец принял решение перевести SplitHome в **чисто розничную модель** (оптовые/дилерские продажи будут на отдельном сайте). За одну сессию закрыто 15 задач из обратной связи:
+
+**B2C-pivot.** Дилерская оптовая цена убрана со всех страниц — везде показывается `Product.ric` (РРЦ). `show_price` логика выпилена из карточки товара, листинга и hero на главной. Для гостей показывается CTA «Скидка до 15% — при регистрации» (только маркетинг, реальной механики скидки ещё нет — см. todo_2026_05_18.md).
+
+**Каталог-карточки (`/catalog/`).** Перевёрстан `templates/partials/product_card.html`: бренд контрастно, новая строка «9 000 BTU (до 25 м²)» через `apps/catalog/btu.py` + template-tag `{% btu_for product %}`, цена крупно всем, плашка «Скидка 15%» под ценой для гостей.
+
+**Карточка товара (`/product/.../`).** Полная переверстка `templates/catalog/product_detail.html`:
+- Quick-facts получили окантовку `border-ink/10` (раньше были плоские).
+- Описание и Технические характеристики переделаны в **табы** (vanilla JS). Если `tech_values` пустой — таб «Характеристики» disabled с tooltip.
+- Кнопка «**Поделиться**» рядом с «Купить в 1 клик»: dropdown с Email / Copy / Telegram / **MAX**.
+- Secondary-кнопки «Подобрать другую / Заказать монтаж / Инструкция» — единый стиль `btn-outline`, без эмодзи.
+- Похожие модели рендерятся через тот же product_card.html.
+- HTML-эскейпы в описаниях Бриз/Rusklimat очищаются через template-фильтр `clean_description` (`apps/catalog/templatetags/catalog_extras.py`).
+
+**Quiz (`/quiz/`).** 6-шаговый wizard (подробнее в memory `quiz_picker.md`):
+- Шаг 1 — пилюли с площадью и BTU в скобках.
+- Шаг 2 — 4 типа помещения (квартира / дом / офис / коммерция). При `commercial` подбор исключает «мобильные».
+- Шаг 3 — 5 опций бюджета (30/40/50/70k/любой).
+- Шаги 4-6 (инвертор, обогрев, цвет) теперь имеют третью кнопку **«Не знаю»** → соответствующий фильтр не применяется.
+- Результат: **балансировка 2+2+2 по поставщикам** (`_balance_by_source` в `apps/leads/quiz_logic.py`). Round-robin по breeze/rusklimat/daichi, итого 6 моделей. При нехватке от одного — добиваем другими.
+- Fallback при пустой выдаче: цвет → бюджет → инвертор (в порядке возрастания критичности). Возвращается `relaxed=[...]`, в шаблоне показывается плашка «По вашим параметрам не нашли — показываем…».
+
+**Daichi (3-й поставщик).** Расширен `apps/sync/daichi_catalog.py`:
+- Новый формат title: `{Brand} {Articul} {Series}` (раньше было generic «Бытовой кондиционер» из `ATTR_RUS_NAME_AX` — путало в листинге).
+- Фотографии (`PHOTOES`) загружаются через `/productparams/get/` — у 100% Daichi-товаров теперь есть фото.
+- Описание синтезируется из ATTR_* (`_build_description`) — мощность охлаждения, шум внутр/наружн, хладагент, цвет, габариты, вес, страна, срок эксплуатации. У 100% Daichi-товаров есть содержательное описание.
+
+**Главная.** В hero-блоке «Премьера 2026» (`templates/home.html`) фото товара увеличено (max-h-32 → 64), блок занимает 3 строки grid (row-span-3), цена ric вместо price_wholesale.
+
+**Мульти-блоки исключены** (`MULTI_SPLIT_BLOCK_Q` в `apps/catalog/filters.py`) из catalog view, home featured, sitemap и quiz. Внутренние/наружные блоки мульти-сплит-систем — компоненты, не самостоятельные кондиционеры, ≈40% активных AC.
+
+### Открытые гэпы (см. `memory/todo_2026_05_18.md`)
+- **TechSpec / ProductTech = 0 / 2474** у всех 3 поставщиков. Таб «Характеристики» поэтому всегда disabled. Daichi-данные доступны (ATTR_* в API), нужно дотюнить sync. У Бриза и Rusklimat — характеристики есть на сайтах поставщиков, в sync не парсятся.
+- Rusklimat — 22% активных товаров без описания и фото (sync ломается на части товаров).
+- Реальная механика скидки 15% при регистрации НЕ реализована — только маркетинговая плашка.
+
+### Свежие коммиты
+```
+cf98375 feat(sync): Daichi title = Brand + Articul + Series
+aa692b4 feat(ui): B2C-ориентация — РРЦ всем, информативные карточки, табы, поделиться
+e9fb21d fix(catalog): двойной unescape + расширенный BTU regex
+7488e6b fix(catalog): чистим escaped HTML из описаний Бриз/Rusklimat
+b27853d feat(catalog): полная карточка + автоописание Daichi из ATTR_*
+4ae619c feat(sync): загрузка фото Daichi через /productparams/get/
+7024892 fix(catalog): исключить мульти-блоки из каталога, главной и sitemap
+461dade fix(quiz): исключить мульти-блоки из подбора
+8a6360a feat(quiz): подбор по цвету + relaxed-фолбэки, шаг 6, пилюли BTU
+d429b14 feat(sync): Daichi Business partner API integration
+```
+
+---
 
 ---
 
