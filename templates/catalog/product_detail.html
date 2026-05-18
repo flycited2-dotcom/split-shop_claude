@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
+{% load catalog_extras %}
 {% block title %}{{ product.title }} — SplitHome{% endblock %}
-{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncatewords:30 }}{% else %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Артикул {{ product.articul }}. Купить с доставкой и монтажом по Крыму — SplitHome.{% endif %}{% endblock %}
+{% block meta_description %}{% if product.description %}{{ product.description|clean_description|truncatewords:30 }}{% else %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Артикул {{ product.articul }}. Купить с доставкой и монтажом по Крыму — SplitHome.{% endif %}{% endblock %}
 {% block og_title %}{{ product.title }} — SplitHome{% endblock %}
 {% block og_description %}{{ product.title }}{% if product.brand %} от {{ product.brand }}{% endif %}{% if computed_btu %}. Мощность {{ computed_btu }} 000 BTU{% endif %}. Доставка и монтаж по Крыму.{% endblock %}
 {% if product.images.first %}{% block og_image %}{{ product.images.first.url }}{% endblock %}{% endif %}
@@ -153,7 +154,7 @@
   {% if product.description %}
     <div class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
       <h2 class="text-xl sm:text-2xl font-bold mb-3">Описание</h2>
-      <div class="text-ink-3 leading-relaxed whitespace-pre-line">{{ product.description }}</div>
+      <div class="text-ink-3 leading-relaxed whitespace-pre-line">{{ product.description|clean_description }}</div>
     </div>
   {% endif %}
 
