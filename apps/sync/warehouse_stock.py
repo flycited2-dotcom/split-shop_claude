@@ -20,6 +20,22 @@ _CRIMEA_RE = re.compile(
 )
 
 
+def _normalize_warehouse_name(name):
+    """Приводим имя склада к человеческому виду.
+
+    Поставщики пишут по-разному: «симферополь склад» (Rusklimat), «Симферопль»
+    (Daichi, опечатка), «Бриз Крым» (Бриз). Для UI унифицируем крымские
+    варианты в «Симферополь», остальные оставляем как есть.
+    """
+    n = (name or '').strip()
+    if not n:
+        return ''
+    low = n.lower()
+    if 'симфер' in low or 'симфирополь' in low:
+        return 'Симферополь'
+    return n
+
+
 def write_warehouse_stocks(product, warehouses):
     """Перезаписывает остатки товара по складам.
 
@@ -33,7 +49,7 @@ def write_warehouse_stocks(product, warehouses):
     rows = []
 
     for raw_name, raw_qty in warehouses:
-        name = (raw_name or '').strip()
+        name = _normalize_warehouse_name(raw_name)
         if not name or name in seen_names:
             continue
         seen_names.add(name)
