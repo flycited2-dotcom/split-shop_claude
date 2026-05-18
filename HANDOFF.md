@@ -1,11 +1,85 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-18 (после B2C-pivot + UX overhaul)
-**Прогресс:** базовый портал + Daichi-интеграция + Quiz + полная B2C-карточка + балансировка по поставщикам
+**Дата обновления:** 2026-05-18 (вечер, после TechSpec + per-warehouse + Rusklimat REST)
+**Прогресс:** B2C-pivot + полная карточка + Quiz + TechSpec у всех 3 поставщиков + per-warehouse остатки + Rusklimat REST
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `cf98375` (feat(sync): Daichi title = Brand + Articul + Series)
+**Production HEAD на VPS:** `c47101c` (fix(stock): нормализуем «Симферопль» → «Симферополь»)
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-18 (вечер) — TechSpec у всех 3 поставщиков + per-warehouse остатки + Rusklimat REST
+
+**TechSpec sync — закрыли «таб всегда disabled».** TechSpec total **612**, ProductTech **144 793**, у каждого активного товара трёх поставщиков теперь есть полный набор технических характеристик. На карточке таб «Технические характеристики» открывается с реальными данными.
+
+- **Бриз (245 TechSpec, 1137 товаров):** новый модуль `apps/sync/breeze_tech.py`. Endpoint `GET /v1/tech/?id={breez_id}` — характеристики по **внутреннему id** Бриза, не nc_code. Mapping `nc_code → breez_id` берётся из `/v1/products/` full dump. ~1137 HTTP-запросов, rate-limit 0.15с, прогон ~5 минут. Команда: `python manage.py sync_breez_tech`.
+- **Daichi (92 TechSpec, 495 товаров):** расширен `apps/sync/daichi_catalog.py`. `/productparams/get/` отдаёт ATTR_* поля — `_sync_tech_specs(product, pp_data, category, tech_cache)` парсит в TechSpec (по title, без unique-ключа) и ProductTech. Дедупликация через `filter().first()` — наследие старых sync без unique.
+- **Rusklimat (275 TechSpec, 899 товаров):** в `apps/sync/rusklimat_rest.py:_sync_tech_specs`. `properties` dict у товара v2 API = `{prop_uuid: {value, unit_uuid}}`. TechSpec.external_uuid = prop_uuid. Загружаем `/properties` (2161 свойство) и `/units` (156 единиц) один раз — кэш.
+
+Миграции: `catalog/0008` (`TechSpec.breez_id` теперь null=True), `catalog/0009` (новое поле `TechSpec.external_uuid`).
+
+**Rusklimat REST API — заменил сломанный scraper.** Старый scraping `b2b.rusklimat.com` получал HTTP 403 на login с VPS (IP-block). Перешли на REST API на отдельном домене `internet-partner.rusklimat.com` (с VPS отвечает нормально).
+
+- **Swagger:** `https://internet-partner.rusklimat.com/swagger/v1/swagger.json` — OpenAPI 3.0 со всеми 5 endpoints.
+- **Endpoints:** `GET /api/v1/InternetPartner/{partnerId}/requestKey` (~60s сессия), `GET .../categories/{key}`, `GET .../properties/{key}`, `GET .../units`, `POST /api/v{1|2|3}/.../{partnerId}/products/{key}` (v2 — с unit_uuid).
+- **JWT в .env** как `RUSKLIMAT_JWT_TOKEN` — срок жизни ~сутки. **partnerId извлекается прямо из JWT-payload** (поле `guid`), а не из `.env` — иначе 403 «PartnerId не соответствует JWT». В `.env` остался старый GUID `7d42c370-...`, а JWT под `e51a9046-...` — расхождение разрешается автоматически.
+- **Auto-refresh JWT не работает.** `POST https://b2b.rusklimat.com/api/v1/auth/jwt/` существует, но с user-кредами (`+79152757788/319820`) отдаёт `Invalid user/password`. Нужны отдельные API-credentials — запросить у Rusklimat. Пока обновляем JWT вручную через `/personal/internet_partner/catalog_api/` под логином.
+
+Файлы: `apps/sync/rusklimat_rest.py` (клиент + sync), `apps/sync/management/commands/sync_rusklimat_rest.py`. Старые `rusklimat_scraper.py`, `rusklimat_catalog.py` — устарели, можно удалять.
+
+Команда: `python manage.py sync_rusklimat_rest [--max-pages N]`. Полный прогон ~25 секунд (3 страницы × 500 товаров после фильтрации AC-категорий).
+
+**Per-warehouse остатки — все 3 поставщика.** Новая модель `apps.stock.WarehouseStock(product, warehouse, quantity)` + миграция `stock/0002`. Один товар может иметь записи по нескольким складам.
+
+Helper `apps/sync/warehouse_stock.write_warehouse_stocks(product, pairs)`:
+- Replace-strategy: удаляет старые `WarehouseStock` товара, пишет новые.
+- Нормализация имени склада (`_normalize_warehouse_name`): «симферополь склад» (Rusklimat) / «Симферопль» (опечатка Daichi) / любой `симфер*` → канонический **«Симферополь»**.
+- Параллельно обновляет сводный `Stock`: `quantity = qty в Крыму`, `warehouse = 'Симферополь'`. Если в Крыму 0 — Stock.quantity=0 («Под заказ»).
+
+Подключено в трёх sync-функциях:
+- `apps/sync/rusklimat_rest.py:_sync_stock` — `remains.warehouses` → pairs.
+- `apps/sync/daichi_catalog.py:sync_catalog` — `STORE.NAME` + `STORE_AMOUNT` (1 склад).
+- `apps/sync/tasks.py:sync_stock` (Бриз) — `stocks[]` из `/leftoversnew/`.
+
+Текущие склады в БД (на 2026-05-18):
+
+| Склад | Поставщик | Σ остаток |
+|---|---|---:|
+| ррц Краснодар | Rusklimat | 52 581 |
+| фрц Киржач | Rusklimat | 30 819 |
+| **Симферополь** | Rusklimat + Daichi | **2 911** |
+| ФРЦ Бриз Шерризон-Норд WMS | Бриз | 2 573 |
+| РРЦ Бриз Ростов LV | Бриз | 144 |
+| Бриз Крым | Бриз | 0 (API всегда возвращает 0) |
+
+В Крыму сейчас 579 моделей доступно (147 в наличии прямо сейчас: 76 Rusklimat + 71 Daichi + 0 Бриз).
+
+**UI карточки товара:** badge «В Крыму: N шт.» (зелёный, Stock.quantity>0) или «Под заказ» (амбер). Раскрывающийся `<details>`-блок «Остатки по складам (N)» — список всех `WarehouseStock`.
+
+**Известная проблема Бриз Крым.** `/v1/leftoversnew/` отдаёт «Бриз Крым» с qty=0 для всех 4667 товаров. У владельца на B2B-портале Бриза есть видимые остатки в Крыму — значит, либо это резерв «под заказ» не в API, либо другой endpoint. Нужно уточнить у Бриза.
+
+### Свежие коммиты (вечер 2026-05-18)
+```
+c47101c fix(stock): нормализуем имя склада «Симферопль/симферополь склад» → «Симферополь»
+a516600 fix(stock): расширил Crimea-regex — ловит «Симферопль» (опечатка Daichi)
+9354641 fix(sync): Daichi TechSpec dedup + Rusklimat title-filter аксессуаров
+c7ee092 feat(stock): per-warehouse breakdown — все 3 поставщика + UI
+8ddba55 feat(sync): Rusklimat — Crimea-only stock + TechSpec + skip БЕЗ МАРКИ
+489793f fix(sync): Rusklimat REST — exclude аксессуаров + safe partial sync
+14d7582 fix(sync): Rusklimat partnerId извлекаем из JWT, не из .env
+5bdb504 feat(sync): Rusklimat REST API client + полный sync каталога
+2d6e558 feat(sync): Breez tech sync — структурированные характеристики из /v1/tech/?id=
+7d9114e fix(catalog): clean_description filter в tech-таблице
+f808104 feat(sync): Daichi TechSpec — пишем ATTR_* в структурированные характеристики
+```
+
+### Открытые задачи (на потом)
+- **Бриз Крым:** уточнить у поставщика как получать актуальные остатки крымского склада через API.
+- **Rusklimat auto-refresh JWT:** запросить у поставщика отдельные API-credentials (user phone+password не подходят).
+- **Удалить устаревший Rusklimat scraping:** `rusklimat_scraper.py`, `rusklimat_catalog.py`, `rusklimat_stock.py`, команды `sync_rusklimat` / `remap_rusklimat_categories`.
+- **SplitHub.ru как 4-й поставщик** (бренды Бирюса, Тайкон, MDV) — нужны API-credentials.
+- Логика скидки 15% при регистрации — пока только маркетинговая плашка.
 
 ---
 
