@@ -188,15 +188,16 @@ def _sync_tech_specs(product, pp_data, category, tech_cache):
 
         spec = tech_cache.get(title)
         if spec is None:
-            spec, _created = TechSpec.objects.get_or_create(
-                title=title,
-                defaults={
-                    'unit': '',  # у Daichi unit уже включён в title («Вес нетто, кг»)
-                    'group': group,
-                    'category': category,
-                },
-            )
-            if not _created and not spec.group and group:
+            # Ищем Daichi-spec (без breez_id и без external_uuid) по title.
+            # Если дубли уже накопились — берём первого и игнорируем остальные.
+            spec = TechSpec.objects.filter(
+                title=title, breez_id__isnull=True, external_uuid__isnull=True,
+            ).first()
+            if spec is None:
+                spec = TechSpec.objects.create(
+                    title=title, unit='', group=group, category=category,
+                )
+            elif group and not spec.group:
                 spec.group = group
                 spec.save(update_fields=['group'])
             tech_cache[title] = spec

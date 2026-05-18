@@ -359,6 +359,16 @@ def sync_rusklimat_rest(*, max_pages=None):
                     skipped_no_brand += 1
                     continue
 
+                # Дополнительный skip по title — мелочёвка для AC.
+                name_for_check = (p.get('name') or '').lower()
+                if re.search(
+                    r'\bадаптер|чехол|переходник|пульт\b|насадк|кронштейн|'
+                    r'фильтр\b|трубк|удлинител|сальник|переключател|клапан',
+                    name_for_check,
+                ):
+                    skipped_no_brand += 1
+                    continue
+
                 seen_ns.add(ns_code)
                 brand = _get_or_create_brand(brand_title, brand_cache)
                 cat = _master_category_for(p.get('categoryId', '') or '')
