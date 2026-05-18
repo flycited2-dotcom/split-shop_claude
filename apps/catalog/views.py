@@ -1,9 +1,21 @@
+import re
+
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F
 from .models import Product, Category, Brand
 from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
 from .facets import compute_facets
+
+
+_BTU_FROM_ARTICUL = re.compile(r'(^|[^0-9])(07|09|12|18|24|27|30|36|42|48|60)([^0-9]|$)')
+
+
+def _extract_btu(product):
+    """Вытаскивает BTU-код (07/09/12/...) из артикула. Возвращает int или None."""
+    art = (product.articul or '').strip()
+    m = _BTU_FROM_ARTICUL.search(art)
+    return int(m.group(2)) if m else None
 
 
 def home(request):
@@ -93,7 +105,30 @@ def product_detail(request, slug):
         slug=slug, is_active=True
     )
     show_price = request.user.is_authenticated and request.user.is_approved
+
+    btu = _extract_btu(product)
+    is_inverter = bool(re.search(r'инвертор|inverter', product.title, re.I))
+
+    # Похожие: тот же BTU, та же категория, не мульти-блоки, в наличии — top 4.
+    similar = (
+        Product.objects.filter(is_active=True, category__sync_enabled=True)
+        .exclude(pk=product.pk)
+        .exclude(MULTI_SPLIT_BLOCK_Q)
+    )
+    if btu:
+        similar = similar.filter(articul__iregex=rf'(^|[^0-9]){btu:02d}([^0-9]|$)')
+    if product.category_id:
+        similar = similar.filter(category_id=product.category_id)
+    similar = (
+        similar.select_related('brand', 'stock')
+               .prefetch_related('images')
+               .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')[:4]
+    )
+
     return render(request, 'catalog/product_detail.html', {
         'product': product,
         'show_price': show_price,
+        'computed_btu': btu,
+        'is_inverter': is_inverter,
+        'similar_products': similar,
     })

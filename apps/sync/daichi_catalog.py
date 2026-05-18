@@ -146,6 +146,72 @@ def _sync_images(product, photo_urls):
     ])
 
 
+def _attr_value(pp_data, key):
+    """Извлекает VALUE из структуры ATTR_* (dict {CODE,NAME,VALUE,GROUP})."""
+    attr = pp_data.get(key)
+    if isinstance(attr, dict):
+        val = attr.get('VALUE')
+        if val is not None and str(val).strip():
+            return str(val).strip()
+    return None
+
+
+def _build_description(pp_data, series, brand_title):
+    """Синтезирует human-readable текст из структурированных ATTR_* Daichi.
+
+    API не отдаёт готовое описание — собираем сами из ключевых характеристик.
+    """
+    intro_bits = []
+    if brand_title and series:
+        intro_bits.append(f'Сплит-система серии {series} от бренда {brand_title}.')
+    elif series:
+        intro_bits.append(f'Сплит-система серии {series}.')
+
+    facts = []
+    cool = _attr_value(pp_data, 'ATTR_CAPACITY_COOL') or _attr_value(pp_data, 'ATTR_CAP_COOL_NOM')
+    if cool:
+        facts.append(f'Мощность охлаждения {cool} кВт')
+
+    noise_in = _attr_value(pp_data, 'ATTR_SOUND_PRESSURE_IU_COOL')
+    noise_out = _attr_value(pp_data, 'ATTR_SOUND_PRESSURE_COOL')
+    if noise_in or noise_out:
+        parts = []
+        if noise_in: parts.append(f'внутренний блок {noise_in} дБ')
+        if noise_out: parts.append(f'наружный {noise_out} дБ')
+        facts.append('уровень шума ' + ', '.join(parts))
+
+    refr = _attr_value(pp_data, 'ATTR_L_REFR')
+    if refr:
+        facts.append(f'хладагент {refr}')
+
+    color = _attr_value(pp_data, 'ATTR_L_COLOR')
+    if color:
+        facts.append(f'цвет {color.lower()}')
+
+    dims = _attr_value(pp_data, 'ATTR_DIMENS')
+    if dims:
+        facts.append(f'габариты {dims}')
+
+    weight = _attr_value(pp_data, 'ATTR_WEIGHT_NET')
+    if weight:
+        facts.append(f'вес {weight} кг')
+
+    country = _attr_value(pp_data, 'ATTR_STRANA')
+    if country:
+        facts.append(f'страна производства — {country}')
+
+    srok = _attr_value(pp_data, 'ATTR_SROK_EKSP')
+    if srok:
+        facts.append(f'срок эксплуатации {srok}')
+
+    sections = []
+    if intro_bits:
+        sections.append(' '.join(intro_bits))
+    if facts:
+        sections.append('Характеристики: ' + '; '.join(facts) + '.')
+    return '\n\n'.join(sections)
+
+
 def sync_catalog():
     """Pull /products/get for the configured store, upsert Products + Stock."""
     from django.conf import settings as dj_settings
@@ -208,6 +274,13 @@ def sync_catalog():
                 counter += 1
                 slug = f'{base_slug}-{counter}'
 
+            pp = pp_map.get(xml_id)
+            description = ''
+            if pp:
+                description = _build_description(
+                    pp, series, brand.title if brand else ''
+                )
+
             product, is_new = Product.objects.update_or_create(
                 nc_code=xml_id,
                 defaults={
@@ -220,13 +293,13 @@ def sync_catalog():
                     'price_wholesale': wholesale,
                     'ric': ric,
                     'ric_currency': currency,
+                    'description': description,
                     'source': DAICHI_SOURCE,
                     'is_active': True,
                 },
             )
             seen_xml_ids.add(xml_id)
 
-            pp = pp_map.get(xml_id)
             if pp:
                 photos = pp.get('PHOTOES') or pp.get('PHOTOES:') or []
                 if photos:

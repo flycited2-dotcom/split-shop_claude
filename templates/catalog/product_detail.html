@@ -1,152 +1,265 @@
 {% extends 'base.html' %}
 {% block title %}{{ product.title }} — SplitHome{% endblock %}
-{% block meta_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Арт: {{ product.articul }}. Купить с доставкой и монтажом по Крыму — SplitHome.{% endblock %}
+{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncatewords:30 }}{% else %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Артикул {{ product.articul }}. Купить с доставкой и монтажом по Крыму — SplitHome.{% endif %}{% endblock %}
 {% block og_title %}{{ product.title }} — SplitHome{% endblock %}
-{% block og_description %}{{ product.title }}{% if product.brand %} {{ product.brand }}{% endif %}. Купить оптом.{% endblock %}
+{% block og_description %}{{ product.title }}{% if product.brand %} от {{ product.brand }}{% endif %}{% if computed_btu %}. Мощность {{ computed_btu }} 000 BTU{% endif %}. Доставка и монтаж по Крыму.{% endblock %}
 {% if product.images.first %}{% block og_image %}{{ product.images.first.url }}{% endblock %}{% endif %}
+
 {% block content %}
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-  <!-- Галерея -->
-  <div class="card p-4">
-    {% with images=product.images.all %}
-      {% if images %}
-        <img id="main-img" src="{{ images.0.url }}"
-             alt="{{ product.title }}" class="w-full h-80 object-contain mb-4">
-        <div class="flex gap-2 flex-wrap">
-          {% for img in images %}
-            <img src="{{ img.url }}" alt=""
-                 class="w-16 h-16 object-contain cursor-pointer border-2 rounded
-                        hover:border-accent"
-                 onclick="document.getElementById('main-img').src='{{ img.url }}'">
-          {% endfor %}
+<div class="max-w-6xl mx-auto py-6 sm:py-10 px-4 space-y-8 sm:space-y-10">
+
+  {# === Breadcrumb === #}
+  <nav class="text-sm text-ink-3 flex flex-wrap items-center gap-1.5">
+    <a href="{% url 'home' %}" class="hover:text-accent">Главная</a>
+    <span>›</span>
+    <a href="{% url 'catalog' %}" class="hover:text-accent">Каталог</a>
+    {% if product.category %}
+      <span>›</span>
+      <a href="{% url 'catalog' %}?category={{ product.category.pk }}" class="hover:text-accent">{{ product.category.title }}</a>
+    {% endif %}
+  </nav>
+
+  {# === Hero: gallery + info === #}
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
+    {# Gallery #}
+    <div class="rounded-2xl bg-white border border-ink/10 p-4 sm:p-6">
+      {% with images=product.images.all %}
+        {% if images %}
+          <img id="main-img" src="{{ images.0.url }}"
+               alt="{{ product.title }}"
+               class="w-full h-72 sm:h-96 object-contain mb-4">
+          {% if images|length > 1 %}
+            <div class="flex gap-2 flex-wrap">
+              {% for img in images %}
+                <img src="{{ img.url }}" alt=""
+                     class="w-16 h-16 object-contain cursor-pointer border-2 border-ink/10 rounded-lg hover:border-accent transition bg-surface"
+                     onclick="document.getElementById('main-img').src='{{ img.url }}'">
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% else %}
+          <div class="h-72 sm:h-96 flex items-center justify-center text-ink-3 text-6xl bg-surface rounded-xl">
+            📦
+          </div>
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    {# Info #}
+    <div class="flex flex-col">
+      <p class="text-sm text-ink-3 mb-1">
+        {% if product.brand %}<span class="font-semibold text-ink">{{ product.brand.title }}</span>{% endif %}
+        {% if product.series %} • {{ product.series }}{% endif %}
+      </p>
+      <h1 class="text-2xl sm:text-3xl font-bold mb-3">{{ product.title }}</h1>
+      <p class="text-sm text-ink-3 mb-4">
+        Артикул: <span class="font-mono">{{ product.articul|default:product.nc_code }}</span>
+      </p>
+
+      {# Stock badge #}
+      {% if product.stock.in_stock %}
+        <div class="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-sm font-semibold mb-5 w-fit">
+          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+          В наличии: {{ product.stock.quantity }} шт.
         </div>
       {% else %}
-        <div class="h-80 flex items-center justify-center text-gray-300 text-4xl">
-          📦
+        <div class="inline-flex items-center gap-2 bg-ink/5 text-ink-3 px-3 py-1.5 rounded-full text-sm mb-5 w-fit">
+          Под заказ
         </div>
       {% endif %}
-    {% endwith %}
-  </div>
-  <!-- Информация -->
-  <div>
-    <p class="text-sm text-gray-400 mb-1">{{ product.brand }} / {{ product.category }}</p>
-    <h1 class="text-2xl font-bold mb-2">{{ product.title }}</h1>
-    <p class="text-sm text-gray-400 mb-4">Арт: {{ product.articul }} | НС: {{ product.nc_code }}</p>
-    {% if product.stock.in_stock %}
-      <div class="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold mb-4">
-        В наличии: {{ product.stock.quantity }} шт.
-      </div>
-    {% else %}
-      <div class="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-sm mb-4">
-        Нет в наличии
-      </div>
-    {% endif %}
-    {% if product.ric %}
-      <p class="text-sm text-gray-500">РИЦ: {{ product.ric|floatformat:0 }} {{ product.ric_currency }}</p>
-    {% endif %}
-    {% if show_price %}
-      {% if product.price_wholesale %}
-        <p class="text-3xl font-extrabold text-accent mt-1 mb-4">
-          {{ product.price_wholesale|floatformat:0 }} ₽
-        </p>
-        {% if product.stock.in_stock %}
+
+      {# Price block #}
+      {% if product.ric %}
+        <p class="text-sm text-ink-3 mb-0.5">Розничная цена</p>
+        <p class="text-3xl sm:text-4xl font-extrabold text-accent mb-4">{{ product.ric|floatformat:0 }} ₽</p>
+      {% endif %}
+      {% if show_price and product.price_wholesale %}
+        <div class="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 mb-4">
+          <p class="text-xs text-ink-3 mb-0.5">Оптовая (для дилера)</p>
+          <p class="text-xl font-bold text-ink">{{ product.price_wholesale|floatformat:0 }} ₽</p>
+        </div>
+      {% endif %}
+
+      {# CTA #}
+      <div class="flex flex-wrap gap-3 mb-3">
+        <button onclick="openModal('quick-order-modal')" class="btn btn-primary">
+          ⚡ Купить в 1 клик
+        </button>
+        {% if show_price and product.price_wholesale and product.stock.in_stock %}
           <form hx-post="/cart/add/" hx-target="#cart-msg" hx-swap="innerHTML"
-                class="flex gap-3 items-center">
+                class="flex items-center gap-2">
             {% csrf_token %}
             <input type="hidden" name="product_id" value="{{ product.pk }}">
             <input type="number" name="quantity" value="1" min="1"
-                   class="w-20 border rounded-lg px-3 py-2 text-center">
-            <button class="btn-accent px-6 py-2 rounded-lg font-semibold">
-              В корзину
-            </button>
+                   class="w-16 border border-ink/15 rounded-lg px-2 py-2 text-sm text-center">
+            <button type="submit" class="btn btn-primary">В корзину</button>
           </form>
-          <div id="cart-msg" class="mt-2 text-sm text-green-600"></div>
-          <button onclick="openModal('quick-order-modal')"
-                  class="mt-2 text-sm text-accent hover:underline font-semibold">
-            Купить в 1 клик
-          </button>
         {% endif %}
-      {% endif %}
-    {% else %}
-      <div class="card p-4 bg-orange-50 mt-2">
-        <p class="text-sm text-gray-600">
-          <a href="/auth/register/" class="text-accent font-semibold">Зарегистрируйтесь</a>
-          как дилер, чтобы увидеть оптовые цены и оформить заказ.
-        </p>
       </div>
-    {% endif %}
-    <div class="flex flex-wrap gap-3 mt-3">
-      <a href="/selection/" class="text-sm text-gray-600 hover:text-accent border border-gray-300 rounded-lg px-3 py-1.5">
-        🔍 Подобрать кондиционер
-      </a>
-      <a href="/installation/" class="text-sm text-gray-600 hover:text-accent border border-gray-300 rounded-lg px-3 py-1.5">
-        🔧 Заказать монтаж
-      </a>
-    </div>
-    <div class="flex gap-3 mt-4">
-      {% if product.booklet_url %}
-        <a href="{{ product.booklet_url }}" target="_blank"
-           class="text-sm text-accent hover:underline">📄 Буклет</a>
-      {% endif %}
-      {% if product.manual_url %}
-        <a href="{{ product.manual_url }}" target="_blank"
-           class="text-sm text-accent hover:underline">📋 Инструкция</a>
-      {% endif %}
-    </div>
-  </div>
-</div>
-{% if product.tech_values.exists %}
-  <div class="card p-6 mt-8">
-    <h2 class="text-xl font-bold mb-4">Технические характеристики</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-      {% for tv in product.tech_values.all %}
-        <div class="flex justify-between py-2 border-b border-gray-100">
-          <span class="text-sm text-gray-600">{{ tv.spec.title }}</span>
-          <span class="text-sm font-semibold">{{ tv.value }} {{ tv.spec.unit }}</span>
-        </div>
-      {% endfor %}
-    </div>
-  </div>
-{% endif %}
+      <div id="cart-msg" class="text-sm text-green-600 mb-2"></div>
 
-<!-- Модал: Купить в 1 клик -->
+      {% if not show_price %}
+        <div class="text-sm text-ink-3 mb-3">
+          <a href="/auth/register/" class="text-accent font-semibold hover:underline">Зарегистрируйтесь как дилер</a>
+          — увидите оптовую цену.
+        </div>
+      {% endif %}
+
+      {# Secondary actions #}
+      <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm mt-2">
+        <a href="{% url 'quiz' %}" class="text-ink-3 hover:text-accent transition">🔍 Подобрать другую</a>
+        <a href="{% url 'installation' %}" class="text-ink-3 hover:text-accent transition">🔧 Заказать монтаж</a>
+        {% if product.booklet_url %}
+          <a href="{{ product.booklet_url }}" target="_blank" class="text-accent hover:underline">📄 Буклет</a>
+        {% endif %}
+        {% if product.manual_url %}
+          <a href="{{ product.manual_url }}" target="_blank" class="text-accent hover:underline">📋 Инструкция</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# === Quick facts === #}
+  {% if computed_btu or product.series or is_inverter %}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {% if computed_btu %}
+        <div class="rounded-xl bg-surface px-4 py-3">
+          <div class="text-xs text-ink-3 mb-1">Мощность</div>
+          <div class="font-semibold">{{ computed_btu }} 000 BTU</div>
+        </div>
+      {% endif %}
+      {% if is_inverter %}
+        <div class="rounded-xl bg-surface px-4 py-3">
+          <div class="text-xs text-ink-3 mb-1">Компрессор</div>
+          <div class="font-semibold">Инвертор</div>
+        </div>
+      {% endif %}
+      {% if product.brand %}
+        <div class="rounded-xl bg-surface px-4 py-3">
+          <div class="text-xs text-ink-3 mb-1">Бренд</div>
+          <div class="font-semibold">{{ product.brand.title }}</div>
+        </div>
+      {% endif %}
+      {% if product.series %}
+        <div class="rounded-xl bg-surface px-4 py-3">
+          <div class="text-xs text-ink-3 mb-1">Серия</div>
+          <div class="font-semibold">{{ product.series }}</div>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {# === Description === #}
+  {% if product.description %}
+    <div class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
+      <h2 class="text-xl sm:text-2xl font-bold mb-3">Описание</h2>
+      <div class="text-ink-3 leading-relaxed whitespace-pre-line">{{ product.description }}</div>
+    </div>
+  {% endif %}
+
+  {# === Tech specs (if populated) === #}
+  {% if product.tech_values.exists %}
+    <div class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
+      <h2 class="text-xl sm:text-2xl font-bold mb-4">Характеристики</h2>
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
+        {% for tv in product.tech_values.all %}
+          <div class="flex justify-between gap-3 py-2 border-b border-ink/5">
+            <dt class="text-sm text-ink-3">{{ tv.spec.title }}</dt>
+            <dd class="text-sm font-semibold text-right">{{ tv.value }} {{ tv.spec.unit }}</dd>
+          </div>
+        {% endfor %}
+      </dl>
+    </div>
+  {% endif %}
+
+  {# === Info blocks: delivery / install / warranty === #}
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <a href="{% url 'delivery' %}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
+      <div class="text-3xl mb-2">🚚</div>
+      <div class="font-semibold mb-1">Доставка по Крыму</div>
+      <p class="text-sm text-ink-3">Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь. 1-3 дня.</p>
+    </a>
+    <a href="{% url 'installation' %}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
+      <div class="text-3xl mb-2">🔧</div>
+      <div class="font-semibold mb-1">Профессиональный монтаж</div>
+      <p class="text-sm text-ink-3">Сертифицированные мастера. Гарантия на работы.</p>
+    </a>
+    <a href="{% url 'warranty' %}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
+      <div class="text-3xl mb-2">🛡️</div>
+      <div class="font-semibold mb-1">Гарантия</div>
+      <p class="text-sm text-ink-3">От производителя. Сервис в Крыму.</p>
+    </a>
+  </div>
+
+  {# === Similar products === #}
+  {% if similar_products %}
+    <div>
+      <h2 class="text-xl sm:text-2xl font-bold mb-4">Похожие модели</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {% for p in similar_products %}
+          <a href="{% url 'product_detail' p.slug %}" class="rounded-2xl border border-ink/10 bg-white p-4 hover:border-accent/40 hover:shadow-md transition block">
+            <div class="aspect-square bg-surface rounded-xl mb-3 overflow-hidden flex items-center justify-center">
+              {% with img=p.images.first %}
+                {% if img %}
+                  <img src="{{ img.url }}" alt="{{ p.title }}" class="w-full h-full object-contain">
+                {% else %}
+                  <span class="text-ink-3 text-sm">нет фото</span>
+                {% endif %}
+              {% endwith %}
+            </div>
+            <div class="text-xs text-ink-3 mb-1">{{ p.brand.title|default:"" }}</div>
+            <div class="font-semibold text-sm leading-snug mb-2 line-clamp-2">{{ p.title }}</div>
+            {% if p.ric %}
+              <div class="text-accent font-bold">{{ p.ric|floatformat:0 }} ₽</div>
+            {% else %}
+              <div class="text-sm text-ink-3">Цена по запросу</div>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+{# === Quick-order modal === #}
 <div id="quick-order-modal"
      class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
      onclick="if(event.target===this)closeModal('quick-order-modal')">
   <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md relative">
     <button onclick="closeModal('quick-order-modal')"
-            class="absolute top-3 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none">
+            class="absolute top-3 right-4 text-ink-3 hover:text-ink text-2xl leading-none">
       &times;
     </button>
-    <h3 class="text-xl font-bold mb-4">Купить в 1 клик</h3>
-    <p class="text-sm text-gray-500 mb-4">{{ product.title }}</p>
+    <h3 class="text-xl font-bold mb-1">Купить в 1 клик</h3>
+    <p class="text-sm text-ink-3 mb-4">{{ product.title }}</p>
     <div id="quick-order-result" aria-live="polite">
       <form hx-post="{% url 'quick_order_submit' %}" hx-target="#quick-order-result" hx-swap="innerHTML">
         {% csrf_token %}
         <input type="hidden" name="product_id" value="{{ product.pk }}">
         <div class="mb-3">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Ваше имя</label>
+          <label class="block text-sm font-medium text-ink mb-1">Ваше имя</label>
           <input type="text" name="name" required placeholder="Иван Иванов"
-                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+                 class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
         </div>
         <div class="mb-3">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
-          <input type="text" name="phone" required placeholder="+7 999 123-45-67"
-                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400">
+          <label class="block text-sm font-medium text-ink mb-1">Телефон</label>
+          <input type="tel" name="phone" required placeholder="+7 (___) ___-__-__"
+                 class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
         </div>
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
+          <label class="block text-sm font-medium text-ink mb-1">Комментарий</label>
           <textarea name="comment" rows="2" placeholder="Любые пожелания..."
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-400"></textarea>
+                    class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent"></textarea>
         </div>
-        <button type="submit"
-                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg">
+        <button type="submit" class="w-full btn btn-primary justify-center">
           Отправить заявку
         </button>
       </form>
     </div>
   </div>
 </div>
+
 <script>
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
@@ -158,6 +271,7 @@ document.addEventListener('keydown', function(e) {
   }
 });
 </script>
+
 {% if YANDEX_METRIKA_ID %}
 <script>
 window.dataLayer = window.dataLayer || [];
