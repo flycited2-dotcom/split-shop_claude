@@ -260,8 +260,16 @@ def sync_catalog():
             brand = _get_or_create_brand(params.get('BRAND'))
 
             articul = entry.get('NAME') or ''
-            title = (params.get('ATTR_RUS_NAME_AX') or articul or xml_id).strip()
             series = (params.get('ATTR_L_SERIA') or '').strip()
+            # Title формата «Brand Articul Series». ATTR_RUS_NAME_AX часто
+            # generic «Бытовой кондиционер» — оставляем только как fallback,
+            # когда ни бренд, ни артикул, ни серия не дали внятной строки.
+            brand_title = (brand.title if brand else '').strip()
+            title_parts = [p for p in (brand_title, articul, series) if p]
+            if title_parts:
+                title = ' '.join(title_parts)
+            else:
+                title = (params.get('ATTR_RUS_NAME_AX') or xml_id).strip()
 
             prices_obj = entry.get('PRICES') or entry.get('PRICES:') or {}
             wholesale, ric, currency = _extract_prices(prices_obj)
