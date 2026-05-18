@@ -1,48 +1,48 @@
-{% load static %}
-<div class="card p-4 flex flex-col hover:shadow-md transition">
+{% load static catalog_extras %}
+{% btu_for product as btu_line %}
+<a href="{% url 'product_detail' product.slug %}"
+   class="card p-4 flex flex-col hover:shadow-md hover:border-accent/40 transition group"
+   aria-label="{{ product.title }}">
   {% with img=product.images.first %}
-    <a href="{% url 'product_detail' product.slug %}">
+    <div class="aspect-square bg-surface rounded-xl mb-3 overflow-hidden flex items-center justify-center">
       <img src="{% if img %}{{ img.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"
            alt="{{ product.title }}"
-           class="w-full h-40 object-contain mb-3"
+           class="w-full h-full object-contain group-hover:scale-105 transition"
            loading="lazy"
            onerror="this.src='{% static 'img/no-photo.svg' %}'">
-    </a>
+    </div>
   {% endwith %}
-  <p class="text-xs text-gray-400 mb-1">{{ product.brand }}</p>
-  <a href="{% url 'product_detail' product.slug %}"
-     class="font-semibold text-sm text-gray-800 hover:text-accent line-clamp-2 mb-2 flex-1">
+
+  {% if product.brand %}
+    <p class="text-sm font-semibold text-ink-2 mb-0.5">{{ product.brand.title }}</p>
+  {% endif %}
+  <p class="font-semibold text-sm text-ink line-clamp-2 mb-1 flex-1">
     {{ product.title }}
-  </a>
+  </p>
+  {% if btu_line %}
+    <p class="text-xs text-ink-3 mb-2">{{ btu_line }}</p>
+  {% endif %}
+
   <div class="mt-auto">
     {% if product.stock.in_stock %}
-      <span class="inline-block text-xs text-green-600 font-semibold mb-2">● В наличии</span>
+      <span class="inline-flex items-center gap-1 text-xs text-green-700 font-semibold mb-2">
+        <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>В наличии
+      </span>
     {% else %}
-      <span class="inline-block text-xs text-gray-400 mb-2">● Нет в наличии</span>
+      <span class="inline-flex items-center gap-1 text-xs text-ink-3 mb-2">
+        <span class="w-1.5 h-1.5 bg-ink/20 rounded-full"></span>Под заказ
+      </span>
     {% endif %}
+
     {% if product.ric %}
-      <p class="text-xs text-gray-400">РИЦ: {{ product.ric|floatformat:0 }} ₽</p>
-    {% endif %}
-    {% if show_price and product.price_wholesale %}
-      <p class="text-lg font-bold text-accent mb-2">
-        {{ product.price_wholesale|floatformat:0 }} ₽
-      </p>
-      {% if product.stock.in_stock %}
-        <form hx-post="/cart/add/" hx-target="#cart-msg-{{ product.pk }}" hx-swap="innerHTML">
-          {% csrf_token %}
-          <input type="hidden" name="product_id" value="{{ product.pk }}">
-          <input type="hidden" name="quantity" value="1">
-          <button class="btn-accent w-full py-1.5 rounded-lg text-sm font-semibold">
-            В корзину
-          </button>
-        </form>
-        <div id="cart-msg-{{ product.pk }}" class="text-xs text-green-600 mt-1 text-center"></div>
+      <p class="text-lg font-bold text-accent leading-tight">{{ product.ric|floatformat:0 }} ₽</p>
+      {% if not request.user.is_authenticated %}
+        <p class="text-xs text-ink-3 mt-1">
+          <span class="text-accent font-semibold">Скидка до 15%</span> — при регистрации
+        </p>
       {% endif %}
-    {% elif not show_price %}
-      <a href="/auth/register/"
-         class="block text-center text-xs text-accent hover:underline mt-1">
-        Цена — после регистрации
-      </a>
+    {% else %}
+      <p class="text-sm text-ink-3">Цена по запросу</p>
     {% endif %}
   </div>
-</div>
+</a>

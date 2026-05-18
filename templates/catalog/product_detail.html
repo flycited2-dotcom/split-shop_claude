@@ -71,78 +71,85 @@
 
       {# Price block #}
       {% if product.ric %}
-        <p class="text-sm text-ink-3 mb-0.5">Розничная цена</p>
-        <p class="text-3xl sm:text-4xl font-extrabold text-accent mb-4">{{ product.ric|floatformat:0 }} ₽</p>
-      {% endif %}
-      {% if show_price and product.price_wholesale %}
-        <div class="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 mb-4">
-          <p class="text-xs text-ink-3 mb-0.5">Оптовая (для дилера)</p>
-          <p class="text-xl font-bold text-ink">{{ product.price_wholesale|floatformat:0 }} ₽</p>
-        </div>
+        <p class="text-sm text-ink-3 mb-0.5">Цена</p>
+        <p class="text-3xl sm:text-4xl font-extrabold text-accent mb-2">{{ product.ric|floatformat:0 }} ₽</p>
+        {% if not request.user.is_authenticated %}
+          <a href="/auth/register/" class="inline-flex items-center gap-1.5 text-sm text-accent font-semibold hover:underline mb-4">
+            🎁 Зарегистрируйся — скидка до 15%
+          </a>
+        {% endif %}
       {% endif %}
 
-      {# CTA #}
-      <div class="flex flex-wrap gap-3 mb-3">
-        <button onclick="openModal('quick-order-modal')" class="btn btn-primary">
+      {# Primary CTAs #}
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button type="button" onclick="openModal('quick-order-modal')" class="btn btn-primary">
           ⚡ Купить в 1 клик
         </button>
-        {% if show_price and product.price_wholesale and product.stock.in_stock %}
-          <form hx-post="/cart/add/" hx-target="#cart-msg" hx-swap="innerHTML"
-                class="flex items-center gap-2">
-            {% csrf_token %}
-            <input type="hidden" name="product_id" value="{{ product.pk }}">
-            <input type="number" name="quantity" value="1" min="1"
-                   class="w-16 border border-ink/15 rounded-lg px-2 py-2 text-sm text-center">
-            <button type="submit" class="btn btn-primary">В корзину</button>
-          </form>
-        {% endif %}
-      </div>
-      <div id="cart-msg" class="text-sm text-green-600 mb-2"></div>
-
-      {% if not show_price %}
-        <div class="text-sm text-ink-3 mb-3">
-          <a href="/auth/register/" class="text-accent font-semibold hover:underline">Зарегистрируйтесь как дилер</a>
-          — увидите оптовую цену.
+        <div class="relative">
+          <button type="button" onclick="toggleShare()" id="share-btn"
+                  class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-ink/15 text-ink font-semibold text-sm hover:border-accent hover:text-accent transition">
+            Поделиться
+          </button>
+          <div id="share-menu"
+               class="hidden absolute z-30 mt-2 right-0 min-w-[220px] bg-white border border-ink/10 rounded-xl shadow-lg py-1">
+            <a id="share-email" href="#"
+               class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
+              <span>Email</span>
+            </a>
+            <button type="button" onclick="copyProductLink()"
+                    class="w-full text-left flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
+              <span>Скопировать ссылку</span>
+            </button>
+            <a id="share-tg" href="#" target="_blank" rel="noopener"
+               class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
+              <span>Telegram</span>
+            </a>
+            <a id="share-max" href="#" target="_blank" rel="noopener"
+               class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
+              <span>MAX</span>
+            </a>
+          </div>
         </div>
-      {% endif %}
+        <span id="share-toast"
+              class="hidden inline-flex items-center text-sm text-green-700 font-semibold ml-1">✓ Ссылка скопирована</span>
+      </div>
 
-      {# Secondary actions #}
-      <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm mt-2">
-        <a href="{% url 'quiz' %}" class="text-ink-3 hover:text-accent transition">🔍 Подобрать другую</a>
-        <a href="{% url 'installation' %}" class="text-ink-3 hover:text-accent transition">🔧 Заказать монтаж</a>
-        {% if product.booklet_url %}
-          <a href="{{ product.booklet_url }}" target="_blank" class="text-accent hover:underline">📄 Буклет</a>
-        {% endif %}
+      {# Secondary actions: outline buttons instead of plain links #}
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+        <a href="{% url 'quiz' %}" class="btn-outline">Подобрать другую</a>
+        <a href="{% url 'installation' %}" class="btn-outline">Заказать монтаж</a>
         {% if product.manual_url %}
-          <a href="{{ product.manual_url }}" target="_blank" class="text-accent hover:underline">📋 Инструкция</a>
+          <a href="{{ product.manual_url }}" target="_blank" rel="noopener" class="btn-outline">Инструкция</a>
+        {% elif product.booklet_url %}
+          <a href="{{ product.booklet_url }}" target="_blank" rel="noopener" class="btn-outline">Буклет</a>
         {% endif %}
       </div>
     </div>
   </div>
 
   {# === Quick facts === #}
-  {% if computed_btu or product.series or is_inverter %}
+  {% if computed_btu or product.series or is_inverter or product.brand %}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {% if computed_btu %}
-        <div class="rounded-xl bg-surface px-4 py-3">
+        <div class="rounded-xl bg-white border border-ink/10 px-4 py-3">
           <div class="text-xs text-ink-3 mb-1">Мощность</div>
           <div class="font-semibold">{{ computed_btu }} 000 BTU</div>
         </div>
       {% endif %}
       {% if is_inverter %}
-        <div class="rounded-xl bg-surface px-4 py-3">
+        <div class="rounded-xl bg-white border border-ink/10 px-4 py-3">
           <div class="text-xs text-ink-3 mb-1">Компрессор</div>
           <div class="font-semibold">Инвертор</div>
         </div>
       {% endif %}
       {% if product.brand %}
-        <div class="rounded-xl bg-surface px-4 py-3">
+        <div class="rounded-xl bg-white border border-ink/10 px-4 py-3">
           <div class="text-xs text-ink-3 mb-1">Бренд</div>
           <div class="font-semibold">{{ product.brand.title }}</div>
         </div>
       {% endif %}
       {% if product.series %}
-        <div class="rounded-xl bg-surface px-4 py-3">
+        <div class="rounded-xl bg-white border border-ink/10 px-4 py-3">
           <div class="text-xs text-ink-3 mb-1">Серия</div>
           <div class="font-semibold">{{ product.series }}</div>
         </div>
@@ -150,43 +157,55 @@
     </div>
   {% endif %}
 
-  {# === Description === #}
-  {% if product.description %}
-    <div class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
-      <h2 class="text-xl sm:text-2xl font-bold mb-3">Описание</h2>
-      <div class="text-ink-3 leading-relaxed whitespace-pre-line">{{ product.description|clean_description }}</div>
-    </div>
-  {% endif %}
+  {# === Tabs: Описание / Характеристики === #}
+  {% if product.description or product.tech_values.exists %}
+    <div>
+      <div class="flex gap-2 mb-4 border-b border-ink/10" role="tablist">
+        <button type="button" data-tab="tab-description"
+                class="tab-btn tab-active px-5 py-2.5 -mb-px font-semibold text-sm border-b-2 border-accent text-accent">
+          Описание
+        </button>
+        <button type="button" data-tab="tab-specs"
+                {% if not product.tech_values.exists %}disabled title="Характеристики уточняются у менеджера"{% endif %}
+                class="tab-btn px-5 py-2.5 -mb-px font-semibold text-sm border-b-2 border-transparent text-ink-3 hover:text-ink transition {% if not product.tech_values.exists %}opacity-40 cursor-not-allowed{% endif %}">
+          Технические характеристики
+        </button>
+      </div>
 
-  {# === Tech specs (if populated) === #}
-  {% if product.tech_values.exists %}
-    <div class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
-      <h2 class="text-xl sm:text-2xl font-bold mb-4">Характеристики</h2>
-      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
-        {% for tv in product.tech_values.all %}
-          <div class="flex justify-between gap-3 py-2 border-b border-ink/5">
-            <dt class="text-sm text-ink-3">{{ tv.spec.title }}</dt>
-            <dd class="text-sm font-semibold text-right">{{ tv.value }} {{ tv.spec.unit }}</dd>
-          </div>
-        {% endfor %}
-      </dl>
+      <div id="tab-description" class="tab-content rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
+        {% if product.description %}
+          <div class="text-ink-2 leading-relaxed whitespace-pre-line">{{ product.description|clean_description }}</div>
+        {% else %}
+          <p class="text-ink-3">Описание для этой модели уточняется. Свяжитесь с менеджером — расскажем всё, что нужно.</p>
+        {% endif %}
+      </div>
+
+      {% if product.tech_values.exists %}
+        <div id="tab-specs" class="tab-content hidden rounded-2xl bg-white border border-ink/10 p-6 sm:p-8">
+          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
+            {% for tv in product.tech_values.all %}
+              <div class="flex justify-between gap-3 py-2 border-b border-ink/5">
+                <dt class="text-sm text-ink-3">{{ tv.spec.title }}</dt>
+                <dd class="text-sm font-semibold text-right">{{ tv.value }} {{ tv.spec.unit }}</dd>
+              </div>
+            {% endfor %}
+          </dl>
+        </div>
+      {% endif %}
     </div>
   {% endif %}
 
   {# === Info blocks: delivery / install / warranty === #}
   <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
     <a href="{% url 'delivery' %}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
-      <div class="text-3xl mb-2">🚚</div>
       <div class="font-semibold mb-1">Доставка по Крыму</div>
       <p class="text-sm text-ink-3">Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь. 1-3 дня.</p>
     </a>
     <a href="{% url 'installation' %}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
-      <div class="text-3xl mb-2">🔧</div>
       <div class="font-semibold mb-1">Профессиональный монтаж</div>
       <p class="text-sm text-ink-3">Сертифицированные мастера. Гарантия на работы.</p>
     </a>
     <a href="{% url 'warranty' %}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
-      <div class="text-3xl mb-2">🛡️</div>
       <div class="font-semibold mb-1">Гарантия</div>
       <p class="text-sm text-ink-3">От производителя. Сервис в Крыму.</p>
     </a>
@@ -198,24 +217,7 @@
       <h2 class="text-xl sm:text-2xl font-bold mb-4">Похожие модели</h2>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {% for p in similar_products %}
-          <a href="{% url 'product_detail' p.slug %}" class="rounded-2xl border border-ink/10 bg-white p-4 hover:border-accent/40 hover:shadow-md transition block">
-            <div class="aspect-square bg-surface rounded-xl mb-3 overflow-hidden flex items-center justify-center">
-              {% with img=p.images.first %}
-                {% if img %}
-                  <img src="{{ img.url }}" alt="{{ p.title }}" class="w-full h-full object-contain">
-                {% else %}
-                  <span class="text-ink-3 text-sm">нет фото</span>
-                {% endif %}
-              {% endwith %}
-            </div>
-            <div class="text-xs text-ink-3 mb-1">{{ p.brand.title|default:"" }}</div>
-            <div class="font-semibold text-sm leading-snug mb-2 line-clamp-2">{{ p.title }}</div>
-            {% if p.ric %}
-              <div class="text-accent font-bold">{{ p.ric|floatformat:0 }} ₽</div>
-            {% else %}
-              <div class="text-sm text-ink-3">Цена по запросу</div>
-            {% endif %}
-          </a>
+          {% include 'partials/product_card.html' with product=p %}
         {% endfor %}
       </div>
     </div>
@@ -261,14 +263,90 @@
   </div>
 </div>
 
+<style>
+.btn-outline {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.625rem 1rem; border-radius: 0.75rem;
+  border: 1px solid rgba(14,26,43,0.15);
+  color: #0e1a2b; font-weight: 600; font-size: 0.875rem;
+  transition: border-color 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.btn-outline:hover { border-color: #2e7cf6; color: #2e7cf6; }
+</style>
+
 <script>
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     document.querySelectorAll('[id$="-modal"]:not(.hidden)').forEach(function(m) {
       m.classList.add('hidden');
     });
+    var sm = document.getElementById('share-menu');
+    if (sm) sm.classList.add('hidden');
+  }
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    if (btn.disabled) return;
+    var target = btn.getAttribute('data-tab');
+    document.querySelectorAll('.tab-content').forEach(function(el) {
+      el.classList.add('hidden');
+    });
+    var el = document.getElementById(target);
+    if (el) el.classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.remove('tab-active','border-accent','text-accent');
+      b.classList.add('border-transparent','text-ink-3');
+    });
+    btn.classList.add('tab-active','border-accent','text-accent');
+    btn.classList.remove('border-transparent','text-ink-3');
+  });
+});
+
+// Share
+var SHARE_URL = window.location.href;
+var SHARE_TITLE = "{{ product.title|escapejs }}";
+function toggleShare() {
+  var m = document.getElementById('share-menu');
+  m.classList.toggle('hidden');
+  if (!m.classList.contains('hidden')) {
+    document.getElementById('share-email').href =
+      'mailto:?subject=' + encodeURIComponent(SHARE_TITLE) +
+      '&body=' + encodeURIComponent(SHARE_TITLE + '\n\n' + SHARE_URL);
+    document.getElementById('share-tg').href =
+      'https://t.me/share/url?url=' + encodeURIComponent(SHARE_URL) +
+      '&text=' + encodeURIComponent(SHARE_TITLE);
+    document.getElementById('share-max').href =
+      'https://max.ru/share?url=' + encodeURIComponent(SHARE_URL) +
+      '&text=' + encodeURIComponent(SHARE_TITLE);
+  }
+}
+function copyProductLink() {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(SHARE_URL).then(showShareToast).catch(showShareToast);
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = SHARE_URL; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showShareToast();
+  }
+  document.getElementById('share-menu').classList.add('hidden');
+}
+function showShareToast() {
+  var t = document.getElementById('share-toast');
+  t.classList.remove('hidden');
+  setTimeout(function() { t.classList.add('hidden'); }, 2500);
+}
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('share-menu');
+  var btn = document.getElementById('share-btn');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.add('hidden');
   }
 });
 </script>
@@ -281,7 +359,7 @@ dataLayer.push({ecommerce:{detail:{products:[{
   name:'{{ product.title|escapejs }}',
   brand:'{{ product.brand|default:""|escapejs }}',
   category:'{{ product.category|default:""|escapejs }}',
-  {% if product.price_wholesale %}price:{{ product.price_wholesale|floatformat:2 }},{% endif %}
+  {% if product.ric %}price:{{ product.ric|floatformat:2 }},{% endif %}
 }]}}});
 </script>
 {% endif %}

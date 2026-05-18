@@ -71,14 +71,20 @@ def _btu_q(btus):
 
 
 _COLOR_BLACK_Q = Q(title__icontains='черн') | Q(title__icontains='black')
+_MOBILE_Q = Q(title__icontains='мобильн')
+
+# Сколько брать товаров на pre-filter (буфер для балансировки по поставщикам).
+_BUFFER = 30
 
 
-def _base_qs(btus, *, needs_inverter, budget_max, needs_black):
+def _base_qs(btus, *, needs_inverter, budget_max, needs_black, exclude_mobile=False):
     qs = Product.objects.filter(
         _btu_q(btus),
         is_active=True,
         category__sync_enabled=True,
     ).exclude(MULTI_SPLIT_BLOCK_Q)
+    if exclude_mobile:
+        qs = qs.exclude(_MOBILE_Q)
     if needs_inverter:
         qs = qs.filter(title__iregex=r'инвертор|inverter')
     if budget_max:
@@ -91,56 +97,105 @@ def _base_qs(btus, *, needs_inverter, budget_max, needs_black):
     )
 
 
+def _balance_by_source(products, per_source=2, total=6):
+    """Round-robin балансировка по полю Product.source.
+
+    Шаг 1: круг за кругом берём по 1 от каждого source (до per_source кругов).
+    Шаг 2: если total не набран — добиваем тем, что осталось (без лимита).
+    Сохраняет относительный порядок внутри source-группы (приоритет stock+ric).
+    """
+    if not products:
+        return []
+
+    groups = {}
+    for p in products:
+        groups.setdefault(p.source or 'unknown', []).append(p)
+
+    result = []
+    seen = set()
+    sources = list(groups.keys())
+    for round_idx in range(per_source):
+        for s in sources:
+            if len(result) >= total:
+                break
+            lst = groups[s]
+            if round_idx < len(lst):
+                p = lst[round_idx]
+                if p.pk not in seen:
+                    result.append(p)
+                    seen.add(p.pk)
+        if len(result) >= total:
+            break
+
+    if len(result) < total:
+        for s in sources:
+            for p in groups[s][per_source:]:
+                if len(result) >= total:
+                    break
+                if p.pk not in seen:
+                    result.append(p)
+                    seen.add(p.pk)
+            if len(result) >= total:
+                break
+
+    return result[:total]
+
+
 def recommend_products(btu, *, budget_max=None, needs_inverter=False,
-                       needs_black=False, limit=5, secondary_btus=None):
-    """Подбор товаров с последовательным ослаблением фильтров.
+                       needs_black=False, room_type=None,
+                       per_source=2, total=6, secondary_btus=None):
+    """Подбор товаров с последовательным ослаблением фильтров и балансировкой по поставщикам.
 
     Возвращает (products, relaxed). `relaxed` — список причин ослабления:
         'color_relaxed', 'budget_relaxed', 'inverter_relaxed', 'nothing_found'.
     Пустой список = нашли по строгим параметрам.
     Порядок ослабления: цвет → бюджет → инвертор (от менее критичного
     к более — инвертор/тишина для юзера важнее всего).
+
+    `room_type='commercial'` — для коммерции/офисов исключаем мобильные кондиционеры.
+
+    Финальная выборка балансируется по `Product.source` (breeze/rusklimat/daichi):
+    по `per_source` товаров от каждого источника, общая длина до `total`.
     """
     all_btus = [btu] + list(secondary_btus or [])
     relaxed = []
+    exclude_mobile = (room_type == 'commercial')
+
+    def _try(*, needs_inverter, budget_max, needs_black):
+        qs = _base_qs(
+            all_btus,
+            needs_inverter=needs_inverter,
+            budget_max=budget_max,
+            needs_black=needs_black,
+            exclude_mobile=exclude_mobile,
+        )
+        return list(qs[:_BUFFER])
 
     # 1. Строго по всем фильтрам.
-    products = list(_base_qs(
-        all_btus, needs_inverter=needs_inverter,
-        budget_max=budget_max, needs_black=needs_black,
-    )[:limit])
+    products = _try(needs_inverter=needs_inverter, budget_max=budget_max, needs_black=needs_black)
     if products:
-        return products, relaxed
+        return _balance_by_source(products, per_source, total), relaxed
 
     # 2. Снять цвет.
     if needs_black:
         relaxed.append('color_relaxed')
-        products = list(_base_qs(
-            all_btus, needs_inverter=needs_inverter,
-            budget_max=budget_max, needs_black=False,
-        )[:limit])
+        products = _try(needs_inverter=needs_inverter, budget_max=budget_max, needs_black=False)
         if products:
-            return products, relaxed
+            return _balance_by_source(products, per_source, total), relaxed
 
     # 3. Снять бюджет.
     if budget_max:
         relaxed.append('budget_relaxed')
-        products = list(_base_qs(
-            all_btus, needs_inverter=needs_inverter,
-            budget_max=None, needs_black=False,
-        )[:limit])
+        products = _try(needs_inverter=needs_inverter, budget_max=None, needs_black=False)
         if products:
-            return products, relaxed
+            return _balance_by_source(products, per_source, total), relaxed
 
     # 4. Снять инвертор.
     if needs_inverter:
         relaxed.append('inverter_relaxed')
-        products = list(_base_qs(
-            all_btus, needs_inverter=False,
-            budget_max=None, needs_black=False,
-        )[:limit])
+        products = _try(needs_inverter=False, budget_max=None, needs_black=False)
         if products:
-            return products, relaxed
+            return _balance_by_source(products, per_source, total), relaxed
 
     relaxed.append('nothing_found')
     return [], relaxed

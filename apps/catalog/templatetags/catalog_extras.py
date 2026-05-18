@@ -4,7 +4,18 @@ import re
 from django import template
 from django.template.defaultfilters import striptags
 
+from apps.catalog.btu import extract_btu, btu_label
+
 register = template.Library()
+
+
+@register.simple_tag
+def btu_for(product):
+    """Возвращает '9 000 BTU (до 25 м²)' для карточки в листинге, либо ''."""
+    if product is None:
+        return ''
+    btu = extract_btu(getattr(product, 'articul', ''))
+    return btu_label(btu, with_area=True)
 
 
 _BLOCK_TAGS = re.compile(r'</?(p|br|div|ul|ol|li|h[1-6])\b[^>]*>', re.IGNORECASE)

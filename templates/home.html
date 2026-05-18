@@ -33,33 +33,44 @@
 
   <!-- Product showcase (featured #1) -->
   {% with featured_one=featured.0 %}
-  <div class="md:col-span-4 md:row-span-2 bg-white rounded-[28px] p-7 flex flex-col min-h-[300px] relative overflow-hidden">
+  <a href="{% if featured_one %}{% url 'product_detail' featured_one.slug %}{% else %}/catalog/{% endif %}"
+     class="md:col-span-4 md:row-span-3 bg-white rounded-[28px] p-7 flex flex-col min-h-[460px] relative overflow-hidden group hover:shadow-lg transition">
     <div class="flex items-center justify-between">
       <span class="eyebrow" style="color: var(--primary);">Премьера 2026</span>
       <span class="chip chip-accent">−20%</span>
     </div>
     {% if featured_one %}
-      <h3 class="mt-3 text-2xl font-bold leading-tight">{{ featured_one.brand }} {{ featured_one.title|truncatechars:32 }}</h3>
-      <span class="text-xs text-ink-3 mt-1">Арт. {{ featured_one.articul }}</span>
-      <a href="{% url 'product_detail' featured_one.slug %}" class="flex-1 flex items-center justify-center my-3">
+      <div class="mt-2">
+        {% if featured_one.brand %}
+          <span class="text-sm font-semibold text-ink-2">{{ featured_one.brand.title }}</span>
+        {% endif %}
+        <h3 class="text-xl font-bold leading-tight line-clamp-2 mt-0.5">{{ featured_one.title|truncatechars:60 }}</h3>
+        <span class="text-xs text-ink-3 mt-1 block">Арт. {{ featured_one.articul|default:featured_one.nc_code }}</span>
+      </div>
+      <div class="flex-1 flex items-center justify-center my-4 bg-surface rounded-2xl overflow-hidden">
         {% with img=featured_one.images.first %}
-          <img src="{% if img %}{{ img.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}" alt="{{ featured_one.title }}" class="max-h-32 object-contain">
+          <img src="{% if img %}{{ img.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"
+               alt="{{ featured_one.title }}"
+               class="max-h-64 sm:max-h-72 w-auto object-contain group-hover:scale-105 transition">
         {% endwith %}
-      </a>
-      <div class="flex items-center justify-between mt-auto">
+      </div>
+      <div class="flex items-end justify-between mt-auto">
         <div class="flex flex-col leading-tight">
-          {% if show_price and featured_one.price_wholesale %}
-            <span class="text-2xl font-bold">{{ featured_one.price_wholesale|floatformat:0 }} ₽</span>
+          {% if featured_one.ric %}
+            <span class="text-3xl font-extrabold text-accent">{{ featured_one.ric|floatformat:0 }} ₽</span>
+            {% if not request.user.is_authenticated %}
+              <span class="text-xs text-ink-3 mt-0.5"><span class="text-accent font-semibold">−15%</span> при регистрации</span>
+            {% endif %}
           {% else %}
             <span class="text-sm text-ink-3">Цена по запросу</span>
           {% endif %}
         </div>
-        <a href="{% url 'product_detail' featured_one.slug %}" class="btn btn-primary btn-sm">&rarr;</a>
+        <span class="btn btn-primary btn-sm shrink-0">Подробнее →</span>
       </div>
     {% else %}
       <p class="text-ink-3 text-sm mt-3">Скоро появятся новинки сезона</p>
     {% endif %}
-  </div>
+  </a>
   {% endwith %}
 
   <!-- AI tile -->

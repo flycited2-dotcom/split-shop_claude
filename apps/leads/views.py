@@ -238,6 +238,7 @@ def quiz_step(request):
         budget_max=budget_max,
         needs_inverter=needs_inverter,
         needs_black=needs_black,
+        room_type=ctx['room_type'] or None,
         secondary_btus=secondary_btus,
     )
 
