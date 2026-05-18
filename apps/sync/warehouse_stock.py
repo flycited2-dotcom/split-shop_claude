@@ -14,7 +14,10 @@ import re
 from apps.stock.models import Stock, WarehouseStock
 
 
-_CRIMEA_RE = re.compile(r'симферопол|севастопол|крым|ялт', re.IGNORECASE)
+_CRIMEA_RE = re.compile(
+    r'симфер|севастоп|крым|ялт|евпатор|феодос|керч',
+    re.IGNORECASE,
+)
 
 
 def write_warehouse_stocks(product, warehouses):
