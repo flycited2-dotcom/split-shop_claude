@@ -26,7 +26,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
-from apps.catalog.models import Brand, Category, Product, ProductImage
+from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 
 
@@ -227,22 +227,97 @@ def _sync_images(product, picture_urls):
     ])
 
 
-def _sync_stock(product, remains):
-    """remains = {'total': '0', 'warehouses': {...}}."""
+_CRIMEA_RE = re.compile(r'симферопол|севастопол|крым', re.IGNORECASE)
+
+
+def _crimea_qty(remains):
+    """Извлекает количество на крымском складе из remains.warehouses."""
     if not isinstance(remains, dict):
-        return
-    try:
-        qty = int(remains.get('total') or 0)
-    except (TypeError, ValueError):
-        qty = 0
+        return 0
     warehouses = remains.get('warehouses') or {}
-    warehouse_name = ''
-    if isinstance(warehouses, dict) and warehouses:
-        warehouse_name = ', '.join(str(k) for k in list(warehouses.keys())[:3])
+    if not isinstance(warehouses, dict):
+        return 0
+    for name, qty_str in warehouses.items():
+        if name and _CRIMEA_RE.search(str(name)):
+            try:
+                return int(qty_str or 0)
+            except (TypeError, ValueError):
+                return 0
+    return 0
+
+
+def _sync_stock(product, remains):
+    """Записываем в Stock ТОЛЬКО остатки крымского склада (Симферополь).
+
+    Розничный покупатель в Крыму видит реальную доступность здесь. Если
+    товара нет на крымском складе — quantity=0 («Под заказ»), привезём
+    из Краснодара/Киржача (отдельный SLA).
+    """
+    qty = _crimea_qty(remains)
     Stock.objects.update_or_create(
         product=product,
-        defaults={'quantity': qty, 'warehouse': warehouse_name[:255], 'price_base': product.price_wholesale},
+        defaults={
+            'quantity': qty,
+            'warehouse': 'Симферополь',
+            'price_base': product.price_wholesale,
+        },
     )
+
+
+def _sync_tech_specs(product, properties_dict, tech_cache, properties_meta, units_meta):
+    """Записывает ProductTech из rusklimat-properties dict.
+
+    properties_dict: {uuid: {value, unit}} (формат v2 API).
+    properties_meta: {uuid: {id, name, sort}} из /properties/.
+    units_meta: {unit_uuid: {name, nameFull}} из /units.
+    tech_cache: общий dict uuid → TechSpec.
+    """
+    if not isinstance(properties_dict, dict) or not properties_dict:
+        return 0
+
+    to_create = []
+    seen = set()
+    for prop_uuid, raw in properties_dict.items():
+        # v2: {"value": "...", "unit": "uuid-or-empty"}; v1: значение строкой.
+        if isinstance(raw, dict):
+            value = raw.get('value')
+            unit_uuid = raw.get('unit') or ''
+        else:
+            value = raw
+            unit_uuid = ''
+        if value is None or str(value).strip() == '':
+            continue
+
+        spec = tech_cache.get(prop_uuid)
+        if spec is None:
+            meta = properties_meta.get(prop_uuid) or {}
+            title = (meta.get('name') or '').strip()
+            if not title:
+                continue
+            unit_meta = units_meta.get(unit_uuid) or {}
+            unit_name = (unit_meta.get('name') or '').strip()
+            try:
+                order = int(meta.get('sort') or 0)
+            except (TypeError, ValueError):
+                order = 0
+            spec, _ = TechSpec.objects.update_or_create(
+                external_uuid=prop_uuid,
+                defaults={'title': title, 'unit': unit_name, 'order': order},
+            )
+            tech_cache[prop_uuid] = spec
+
+        if spec.pk in seen:
+            continue
+        seen.add(spec.pk)
+        to_create.append(ProductTech(product=product, spec=spec, value=str(value).strip()))
+
+    if not to_create:
+        return 0
+
+    with transaction.atomic():
+        ProductTech.objects.filter(product=product).delete()
+        ProductTech.objects.bulk_create(to_create)
+    return len(to_create)
 
 
 def sync_rusklimat_rest(*, max_pages=None):
@@ -259,10 +334,17 @@ def sync_rusklimat_rest(*, max_pages=None):
         logger.warning('AC-категорий не найдено в Rusklimat REST')
         return {'created': 0, 'updated': 0, 'pages': 0}
 
+    # Загружаем словари свойств и единиц измерения (для TechSpec).
+    properties_meta = {p['id']: p for p in client.get_properties()}
+    units_meta = {u['id']: u for u in client.get_units()}
+    logger.info('Rusklimat: %d properties, %d units подгружено',
+                len(properties_meta), len(units_meta))
+
     brand_cache = {}
+    tech_cache = {}  # uuid → TechSpec
     slug_cache = set(Product.objects.values_list('slug', flat=True))
     seen_ns = set()
-    created = updated = imgs_synced = stock_synced = 0
+    created = updated = imgs_synced = stock_synced = specs_synced = skipped_no_brand = 0
     page = 1
     page_size = 500
 
@@ -290,9 +372,15 @@ def sync_rusklimat_rest(*, max_pages=None):
                 ns_code = p.get('nsCode')
                 if not ns_code:
                     continue
-                seen_ns.add(ns_code)
 
-                brand = _get_or_create_brand(p.get('brand'), brand_cache)
+                # Skip аксессуары/расходники: бренд «БЕЗ МАРКИ» или отсутствует.
+                brand_title = (p.get('brand') or '').strip()
+                if not brand_title or brand_title.upper() == 'БЕЗ МАРКИ':
+                    skipped_no_brand += 1
+                    continue
+
+                seen_ns.add(ns_code)
+                brand = _get_or_create_brand(brand_title, brand_cache)
                 cat = _master_category_for(p.get('categoryId', '') or '')
                 vendor_code = (p.get('vendorCode') or '').strip()
                 name = (p.get('name') or vendor_code or ns_code).strip()
@@ -346,6 +434,14 @@ def sync_rusklimat_rest(*, max_pages=None):
                     _sync_stock(product, remains)
                     stock_synced += 1
 
+                props = p.get('properties') or {}
+                if props:
+                    count = _sync_tech_specs(
+                        product, props, tech_cache, properties_meta, units_meta,
+                    )
+                    if count:
+                        specs_synced += 1
+
         if len(items) < page_size:
             break
         page += 1
@@ -371,7 +467,10 @@ def sync_rusklimat_rest(*, max_pages=None):
         'pages': page,
         'imgs_synced': imgs_synced,
         'stock_synced': stock_synced,
+        'specs_synced': specs_synced,
+        'skipped_no_brand': skipped_no_brand,
         'deactivated': deactivated,
+        'tech_specs_total': len(tech_cache),
     }
     logger.info('Rusklimat REST sync: %s', summary)
     return summary

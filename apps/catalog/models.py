@@ -115,6 +115,10 @@ class ProductImage(models.Model):
 
 class TechSpec(models.Model):
     breez_id = models.IntegerField(unique=True, null=True, blank=True)
+    external_uuid = models.CharField(
+        max_length=64, unique=True, null=True, blank=True, db_index=True,
+        verbose_name='Внешний UUID (Rusklimat/Daichi)',
+    )
     title = models.CharField(max_length=255)
     unit = models.CharField(max_length=50, blank=True)
     data_type = models.CharField(max_length=50, blank=True)
