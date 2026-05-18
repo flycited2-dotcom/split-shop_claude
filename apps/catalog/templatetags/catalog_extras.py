@@ -26,7 +26,9 @@ def clean_description(value):
     """
     if not value:
         return ''
-    text = html.unescape(str(value))
+    # Двойной unescape: в БД встречается двойное экранирование (`&amp;ndash;`),
+    # один проход даёт `&ndash;`, второй — нормальный «–».
+    text = html.unescape(html.unescape(str(value)))
     text = _BLOCK_TAGS.sub('\n\n', text)
     text = striptags(text)
     text = _WS.sub('\n\n', text)

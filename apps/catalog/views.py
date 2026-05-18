@@ -8,11 +8,15 @@ from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
 from .facets import compute_facets
 
 
-_BTU_FROM_ARTICUL = re.compile(r'(^|[^0-9])(07|09|12|18|24|27|30|36|42|48|60)([^0-9]|$)')
+# BTU-коды в артикулах: стандартные 7/9/12/18/24/27/30/36/42/48/60 + редкие
+# 10/13/14/16/20/22/25/26/32/35/40 (встречаются у Electrolux, Mitsubishi и др.).
+_BTU_FROM_ARTICUL = re.compile(
+    r'(^|[^0-9])(07|09|10|12|13|14|16|18|20|22|24|25|26|27|30|32|35|36|40|42|48|60)([^0-9]|$)'
+)
 
 
 def _extract_btu(product):
-    """Вытаскивает BTU-код (07/09/12/...) из артикула. Возвращает int или None."""
+    """Вытаскивает BTU-код из артикула. Возвращает int (например 10 для 10 000 BTU) или None."""
     art = (product.articul or '').strip()
     m = _BTU_FROM_ARTICUL.search(art)
     return int(m.group(2)) if m else None
