@@ -212,7 +212,10 @@ def sync_stock():
 
         # stocks is a list of {stock: name, quantity: int}
         stocks_list = item.get('stocks') or []
-        total_qty = sum(int(s.get('quantity', 0) or 0) for s in stocks_list if isinstance(s, dict))
+        pairs = [
+            (s.get('stock', ''), s.get('quantity', 0))
+            for s in stocks_list if isinstance(s, dict)
+        ]
 
         # price is a list [{base: ..., base_currency: ...}, {ric: ..., ...}]
         price_list = item.get('price') or []
@@ -222,19 +225,13 @@ def sync_stock():
                 if isinstance(p, dict) and 'base' in p:
                     price_base = p['base']
                     break
+        if price_base is not None and not product.price_wholesale:
+            product.price_wholesale = price_base
+            product.save(update_fields=['price_wholesale'])
 
-        _, is_new = Stock.objects.update_or_create(
-            product=product,
-            defaults={
-                'quantity': total_qty,
-                'warehouse': '',
-                'price_base': price_base,
-            }
-        )
-        if is_new:
-            created += 1
-        else:
-            updated += 1
+        from apps.sync.warehouse_stock import write_warehouse_stocks
+        write_warehouse_stocks(product, pairs)
+        updated += 1
 
     logger.info("sync_stock: created=%d updated=%d", created, updated)
     return {'created': created, 'updated': updated}

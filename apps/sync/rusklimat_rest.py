@@ -28,6 +28,7 @@ from django.db import transaction
 
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
+from apps.sync.warehouse_stock import write_warehouse_stocks
 
 
 def _jwt_payload(token):
@@ -227,41 +228,20 @@ def _sync_images(product, picture_urls):
     ])
 
 
-_CRIMEA_RE = re.compile(r'симферопол|севастопол|крым', re.IGNORECASE)
-
-
-def _crimea_qty(remains):
-    """Извлекает количество на крымском складе из remains.warehouses."""
-    if not isinstance(remains, dict):
-        return 0
-    warehouses = remains.get('warehouses') or {}
-    if not isinstance(warehouses, dict):
-        return 0
-    for name, qty_str in warehouses.items():
-        if name and _CRIMEA_RE.search(str(name)):
-            try:
-                return int(qty_str or 0)
-            except (TypeError, ValueError):
-                return 0
-    return 0
-
-
 def _sync_stock(product, remains):
-    """Записываем в Stock ТОЛЬКО остатки крымского склада (Симферополь).
+    """Пишет per-warehouse breakdown через WarehouseStock + сводный Stock.
 
-    Розничный покупатель в Крыму видит реальную доступность здесь. Если
-    товара нет на крымском складе — quantity=0 («Под заказ»), привезём
-    из Краснодара/Киржача (отдельный SLA).
+    Rusklimat remains.warehouses = {'симферополь склад': '3', 'фрц Киржач': '20', ...}.
+    Покупатель в Крыму видит «В наличии» если Симферополь>0; остальные склады
+    показываются справочно (можем привезти за ~1 день из Краснодара).
     """
-    qty = _crimea_qty(remains)
-    Stock.objects.update_or_create(
-        product=product,
-        defaults={
-            'quantity': qty,
-            'warehouse': 'Симферополь',
-            'price_base': product.price_wholesale,
-        },
-    )
+    if not isinstance(remains, dict):
+        return
+    warehouses_raw = remains.get('warehouses') or {}
+    if not isinstance(warehouses_raw, dict):
+        warehouses_raw = {}
+    pairs = list(warehouses_raw.items())
+    write_warehouse_stocks(product, pairs)
 
 
 def _sync_tech_specs(product, properties_dict, tech_cache, properties_meta, units_meta):

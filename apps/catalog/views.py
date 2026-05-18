@@ -100,7 +100,7 @@ def catalog(request):
 def product_detail(request, slug):
     product = get_object_or_404(
         Product.objects.select_related('brand', 'category', 'stock')
-                       .prefetch_related('images', 'tech_values__spec'),
+                       .prefetch_related('images', 'tech_values__spec', 'warehouse_stocks'),
         slug=slug, is_active=True
     )
     show_price = request.user.is_authenticated and request.user.is_approved

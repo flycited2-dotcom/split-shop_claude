@@ -59,17 +59,37 @@
         Артикул: <span class="font-mono">{{ product.articul|default:product.nc_code }}</span>
       </p>
 
-      {# Stock badge #}
+      {# Stock badge — Симферополь как «главный» #}
       {% if product.stock.in_stock %}
-        <div class="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-sm font-semibold mb-5 w-fit">
+        <div class="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-sm font-semibold mb-3 w-fit">
           <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-          В наличии: {{ product.stock.quantity }} шт.
+          В Крыму: {{ product.stock.quantity }} шт.
         </div>
       {% else %}
-        <div class="inline-flex items-center gap-2 bg-ink/5 text-ink-3 px-3 py-1.5 rounded-full text-sm mb-5 w-fit">
+        <div class="inline-flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-full text-sm mb-3 w-fit">
+          <span class="w-2 h-2 bg-amber-500 rounded-full"></span>
           Под заказ
         </div>
       {% endif %}
+
+      {# Остатки по всем складам — честная картина для клиента #}
+      {% with wh=product.warehouse_stocks.all %}
+        {% if wh %}
+          <details class="mb-5 text-sm">
+            <summary class="cursor-pointer text-ink-3 hover:text-accent select-none">
+              Остатки по складам ({{ wh|length }})
+            </summary>
+            <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+              {% for w in wh %}
+                <div class="flex justify-between gap-3 py-1 border-b border-ink/5">
+                  <span class="text-ink-3 capitalize">{{ w.warehouse }}</span>
+                  <span class="font-semibold {% if w.quantity == 0 %}text-ink-3{% else %}text-ink{% endif %}">{{ w.quantity }} шт.</span>
+                </div>
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
+      {% endwith %}
 
       {# Price block #}
       {% if product.ric %}

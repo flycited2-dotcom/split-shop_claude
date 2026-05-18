@@ -7,6 +7,7 @@ from django.utils.text import slugify
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 from apps.sync.daichi_client import DaichiClient
+from apps.sync.warehouse_stock import write_warehouse_stocks
 
 logger = logging.getLogger(__name__)
 
@@ -372,20 +373,9 @@ def sync_catalog():
 
             store = entry.get('STORE') or entry.get('STORE:') or {}
             if isinstance(store, dict):
+                warehouse = (store.get('NAME') or '').strip()
                 qty = store.get('STORE_AMOUNT')
-                warehouse = store.get('NAME') or ''
-                try:
-                    qty_int = int(qty) if qty is not None else 0
-                except (TypeError, ValueError):
-                    qty_int = 0
-                Stock.objects.update_or_create(
-                    product=product,
-                    defaults={
-                        'quantity': qty_int,
-                        'warehouse': warehouse,
-                        'price_base': wholesale,
-                    },
-                )
+                write_warehouse_stocks(product, [(warehouse, qty)] if warehouse else [])
 
             if is_new:
                 created += 1
