@@ -24,9 +24,11 @@ def home(request):
     # был шанс попасть в выдачу (у него запасы низкие, при общем order_by
     # stock он уходит в хвост), собираем буфер ОТ КАЖДОГО источника отдельно
     # — топ-15 по запасу и цене, — затем round-robin распределяем.
+    # Только сплит-системы — без аксессуаров, осушителей, мобильных и пр.
     base_qs = (
         Product.objects
         .filter(is_active=True, category__sync_enabled=True, stock__quantity__gt=0)
+        .filter(category__title__iregex=r'сплит.?систем')
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .select_related('brand', 'stock')
         .prefetch_related('images')
