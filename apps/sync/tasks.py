@@ -193,31 +193,85 @@ def sync_products(category_ids=None):
     return {'created': created, 'updated': updated, 'deactivated': deactivated, 'skipped': skipped}
 
 
+def _iter_leftoversnew(data):
+    """Универсальный итератор по ответу Breez /v1/leftoversnew/.
+
+    Поддерживает оба формата согласно инструкции:
+    1. `{"НС-X": {...}, "НС-Y": {...}}` (dict с многими ключами) — текущий.
+    2. `[{"НС-X": {...}}, {"НС-Y": {...}}]` (список однолючевых dict) — формат
+       из инструкции 2026-05-19, возможно будет включён Бризом позже.
+    3. `[{'id': 'НС-X', 'nc': 'НС-X', ...}]` (после _get() flatten — устар.).
+
+    Yield's нормализованных dict'ов с полями nc, stocks, price, ...
+    """
+    if isinstance(data, dict):
+        # Формат 1: ключ — NC, значение — товар
+        for key, item in data.items():
+            if isinstance(item, dict):
+                item.setdefault('nc', key)
+                yield item
+    elif isinstance(data, list):
+        for entry in data:
+            if not isinstance(entry, dict):
+                continue
+            # Формат 2: {NC: {...}} с одним ключом
+            if len(entry) == 1 and isinstance(next(iter(entry.values())), dict):
+                key, item = next(iter(entry.items()))
+                item.setdefault('nc', key)
+                yield item
+            # Формат 3: плоский (после _get flatten)
+            elif 'nc' in entry or 'id' in entry:
+                yield entry
+
+
 @shared_task(name='sync.sync_stock')
 def sync_stock():
+    """Sync остатков Breez через /v1/leftoversnew/.
+
+    По инструкции 2026-05-19: типы — quantity:int (>50 трактуется как 50 через
+    _parse_qty), for_marketplace:bool, price.base/ric:float. Crimean-склад
+    идентифицируется substring-поиском (regex _CRIMEA_RE в warehouse_stock).
+    """
+    from apps.sync.warehouse_stock import write_warehouse_stocks
+
     client = _get_client()
-    data = client.get_stock()
-    if not data:
+    raw = client.get_stock()
+    if not raw:
         logger.warning("sync_stock: no data returned from API")
         return {'updated': 0}
 
-    created = updated = 0
-    for item in data:
-        nc = item.get('nc') or item.get('nc_code')
+    created = updated = skipped_no_product = 0
+    warehouse_seen = {}  # name -> {total_qty, nonzero_products}
+
+    for item in _iter_leftoversnew(raw):
+        nc = item.get('nc') or item.get('nc_code') or item.get('id')
         if not nc:
             continue
         product = Product.objects.filter(nc_code=nc).first()
         if not product:
+            skipped_no_product += 1
             continue
 
-        # stocks is a list of {stock: name, quantity: int}
+        # stocks: [{stock: name, quantity: int}]
         stocks_list = item.get('stocks') or []
-        pairs = [
-            (s.get('stock', ''), s.get('quantity', 0))
-            for s in stocks_list if isinstance(s, dict)
-        ]
+        pairs = []
+        for s in stocks_list:
+            if not isinstance(s, dict):
+                continue
+            name = s.get('stock', '')
+            qty = s.get('quantity', 0)
+            pairs.append((name, qty))
+            # Диагностика — копим статистику по складам
+            stat = warehouse_seen.setdefault(name, {'total': 0, 'nonzero': 0})
+            try:
+                qi = int(qty) if not isinstance(qty, str) or not qty.startswith('>') else 50
+            except (TypeError, ValueError):
+                qi = 0
+            stat['total'] += qi
+            if qi > 0:
+                stat['nonzero'] += 1
 
-        # price is a list [{base: ..., base_currency: ...}, {ric: ..., ...}]
+        # price: [{base, base_currency}, {ric, ric_currency}]
         price_list = item.get('price') or []
         price_base = None
         if isinstance(price_list, list):
@@ -229,12 +283,21 @@ def sync_stock():
             product.price_wholesale = price_base
             product.save(update_fields=['price_wholesale'])
 
-        from apps.sync.warehouse_stock import write_warehouse_stocks
         write_warehouse_stocks(product, pairs)
         updated += 1
 
-    logger.info("sync_stock: created=%d updated=%d", created, updated)
-    return {'created': created, 'updated': updated}
+    # Логирование сводки по складам — для диагностики «когда Бриз откроет Крым»
+    logger.info(
+        "Breez sync_stock: updated=%d, skipped_no_product=%d, warehouses=%s",
+        updated, skipped_no_product,
+        {name: f"{s['nonzero']} товаров / {s['total']} шт." for name, s in warehouse_seen.items()},
+    )
+    return {
+        'created': created,
+        'updated': updated,
+        'skipped_no_product': skipped_no_product,
+        'warehouses': {name: s for name, s in warehouse_seen.items()},
+    }
 
 
 @shared_task(name='sync.sync_catalog')
