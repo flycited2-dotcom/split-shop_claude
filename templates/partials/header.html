@@ -1,11 +1,14 @@
 <!-- templates/partials/header.html -->
 {% load static %}
 <header class="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-black/5">
-  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-6">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3 sm:gap-6">
+
     <a href="/" class="flex items-center gap-2 shrink-0">
-      <img src="{% static 'img/swirl.png' %}" alt="SplitHome" class="w-9 h-9">
-      <span class="text-xl font-bold tracking-tight text-ink">SplitHome</span>
+      <img src="{% static 'img/swirl.png' %}" alt="SplitHome" class="w-8 h-8 sm:w-9 sm:h-9">
+      <span class="text-lg sm:text-xl font-bold tracking-tight text-ink">SplitHome</span>
     </a>
+
+    <!-- Desktop nav (md+) -->
     <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-ink-2">
       <a href="/catalog/" class="hover:text-accent transition">Каталог</a>
       <a href="/quiz/" class="hover:text-accent transition">Подбор</a>
@@ -13,7 +16,9 @@
       <a href="/delivery/" class="hover:text-accent transition">Доставка</a>
       <a href="/contacts/" class="hover:text-accent transition">Контакты</a>
     </nav>
-    <div class="flex items-center gap-3">
+
+    <!-- Right cluster: cart, user, burger -->
+    <div class="flex items-center gap-2 sm:gap-3">
       {% if user.is_authenticated %}
         {% if user.is_approved %}
           <a href="/cart/" class="relative w-10 h-10 rounded-full bg-white border border-black/5 hover:border-accent/40 transition flex items-center justify-center" aria-label="Корзина">
@@ -25,17 +30,66 @@
             {% endif %}
           </a>
         {% endif %}
-        <a href="/account/" class="text-sm font-semibold text-ink hover:text-accent">
+        <a href="/account/" class="hidden sm:inline text-sm font-semibold text-ink hover:text-accent truncate max-w-[180px]">
           {{ user.company_name|default:user.username }}
         </a>
-        <form method="post" action="/auth/logout/">
+        <form method="post" action="/auth/logout/" class="hidden sm:block">
           {% csrf_token %}
           <button class="text-sm text-ink-3 hover:text-red-500">Выйти</button>
         </form>
       {% else %}
-        <a href="/auth/login/" class="text-sm font-semibold text-ink hover:text-accent">Войти</a>
-        <a href="/auth/register/" class="btn btn-primary btn-sm">Регистрация</a>
+        <a href="/auth/login/" class="hidden sm:inline text-sm font-semibold text-ink hover:text-accent">Войти</a>
+        <a href="/auth/register/" class="btn btn-primary btn-sm hidden sm:inline-flex">Регистрация</a>
       {% endif %}
+
+      <!-- Burger (mobile only) -->
+      <button type="button" onclick="toggleMobileMenu()" aria-label="Меню"
+              class="md:hidden w-10 h-10 rounded-full bg-white border border-black/5 flex items-center justify-center">
+        <svg id="burger-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
     </div>
   </div>
+
+  <!-- Mobile drawer (hidden by default) -->
+  <div id="mobile-menu" class="hidden md:hidden border-t border-black/5 bg-white">
+    <nav class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1 text-sm font-semibold text-ink-2">
+      <a href="/catalog/" class="py-2.5 px-2 rounded-lg hover:bg-surface hover:text-accent">Каталог</a>
+      <a href="/quiz/" class="py-2.5 px-2 rounded-lg hover:bg-surface hover:text-accent">Подбор</a>
+      <a href="/installation/" class="py-2.5 px-2 rounded-lg hover:bg-surface hover:text-accent">Монтаж</a>
+      <a href="/delivery/" class="py-2.5 px-2 rounded-lg hover:bg-surface hover:text-accent">Доставка</a>
+      <a href="/contacts/" class="py-2.5 px-2 rounded-lg hover:bg-surface hover:text-accent">Контакты</a>
+      <div class="border-t border-black/5 my-2"></div>
+      {% if user.is_authenticated %}
+        <a href="/account/" class="py-2.5 px-2 rounded-lg hover:bg-surface hover:text-accent text-ink">
+          {{ user.company_name|default:user.username }}
+        </a>
+        <form method="post" action="/auth/logout/">
+          {% csrf_token %}
+          <button class="w-full text-left py-2.5 px-2 rounded-lg hover:bg-surface text-red-500">Выйти</button>
+        </form>
+      {% else %}
+        <a href="/auth/login/" class="py-2.5 px-2 rounded-lg hover:bg-surface text-ink">Войти</a>
+        <a href="/auth/register/" class="py-2.5 px-2 rounded-lg bg-accent text-white text-center mt-1">Регистрация</a>
+      {% endif %}
+    </nav>
+  </div>
 </header>
+
+<script>
+(function(){
+  window.toggleMobileMenu = function() {
+    var m = document.getElementById('mobile-menu');
+    if (m) m.classList.toggle('hidden');
+  };
+  // Close on link click
+  document.querySelectorAll('#mobile-menu a').forEach(function(a){
+    a.addEventListener('click', function(){
+      document.getElementById('mobile-menu').classList.add('hidden');
+    });
+  });
+})();
+</script>
