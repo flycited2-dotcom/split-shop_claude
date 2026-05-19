@@ -75,35 +75,129 @@
     <h1 class="text-2xl font-bold mb-2">Регистрация юрлица</h1>
     <p class="text-sm text-ink-3 mb-6">
       Для получения оптового прайс-листа заполните данные компании.
-      После проверки менеджером откроется доступ к оптовым ценам.
+      После проверки менеджером (обычно в течение рабочего дня)
+      откроется доступ к оптовым ценам и личный кабинет дилера.
     </p>
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-6">
       {% csrf_token %}
       <input type="hidden" name="account_type" value="company">
 
-      {% for field in company_form %}
-        {% if field.name != 'data_consent' %}
+      {# Контакт ответственного лица #}
+      <fieldset class="space-y-4">
+        <legend class="text-xs font-semibold text-ink-3 uppercase tracking-wide mb-2">
+          Контактное лицо
+        </legend>
+        {% with field=company_form.contact_person %}
           <div>
-            <label class="block text-sm font-semibold mb-1">
-              {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
-            </label>
-            {{ field }}
-            {% for err in field.errors %}
-              <p class="text-red-500 text-xs mt-1">{{ err }}</p>
-            {% endfor %}
+            <label class="block text-sm font-semibold mb-1">{{ field.label }} <span class="text-red-500">*</span></label>
+            <input type="text" name="{{ field.html_name }}" value="{{ field.value|default_if_none:'' }}"
+                   required placeholder="Иванов Иван Иванович"
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
           </div>
-        {% endif %}
-      {% endfor %}
+        {% endwith %}
+        {% with field=company_form.phone %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">{{ field.label }} <span class="text-red-500">*</span></label>
+            <input type="tel" name="{{ field.html_name }}" value="{{ field.value|default_if_none:'' }}"
+                   required placeholder="+7 (___) ___-__-__"
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+        {% with field=company_form.email %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">{{ field.label }} <span class="text-red-500">*</span></label>
+            <input type="email" name="{{ field.html_name }}" value="{{ field.value|default_if_none:'' }}"
+                   required placeholder="company@example.com"
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            <p class="text-xs text-ink-3 mt-1">На него придут логин и реквизиты доступа</p>
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+      </fieldset>
 
-      <label class="flex items-start gap-2 text-sm text-ink-2 cursor-pointer mt-3">
+      {# Реквизиты компании #}
+      <fieldset class="space-y-4">
+        <legend class="text-xs font-semibold text-ink-3 uppercase tracking-wide mb-2">
+          Реквизиты компании
+        </legend>
+        {% with field=company_form.company_name %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">{{ field.label }} <span class="text-red-500">*</span></label>
+            <input type="text" name="{{ field.html_name }}" value="{{ field.value|default_if_none:'' }}"
+                   required placeholder="ООО «Ромашка»"
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {% with field=company_form.inn %}
+            <div>
+              <label class="block text-sm font-semibold mb-1">{{ field.label }} <span class="text-red-500">*</span></label>
+              <input type="text" inputmode="numeric" pattern="\d{10,12}" name="{{ field.html_name }}"
+                     value="{{ field.value|default_if_none:'' }}" required
+                     placeholder="7706739445" maxlength="12"
+                     class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+              <p class="text-xs text-ink-3 mt-1">{{ field.help_text }}</p>
+              {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+            </div>
+          {% endwith %}
+          {% with field=company_form.kpp %}
+            <div>
+              <label class="block text-sm font-semibold mb-1">{{ field.label }}</label>
+              <input type="text" inputmode="numeric" pattern="\d{9}" name="{{ field.html_name }}"
+                     value="{{ field.value|default_if_none:'' }}"
+                     placeholder="770601001" maxlength="9"
+                     class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+              <p class="text-xs text-ink-3 mt-1">{{ field.help_text }}</p>
+              {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+            </div>
+          {% endwith %}
+        </div>
+        {% with field=company_form.legal_address %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">{{ field.label }} <span class="text-red-500">*</span></label>
+            <textarea name="{{ field.html_name }}" required rows="2"
+                      placeholder="119180, г. Москва, ул. Полянка, 1, оф. 5"
+                      class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">{{ field.value|default_if_none:'' }}</textarea>
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+      </fieldset>
+
+      {# Пароль #}
+      <fieldset class="space-y-4">
+        <legend class="text-xs font-semibold text-ink-3 uppercase tracking-wide mb-2">
+          Пароль для входа
+        </legend>
+        {% with field=company_form.password1 %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">Пароль <span class="text-red-500">*</span></label>
+            <input type="password" name="{{ field.html_name }}" required
+                   placeholder="Не короче 8 символов"
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+        {% with field=company_form.password2 %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">Повторите пароль <span class="text-red-500">*</span></label>
+            <input type="password" name="{{ field.html_name }}" required
+                   placeholder="Тот же пароль"
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            {% for err in field.errors %}<p class="text-red-500 text-xs mt-1">{{ err }}</p>{% endfor %}
+          </div>
+        {% endwith %}
+      </fieldset>
+
+      <label class="flex items-start gap-2 text-sm text-ink-2 cursor-pointer">
         <input type="checkbox" name="data_consent" required class="mt-0.5 w-4 h-4 accent-accent">
         <span>{{ company_form.data_consent.label }} <span class="text-red-500">*</span></span>
       </label>
-      {% for err in company_form.data_consent.errors %}
-        <p class="text-red-500 text-xs">{{ err }}</p>
-      {% endfor %}
+      {% for err in company_form.data_consent.errors %}<p class="text-red-500 text-xs">{{ err }}</p>{% endfor %}
 
-      <button type="submit" class="btn btn-primary w-full justify-center mt-4">
+      <button type="submit" class="btn btn-primary w-full justify-center mt-2">
         Отправить заявку
       </button>
     </form>

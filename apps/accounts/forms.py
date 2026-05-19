@@ -59,26 +59,55 @@ class CompanyRegistrationForm(_BaseRegForm):
     """Регистрация юрлица — для получения оптового прайс-листа.
     После регистрации требуется одобрение менеджером."""
 
-    email = forms.EmailField(required=True, label='Email')
-    company_name = forms.CharField(max_length=255, label='Название компании')
-    inn = forms.CharField(max_length=12, label='ИНН')
-    kpp = forms.CharField(max_length=9, required=False, label='КПП')
-    legal_address = forms.CharField(
-        widget=forms.Textarea(attrs={'rows': 2}), label='Юридический адрес',
+    # Контакт (для связи с лицом, заполняющим)
+    email = forms.EmailField(required=True, label='Email компании')
+    contact_person = forms.CharField(
+        max_length=255, label='Контактное лицо (ФИО)', required=True,
     )
-    phone = forms.CharField(max_length=20, label='Телефон')
-    contact_person = forms.CharField(max_length=255, label='Контактное лицо')
+    phone = forms.CharField(max_length=20, label='Телефон контактного лица', required=True)
+
+    # Реквизиты компании
+    company_name = forms.CharField(max_length=255, label='Название компании', required=True)
+    inn = forms.CharField(
+        max_length=12, label='ИНН', required=True,
+        help_text='10 или 12 цифр',
+    )
+    kpp = forms.CharField(
+        max_length=9, required=False, label='КПП',
+        help_text='Необязательно для ИП',
+    )
+    legal_address = forms.CharField(
+        widget=forms.Textarea(attrs={'rows': 2}),
+        label='Юридический адрес', required=True,
+    )
 
     class Meta:
         model = CustomUser
         fields = (
-            'username', 'email', 'password1', 'password2',
+            'email', 'password1', 'password2',
+            'contact_person', 'phone',
             'company_name', 'inn', 'kpp', 'legal_address',
-            'phone', 'contact_person',
         )
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].lower().strip()
+        if CustomUser.objects.filter(email__iexact=email).exists():
+            raise ValidationError('Email уже зарегистрирован')
+        return email
+
+    def clean_inn(self):
+        inn = (self.cleaned_data['inn'] or '').strip()
+        if not inn.isdigit():
+            raise ValidationError('ИНН должен содержать только цифры')
+        if len(inn) not in (10, 12):
+            raise ValidationError('ИНН — 10 цифр (юрлицо) или 12 (ИП)')
+        return inn
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        # Логин = email (юрлицу отдельный логин не нужен).
+        user.username = self.cleaned_data['email']
+        user.email = self.cleaned_data['email']
         user.account_type = 'company'
         user.is_approved = False  # менеджер проверит ИНН и одобрит
         if commit:
