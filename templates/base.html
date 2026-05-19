@@ -70,5 +70,40 @@ ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBo
     {% block content %}{% endblock %}
   </main>
   {% include 'partials/footer.html' %}
+
+  <!-- Cookie consent banner (152-ФЗ) -->
+  <div id="cookie-banner"
+       class="hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-ink/10 shadow-lg p-4 sm:p-5">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+      <p class="text-sm text-ink-2 flex-1">
+        🍪 Сайт использует cookies для работы корзины, авторизации и
+        статистики посещений. Продолжая пользоваться сайтом, вы
+        соглашаетесь с
+        <a href="/privacy/" class="text-accent hover:underline">политикой обработки персональных данных</a>.
+      </p>
+      <div class="flex gap-2 shrink-0">
+        <button type="button" onclick="cookieConsent('all')"
+                class="btn btn-primary" style="padding: 0.5rem 1rem;">Принять</button>
+        <button type="button" onclick="cookieConsent('necessary')"
+                class="px-4 py-2 rounded-xl border border-ink/15 text-sm font-semibold hover:border-accent hover:text-accent transition">
+          Только необходимые
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var key = 'splithome_cookie_consent';
+    if (!localStorage.getItem(key)) {
+      var b = document.getElementById('cookie-banner');
+      if (b) b.classList.remove('hidden');
+    }
+    window.cookieConsent = function(level) {
+      try { localStorage.setItem(key, level); } catch (e) {}
+      var b = document.getElementById('cookie-banner');
+      if (b) b.classList.add('hidden');
+    };
+  })();
+  </script>
 </body>
 </html>

@@ -1,6 +1,47 @@
 {% extends 'base.html' %}
 {% load static catalog_extras %}
 {% block title %}SplitHome — кондиционеры и сплит-системы в Крыму{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": "https://splithome.ru/#business",
+  "name": "SplitHome",
+  "alternateName": "СплитХоум",
+  "description": "Продажа, доставка и монтаж кондиционеров и сплит-систем по всему Крыму. Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.",
+  "url": "https://splithome.ru",
+  "email": "info@splithome.ru",
+  "image": "https://splithome.ru/static/img/swirl.png",
+  "address": {
+    "@type": "PostalAddress",
+    "addressRegion": "Республика Крым",
+    "addressLocality": "Симферополь",
+    "addressCountry": "RU"
+  },
+  "areaServed": [
+    {"@type": "City", "name": "Симферополь"},
+    {"@type": "City", "name": "Севастополь"},
+    {"@type": "City", "name": "Ялта"},
+    {"@type": "City", "name": "Евпатория"},
+    {"@type": "City", "name": "Феодосия"},
+    {"@type": "City", "name": "Керчь"}
+  ],
+  "priceRange": "10000-150000 RUB",
+  "currenciesAccepted": "RUB",
+  "paymentAccepted": "Cash, Credit Card, Bank Transfer",
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "09:00",
+    "closes": "21:00"
+  },
+  "sameAs": []
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 <!-- HERO bento grid -->

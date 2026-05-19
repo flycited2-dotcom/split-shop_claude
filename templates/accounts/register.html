@@ -1,31 +1,132 @@
 {% extends 'base.html' %}
 {% block title %}Регистрация — SplitHome{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto">
-  <div class="card p-8">
-    <h1 class="text-2xl font-bold mb-6">Регистрация дилера</h1>
-    <p class="text-sm text-gray-500 mb-6">
-      Только для юридических лиц. После регистрации менеджер проверит данные
-      и откроет доступ к оптовым ценам.
+<div class="max-w-3xl mx-auto px-4 py-8">
+
+  {# === Табы === #}
+  <div class="flex gap-2 mb-6 border-b border-ink/10">
+    <button type="button"
+            onclick="showRegTab('individual')"
+            id="tab-individual-btn"
+            class="reg-tab-btn px-5 py-3 -mb-px font-semibold text-sm border-b-2 transition
+                   {% if active_tab == 'individual' %}border-accent text-accent{% else %}border-transparent text-ink-3 hover:text-ink{% endif %}">
+      Физическое лицо
+    </button>
+    <button type="button"
+            onclick="showRegTab('company')"
+            id="tab-company-btn"
+            class="reg-tab-btn px-5 py-3 -mb-px font-semibold text-sm border-b-2 transition
+                   {% if active_tab == 'company' %}border-accent text-accent{% else %}border-transparent text-ink-3 hover:text-ink{% endif %}">
+      Юридическое лицо
+    </button>
+  </div>
+
+  {# === Физическое лицо === #}
+  <div id="reg-form-individual"
+       class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8 {% if active_tab != 'individual' %}hidden{% endif %}">
+    <h1 class="text-2xl font-bold mb-2">Регистрация</h1>
+    <p class="text-sm text-ink-3 mb-6">
+      Email и телефон — этого достаточно, чтобы оставлять заявки, получать
+      уведомления и накапливать скидку. Менеджер свяжется по любому контакту.
     </p>
     <form method="post" class="space-y-4">
       {% csrf_token %}
-      {% for field in form %}
-        <div>
-          <label class="block text-sm font-semibold mb-1">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <p class="text-red-500 text-xs mt-1">{{ field.errors.0 }}</p>
-          {% endif %}
-        </div>
+      <input type="hidden" name="account_type" value="individual">
+
+      {% for field in individual_form %}
+        {% if field.name != 'data_consent' %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">
+              {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+            </label>
+            <input type="{% if field.field.widget.input_type %}{{ field.field.widget.input_type }}{% else %}text{% endif %}"
+                   name="{{ field.html_name }}"
+                   id="{{ field.id_for_label }}"
+                   value="{{ field.value|default_if_none:'' }}"
+                   {% if field.field.required %}required{% endif %}
+                   class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent">
+            {% if field.help_text %}
+              <p class="text-xs text-ink-3 mt-1">{{ field.help_text }}</p>
+            {% endif %}
+            {% for err in field.errors %}
+              <p class="text-red-500 text-xs mt-1">{{ err }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
       {% endfor %}
-      <button type="submit" class="btn-accent w-full py-3 rounded-lg font-bold mt-4">
+
+      <label class="flex items-start gap-2 text-sm text-ink-2 cursor-pointer mt-3">
+        <input type="checkbox" name="data_consent" required class="mt-0.5 w-4 h-4 accent-accent">
+        <span>{{ individual_form.data_consent.label }} <span class="text-red-500">*</span></span>
+      </label>
+      {% for err in individual_form.data_consent.errors %}
+        <p class="text-red-500 text-xs">{{ err }}</p>
+      {% endfor %}
+
+      <button type="submit" class="btn btn-primary w-full justify-center mt-4">
+        Зарегистрироваться
+      </button>
+    </form>
+  </div>
+
+  {# === Юридическое лицо === #}
+  <div id="reg-form-company"
+       class="rounded-2xl bg-white border border-ink/10 p-6 sm:p-8 {% if active_tab != 'company' %}hidden{% endif %}">
+    <h1 class="text-2xl font-bold mb-2">Регистрация юрлица</h1>
+    <p class="text-sm text-ink-3 mb-6">
+      Для получения оптового прайс-листа заполните данные компании.
+      После проверки менеджером откроется доступ к оптовым ценам.
+    </p>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="account_type" value="company">
+
+      {% for field in company_form %}
+        {% if field.name != 'data_consent' %}
+          <div>
+            <label class="block text-sm font-semibold mb-1">
+              {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+            </label>
+            {{ field }}
+            {% for err in field.errors %}
+              <p class="text-red-500 text-xs mt-1">{{ err }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+
+      <label class="flex items-start gap-2 text-sm text-ink-2 cursor-pointer mt-3">
+        <input type="checkbox" name="data_consent" required class="mt-0.5 w-4 h-4 accent-accent">
+        <span>{{ company_form.data_consent.label }} <span class="text-red-500">*</span></span>
+      </label>
+      {% for err in company_form.data_consent.errors %}
+        <p class="text-red-500 text-xs">{{ err }}</p>
+      {% endfor %}
+
+      <button type="submit" class="btn btn-primary w-full justify-center mt-4">
         Отправить заявку
       </button>
     </form>
-    <p class="text-center text-sm text-gray-400 mt-4">
-      Уже есть аккаунт? <a href="/auth/login/" class="text-accent">Войти</a>
-    </p>
   </div>
+
+  <p class="text-center text-sm text-ink-3 mt-6">
+    Уже есть аккаунт? <a href="/auth/login/" class="text-accent font-semibold hover:underline">Войти</a>
+  </p>
 </div>
+
+<script>
+function showRegTab(t) {
+  document.getElementById('reg-form-individual').classList.toggle('hidden', t !== 'individual');
+  document.getElementById('reg-form-company').classList.toggle('hidden', t !== 'company');
+  document.querySelectorAll('.reg-tab-btn').forEach(function(b){
+    b.classList.remove('border-accent','text-accent');
+    b.classList.add('border-transparent','text-ink-3');
+  });
+  var active = document.getElementById('tab-' + t + '-btn');
+  if (active) {
+    active.classList.remove('border-transparent','text-ink-3');
+    active.classList.add('border-accent','text-accent');
+  }
+}
+</script>
 {% endblock %}

@@ -2,20 +2,42 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .forms import RegistrationForm
+from .forms import IndividualRegistrationForm, CompanyRegistrationForm
 
 
 def register(request):
+    """Регистрация с двумя табами: физлицо (по умолчанию) и юрлицо."""
+    active_tab = request.POST.get('account_type') or request.GET.get('tab') or 'individual'
+    if active_tab not in ('individual', 'company'):
+        active_tab = 'individual'
+
+    individual_form = IndividualRegistrationForm()
+    company_form = CompanyRegistrationForm()
+
     if request.method == 'POST':
-        form = RegistrationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request,
-                'Регистрация прошла успешно. Ожидайте одобрения менеджера.')
-            return redirect('pending')
-    else:
-        form = RegistrationForm()
-    return render(request, 'accounts/register.html', {'form': form})
+        if active_tab == 'individual':
+            individual_form = IndividualRegistrationForm(request.POST)
+            if individual_form.is_valid():
+                user = individual_form.save()
+                login(request, user)
+                messages.success(request, 'Аккаунт создан. Добро пожаловать!')
+                return redirect('home')
+        else:
+            company_form = CompanyRegistrationForm(request.POST)
+            if company_form.is_valid():
+                company_form.save()
+                messages.success(
+                    request,
+                    'Заявка отправлена. Менеджер проверит данные и откроет '
+                    'доступ к оптовым ценам.',
+                )
+                return redirect('pending')
+
+    return render(request, 'accounts/register.html', {
+        'individual_form': individual_form,
+        'company_form': company_form,
+        'active_tab': active_tab,
+    })
 
 
 def login_view(request):

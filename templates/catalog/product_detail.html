@@ -6,6 +6,34 @@
 {% block og_description %}{{ product.title }}{% if product.brand %} от {{ product.brand }}{% endif %}{% if computed_btu %}. Мощность {{ computed_btu }} 000 BTU{% endif %}. Доставка и монтаж по Крыму.{% endblock %}
 {% if product.images.first %}{% block og_image %}{{ product.images.first.url }}{% endblock %}{% endif %}
 
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "{{ product.title|escapejs }}",
+  "sku": "{{ product.articul|default:product.nc_code|escapejs }}",
+  {% if product.brand %}"brand": {"@type": "Brand", "name": "{{ product.brand.title|escapejs }}"},{% endif %}
+  {% if product.description %}"description": "{{ product.description|clean_description|truncatewords:50|escapejs }}",{% endif %}
+  "image": [{% for img in product.images.all %}"{{ img.url|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+  "url": "{{ request.build_absolute_uri }}"{% if product.ric %},
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ request.build_absolute_uri }}",
+    "priceCurrency": "RUB",
+    "price": "{{ product.ric|floatformat:0 }}",
+    "availability": "{% if product.stock.in_stock %}https://schema.org/InStock{% else %}https://schema.org/PreOrder{% endif %}",
+    "itemCondition": "https://schema.org/NewCondition",
+    "seller": {
+      "@type": "Organization",
+      "name": "SplitHome",
+      "url": "https://splithome.ru"
+    }
+  }{% endif %}
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-6xl mx-auto py-6 sm:py-10 px-4 space-y-8 sm:space-y-10">
 
