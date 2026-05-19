@@ -20,6 +20,29 @@ _CRIMEA_RE = re.compile(
 )
 
 
+def _parse_qty(raw):
+    """Бриз отдаёт quantity как '>50' для остатков больше 50.
+    Превращаем в int с safe-fallback."""
+    if raw is None:
+        return 0
+    s = str(raw).strip()
+    if not s:
+        return 0
+    if s.startswith('>'):
+        # «>50» → 50 (минимум, реально больше — но точнее не знаем)
+        try:
+            return max(0, int(s[1:].strip()))
+        except (TypeError, ValueError):
+            return 0
+    try:
+        return max(0, int(s))
+    except (TypeError, ValueError):
+        try:
+            return max(0, int(float(s)))
+        except (TypeError, ValueError):
+            return 0
+
+
 def _normalize_warehouse_name(name):
     """Приводим имя склада к человеческому виду.
 
@@ -53,10 +76,7 @@ def write_warehouse_stocks(product, warehouses):
         if not name or name in seen_names:
             continue
         seen_names.add(name)
-        try:
-            qty = max(0, int(raw_qty or 0))
-        except (TypeError, ValueError):
-            qty = 0
+        qty = _parse_qty(raw_qty)
         rows.append((name, qty))
         total += qty
         if _CRIMEA_RE.search(name):
