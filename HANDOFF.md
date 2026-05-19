@@ -1,11 +1,47 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-18 (вечер, после TechSpec + per-warehouse + Rusklimat REST)
-**Прогресс:** B2C-pivot + полная карточка + Quiz + TechSpec у всех 3 поставщиков + per-warehouse остатки + Rusklimat REST
+**Дата обновления:** 2026-05-19 (вечер, после I/J итераций)
+**Прогресс:** B2C-pivot + Quiz + TechSpec у всех 3 поставщиков + per-warehouse + Rusklimat REST + регистрация физ/юр + cookie + LLM-SEO + mobile-адаптация
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `c47101c` (fix(stock): нормализуем «Симферопль» → «Симферополь»)
+**Production HEAD на VPS:** `df68e95` (feat(mobile): burger menu + collapsible sidebar)
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-19 — регистрация, cookie, LLM-SEO, мобильная адаптация, Бриз-диагноз
+
+**I3. Регистрация физлицо/юрлицо** — `/auth/register/` с двумя табами. По умолчанию «Физлицо» (email + телефон + опц. Telegram/Max + согласие на ПД). Авто-логин после регистрации. Юрлицо — отдельная стилизованная форма (`fieldset` + `legend`: Контактное лицо / Реквизиты / Пароль), валидация ИНН (10 или 12 цифр), `inputmode=numeric`. После регистрации юрлица — pending до одобрения менеджером. См. `memory/registration_forms.md`. Файлы: `apps/accounts/forms.py`, `templates/accounts/register.html`, миграция `accounts/0002_account_type_messenger`.
+
+**I4. Cookie banner + Privacy** — banner внизу страницы при первом визите (флаг в localStorage, кнопки «Принять» / «Только необходимые»). Страница `/privacy/` со стандартным текстом 152-ФЗ (собираемые данные, цели, права пользователя). Файлы: `templates/base.html`, `templates/pages/privacy.html`, URL `/privacy/` в `splithome/urls.py`.
+
+**I5. LLM-SEO** — `/llms.txt` по стандарту llmstxt.org (описание, география, бренды, BTU-таблица). `/robots.txt` теперь явно разрешает GPTBot, ChatGPT-User, PerplexityBot, ClaudeBot, anthropic-ai, Google-Extended, CCBot. Schema.org JSON-LD: `LocalBusiness` на главной (адрес Симферополь, areaServed Крым, opening hours), `Product+Offer` на карточках (priceCurrency=RUB, availability=InStock|PreOrder).
+
+**I6. Кликабельные labels в фильтре** — «Только в наличии» обёрнут в `<label>`, клик по тексту переключает чекбокс.
+
+**Бриз Крым — окончательный диагноз** — API `/v1/leftoversnew/` возвращает qty=0 на «Бриз Крым» у всех 4667 товаров. На B2B-портале для того же аккаунта остатки есть (NC-1761129 — 8+282 шт). Реверс-инжиниринг SPA + Keycloak показал: scraping `b2b.breez.ru` невозможен (Keycloak realm `breez` блокирует `password`/`implicit`/`code_no_secret`). Перепарсили `sync_stock` по новой инструкции Бриза (robust парсер `_iter_leftoversnew` поддерживает оба формата JSON, диагностика по складам в логах). Sync пишет правильные данные — просто API отдаёт ноль. Действие — запросить расширение прав API-ключа у Бриза. См. `memory/breez_warehouse_diagnosis.md`. Fallback в `apps/sync/warehouse_stock.py`: если в Крыму 0, но есть на Шерризон/Ростов — `Stock.quantity = сумма`, badge синий «Под заказ: N шт.», ссылается на блок остатков по складам в карточке.
+
+**J1. Стилизованная форма юрлица** — переписал unstyled `{{ field }}` Django-render на ручной HTML с теми же классами что у физлица (border-ink/15 + focus:border-accent), placeholder'ами («ООО Ромашка», «7706739445», «119180, г. Москва...»), help-текстами под полями, красными звёздочками * у required. Бэкенд: `clean_inn()` валидирует длину 10/12 цифр, username=email при сохранении.
+
+**J2. Мобильная адаптация** — header получил burger-кнопку (`md:hidden`) с drawer-меню. Каталог `/catalog/` — на `< lg` sidebar скрыт (`hidden lg:block`), сверху кнопка «Категории и фильтры» (`toggleCatalogSidebar()`). Раньше сайдбар `w-64` оккупировал 256px на мобиле — фатальный баг. См. `memory/mobile_responsive.md`. Файлы: `templates/partials/header.html`, `templates/catalog/index.html`.
+
+### Свежие коммиты (19 мая)
+```
+df68e95 feat(mobile): burger menu в header + collapsible sidebar каталога
+b28b150 feat(sync): Breez sync_stock — robust парсер + диагностика складов
+913bb44 fix(register): стилизованная форма юрлица + ИНН-валидация
+4222439 fix(home): Хиты сезона только сплит-системы (без аксессуаров/осушителей)
+805b6e7 feat(stock): «Под заказ из X: N шт.» вместо «Под заказ» при остатке на не-крымских складах
+2484420 fix(stock): обработка quantity='>50' от Бриза
+d325e1d feat(ux): I3 регистрация + I4 cookie + I5 LLM-SEO + I6 labels
+```
+
+### Открытые задачи
+- **Бриз Крым** — запросить у Бриза расширение API-ключа на склад Крым.
+- **Rusklimat auto-refresh JWT** — нужны отдельные API-credentials от Rusklimat.
+- **SplitHub.ru как 4-й поставщик** — нужны API-credentials.
+- **Скидка 15%** — пока только маркетинговая плашка, реальной механики нет.
+- **Удалить устаревший Rusklimat scraping** (`apps/sync/rusklimat_scraper.py`, `rusklimat_catalog.py`).
 
 ---
 
