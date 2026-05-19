@@ -91,11 +91,21 @@ def write_warehouse_stocks(product, warehouses):
             for name, qty in rows
         ])
 
-    # Сводный Stock — главным остатком считаем Крым; если его нет — сумму.
-    main_qty = crimea if crimea > 0 else 0  # «есть в Крыму или нет» — да/нет
-    main_warehouse = 'Симферополь' if crimea > 0 else (
-        rows[0][0] if rows and total > 0 else ''
-    )
+    # Сводный Stock:
+    # - Если есть в Крыму → quantity=Крым, warehouse=«Симферополь» (зелёный badge).
+    # - Иначе если есть хоть где-то → quantity=сумма всех, warehouse=крупнейший
+    #   (синий badge «Под заказ из X: N»). Так товары Бриза с остатком только в
+    #   Шерризоне/Ростове не считаются недоступными — мы можем привезти.
+    if crimea > 0:
+        main_qty = crimea
+        main_warehouse = 'Симферополь'
+    elif total > 0:
+        main_qty = total
+        # warehouse = название склада с наибольшим qty (для UI badge)
+        main_warehouse = max(rows, key=lambda x: x[1])[0]
+    else:
+        main_qty = 0
+        main_warehouse = ''
     Stock.objects.update_or_create(
         product=product,
         defaults={

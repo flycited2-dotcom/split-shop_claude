@@ -87,12 +87,19 @@
         Артикул: <span class="font-mono">{{ product.articul|default:product.nc_code }}</span>
       </p>
 
-      {# Stock badge — Симферополь как «главный» #}
+      {# Stock badge — Симферополь зелёный, иначе синий «под заказ из X» #}
       {% if product.stock.in_stock %}
-        <div class="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-sm font-semibold mb-3 w-fit">
-          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-          В Крыму: {{ product.stock.quantity }} шт.
-        </div>
+        {% if product.stock.warehouse == 'Симферополь' %}
+          <div class="inline-flex items-center gap-2 bg-green-100 text-green-800 px-3 py-1.5 rounded-full text-sm font-semibold mb-3 w-fit">
+            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+            В Крыму: {{ product.stock.quantity }} шт.
+          </div>
+        {% else %}
+          <div class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm font-semibold mb-3 w-fit">
+            <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+            Под заказ: {{ product.stock.quantity }} шт.
+          </div>
+        {% endif %}
       {% else %}
         <div class="inline-flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-full text-sm mb-3 w-fit">
           <span class="w-2 h-2 bg-amber-500 rounded-full"></span>
