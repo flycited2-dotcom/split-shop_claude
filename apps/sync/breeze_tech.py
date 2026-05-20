@@ -120,6 +120,8 @@ def _sync_product_tech(product, breez_id, cache):
     with transaction.atomic():
         ProductTech.objects.filter(product=product).delete()
         ProductTech.objects.bulk_create(to_create)
+    from apps.catalog.btu import refresh_btu_calc
+    refresh_btu_calc(product)
     return len(to_create)
 
 

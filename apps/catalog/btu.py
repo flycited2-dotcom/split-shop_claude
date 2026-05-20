@@ -222,6 +222,18 @@ def compute_btu(product):
     )
 
 
+def refresh_btu_calc(product):
+    """Пересчитывает и сохраняет `Product.btu_calc`. Вызывается из sync
+    после записи tech_values. Тихий no-op, если значение не изменилось."""
+    if product is None:
+        return None
+    new = compute_btu(product)
+    if product.btu_calc != new:
+        product.btu_calc = new
+        product.save(update_fields=['btu_calc'])
+    return new
+
+
 def btu_label(btu, with_area=True):
     """«9 000 BTU (до 25 м²)» или «9 000 BTU»."""
     if not btu:

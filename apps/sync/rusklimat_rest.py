@@ -297,6 +297,8 @@ def _sync_tech_specs(product, properties_dict, tech_cache, properties_meta, unit
     with transaction.atomic():
         ProductTech.objects.filter(product=product).delete()
         ProductTech.objects.bulk_create(to_create)
+    from apps.catalog.btu import refresh_btu_calc
+    refresh_btu_calc(product)
     return len(to_create)
 
 
