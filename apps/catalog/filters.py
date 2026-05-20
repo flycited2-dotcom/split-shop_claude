@@ -129,8 +129,12 @@ class ProductFilter(django_filters.FilterSet):
         return queryset.filter(Q(title__icontains=value) | Q(articul__icontains=value))
 
     def filter_in_stock(self, queryset, name, value):
+        # «Только в наличии» = именно крымский склад. Бриз Шерризон/Ростов и
+        # Rusklimat Краснодар попадают в Stock.warehouse через fallback,
+        # но это «под заказ», а не «в наличии».
         if value:
-            return queryset.filter(stock__quantity__gt=0)
+            return queryset.filter(stock__warehouse='Симферополь',
+                                   stock__quantity__gt=0)
         return queryset
 
     def filter_btu(self, queryset, name, value):

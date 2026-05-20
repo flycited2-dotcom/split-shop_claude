@@ -46,6 +46,7 @@ need to stay in sync with the filter sidebar on every change.
       {% if page_obj.has_previous %}
         <a hx-get="{% url 'catalog' %}?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
            hx-target="#catalog-results" hx-swap="outerHTML" hx-push-url="true"
+           hx-on::after-swap="window.scrollTo({top:0, behavior:'smooth'})"
            href="?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
            class="px-4 py-2 card text-sm hover:text-accent cursor-pointer">← Назад</a>
       {% endif %}
@@ -55,6 +56,7 @@ need to stay in sync with the filter sidebar on every change.
       {% if page_obj.has_next %}
         <a hx-get="{% url 'catalog' %}?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
            hx-target="#catalog-results" hx-swap="outerHTML" hx-push-url="true"
+           hx-on::after-swap="window.scrollTo({top:0, behavior:'smooth'})"
            href="?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
            class="px-4 py-2 card text-sm hover:text-accent cursor-pointer">Вперёд →</a>
       {% endif %}

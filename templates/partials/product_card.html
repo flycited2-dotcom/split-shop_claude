@@ -24,19 +24,13 @@
   {% endif %}
 
   <div class="mt-auto">
-    {% if product.stock.in_stock %}
-      {% if product.stock.warehouse == 'Симферополь' %}
-        <span class="inline-flex items-center gap-1 text-xs text-green-700 font-semibold mb-2">
-          <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>В Крыму
-        </span>
-      {% else %}
-        <span class="inline-flex items-center gap-1 text-xs text-blue-700 font-semibold mb-2">
-          <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>Под заказ
-        </span>
-      {% endif %}
+    {% if product.stock.warehouse == 'Симферополь' and product.stock.in_stock %}
+      <span class="inline-flex items-center gap-1 text-xs text-green-700 font-semibold mb-2">
+        <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>На складе
+      </span>
     {% else %}
-      <span class="inline-flex items-center gap-1 text-xs text-ink-3 mb-2">
-        <span class="w-1.5 h-1.5 bg-ink/20 rounded-full"></span>Под заказ
+      <span class="inline-flex items-center gap-1 text-xs text-blue-700 font-semibold mb-2">
+        <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>Под заказ
       </span>
     {% endif %}
 

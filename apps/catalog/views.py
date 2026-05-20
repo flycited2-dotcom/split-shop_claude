@@ -88,7 +88,7 @@ def catalog(request):
             'title',
         )
 
-    paginator = Paginator(ordered_qs, 24)
+    paginator = Paginator(ordered_qs, 16)
     page = paginator.get_page(request.GET.get('page'))
 
     categories = (
