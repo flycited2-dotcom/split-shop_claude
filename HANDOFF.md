@@ -1,11 +1,47 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-19 (вечер, после I/J итераций)
-**Прогресс:** B2C-pivot + Quiz + TechSpec у всех 3 поставщиков + per-warehouse + Rusklimat REST + регистрация физ/юр + cookie + LLM-SEO + mobile-адаптация
+**Дата обновления:** 2026-05-20 (фикс BTU из tech_values + 500 на product_detail + Бриз Крым открыт)
+**Прогресс:** B2C-pivot + Quiz + TechSpec у всех 3 поставщиков + per-warehouse + Rusklimat REST + регистрация физ/юр + cookie + LLM-SEO + mobile-адаптация + правильный BTU + Бриз Крым работает
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `df68e95` (feat(mobile): burger menu + collapsible sidebar)
+**Production HEAD на VPS:** `b329bf9` (fix(btu): импорт resolve_btu в views.py)
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-20 — BTU из tech_values, 500 на product_detail, Бриз Крым открыт, Docker-зеркало
+
+**J4. BTU приоритетно из tech_values.** Изначально жалоба пользователя: на карточке XIGMA `XGI-TXE27RHA` в quick-facts показывалось «27 000 BTU» (из артикула), а в табе характеристик «Холодопроизводительность (kBTU) = 9» (из API Бриза) — рассинхрон. Корень: XIGMA маркирует артикул цифрой ПЛОЩАДИ помещения (м²), а не BTU. Старый `extract_btu(articul)` ловил `27` и трактовал как BTU.
+
+- Новая функция `apps/catalog/btu.py:resolve_btu(product)` — приоритет:
+  1. `product.tech_values.all()` — берёт первую запись TechSpec, у которой `title` содержит «холодопроизв» / «мощность охлажд» / «cooling capacity» **и** unit/title содержит `kbtu`/`btu` (исключая `квт`/`kw`).
+  2. Парсит value (`9`, `9.5`, `2.65 (0.7 - 3.37)`), округляет до ближайшего из `BTU_TO_AREA`.
+  3. Fallback на `extract_btu(articul)` — для товаров без tech_values.
+- `apps/catalog/views.py:product_detail`, `apps/catalog/templatetags/catalog_extras.py:btu_for` — переключены на `resolve_btu`.
+- В каждый queryset, отдающий товар в шаблон, добавлен `prefetch_related('tech_values__spec')` (предотвращает N+1).
+
+**Фикс 500 на product_detail (b329bf9).** После выкатки `resolve_btu` каждая страница `/product/.../` отдавала 500. В docker logs и nginx error.log — пусто. Корень: в `views.py` я вызвал `resolve_btu(product)`, но забыл импорт. `NameError` проглатывался Django потому что в `splithome/settings/production.py` нет `LOGGING`-конфига. См. `memory/debugging_prod_500.md` — методика поимки traceback через `manage.py shell` + `Client(HTTP_X_FORWARDED_PROTO="https")`.
+
+**Бриз Крым — доступ к API открыт.** После запроса через форму «Отправить запрос» на api.breez.ru Бриз расширил права ключа `flycited@gmail.com` на склад «Бриз Крым». Текущий sync_stock: `"Бриз Крым": {"total": 1890, "nonzero": 286}`. UI и WarehouseStock автоматически подтянули. См. `memory/breez_warehouse_diagnosis.md`.
+
+**Docker-билд — переключён на mirror.yandex.ru.** При сборке web-контейнера `apt-get update` падал: Fastly CDN (199.232.x.x для `deb.debian.org`) недоступен с нашего VPS (firewall блокирует :80 наружу). `Dockerfile` теперь делает `sed -i 's|http://deb.debian.org|http://mirror.yandex.ru|g'` по `sources.list.d/debian.sources` или `sources.list` перед `apt-get install`. Параллельно пин на `python:3.12-slim-bookworm` (Debian 12 stable — у trixie репозитории нестабильны).
+
+### Свежие коммиты (20 мая)
+```
+b329bf9 fix(btu): импорт resolve_btu в views.py (фикс 500 на product_detail)
+61e342f fix(docker): зеркало Debian → mirror.yandex.ru (Fastly CDN недоступен с VPS)
+5fdc67d fix(docker): пин python:3.12-slim-bookworm (Debian 12)
+018e738 fix(btu): BTU из tech_values «Холодопроизводительность» вместо артикула
+d429b14 feat(sync): Daichi Business partner API integration
+```
+
+### Открытые задачи (см. `memory/todo_2026_05_20.md`)
+- **`LOGGING` в production.py** — добавить StreamHandler ERROR, чтобы 500 на проде логировались.
+- **Rusklimat auto-refresh JWT** — нужны отдельные API-credentials.
+- **SplitHub.ru как 4-й поставщик** — нужны API-credentials.
+- **Скидка 15%** — реальной механики нет, только плашка.
+- **Удалить устаревший Rusklimat scraping** — заменён REST-клиентом.
+- **План `~/.claude/plans/hashed-jumping-iverson.md`** (квиз → цвет/площадь-пилюли/relaxed-list) — ждёт владельца.
 
 ---
 
