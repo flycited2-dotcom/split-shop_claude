@@ -2,7 +2,7 @@ import re
 
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, F, Sum, Value
+from django.db.models import Count, Q, F, Sum, Value, Case, When, IntegerField
 from django.db.models.functions import Coalesce
 from .models import Product, Category, Brand
 from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
@@ -49,13 +49,20 @@ def home(request):
 
 
 def catalog(request):
-    # stock__quantity = qty в Крыму (write_warehouse_stocks приоритезирует
-    # Симферополь/Бриз Крым). any_warehouse_qty = сумма по всем складам —
-    # включает Шерризон/Ростов/Краснодар/Киржач для «под заказ».
+    # Stock.warehouse='Симферополь' выставляется в write_warehouse_stocks
+    # ТОЛЬКО когда qty в Крыму > 0. Если в Крыму 0 — там warehouse=крупнейший
+    # из Шерризон/Ростов/Краснодар (fallback «под заказ»). Поэтому первый
+    # ключ — наличие Крыма, а не сам Stock.quantity.
     base_qs = (
         Product.objects.filter(is_active=True, category__sync_enabled=True)
         .exclude(MULTI_SPLIT_BLOCK_Q)
-        .annotate(any_warehouse_qty=Coalesce(Sum('warehouse_stocks__quantity'), Value(0)))
+        .annotate(
+            is_crimea=Case(
+                When(stock__warehouse='Симферополь', then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        )
         .select_related('brand', 'category', 'stock')
         .prefetch_related('images', 'tech_values__spec')
     )
@@ -72,11 +79,12 @@ def catalog(request):
     if ordering_key in ordering_map:
         ordered_qs = f.qs.order_by(ordering_map[ordering_key])
     else:
-        # Двухуровневая сортировка: сначала «в Крыму > 0» (Stock.quantity),
-        # затем «есть на любом складе» (any_warehouse_qty), затем title.
+        # 1) товары в Крыму (Stock.warehouse='Симферополь') первыми
+        # 2) среди них — по qty в Крыму, далее под заказ — по сумме fallback
+        # 3) title как тайбрейкер
         ordered_qs = f.qs.order_by(
+            F('is_crimea').desc(),
             F('stock__quantity').desc(nulls_last=True),
-            F('any_warehouse_qty').desc(),
             'title',
         )
 
