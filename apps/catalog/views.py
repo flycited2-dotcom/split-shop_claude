@@ -2,7 +2,8 @@ import re
 
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, F, Sum, Value
+from django.db.models.functions import Coalesce
 from .models import Product, Category, Brand
 from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
 from .facets import compute_facets
@@ -48,9 +49,13 @@ def home(request):
 
 
 def catalog(request):
+    # stock__quantity = qty в Крыму (write_warehouse_stocks приоритезирует
+    # Симферополь/Бриз Крым). any_warehouse_qty = сумма по всем складам —
+    # включает Шерризон/Ростов/Краснодар/Киржач для «под заказ».
     base_qs = (
         Product.objects.filter(is_active=True, category__sync_enabled=True)
         .exclude(MULTI_SPLIT_BLOCK_Q)
+        .annotate(any_warehouse_qty=Coalesce(Sum('warehouse_stocks__quantity'), Value(0)))
         .select_related('brand', 'category', 'stock')
         .prefetch_related('images', 'tech_values__spec')
     )
@@ -67,7 +72,13 @@ def catalog(request):
     if ordering_key in ordering_map:
         ordered_qs = f.qs.order_by(ordering_map[ordering_key])
     else:
-        ordered_qs = f.qs.order_by(F('stock__quantity').desc(nulls_last=True), 'title')
+        # Двухуровневая сортировка: сначала «в Крыму > 0» (Stock.quantity),
+        # затем «есть на любом складе» (any_warehouse_qty), затем title.
+        ordered_qs = f.qs.order_by(
+            F('stock__quantity').desc(nulls_last=True),
+            F('any_warehouse_qty').desc(),
+            'title',
+        )
 
     paginator = Paginator(ordered_qs, 24)
     page = paginator.get_page(request.GET.get('page'))
