@@ -6,7 +6,7 @@ from django.db.models import Count, Q, F
 from .models import Product, Category, Brand
 from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
 from .facets import compute_facets
-from .btu import extract_btu
+from .btu import extract_btu, resolve_btu
 from apps.leads.quiz_logic import _balance_by_source
 
 
