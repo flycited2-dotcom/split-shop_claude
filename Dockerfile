@@ -1,4 +1,6 @@
-FROM python:3.12-slim
+# Пинуем bookworm (Debian 12) — у trixie (свежий) репозитории нестабильны
+# из нашего VPS, apt-get падает «Unable to connect to deb.debian.org».
+FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
