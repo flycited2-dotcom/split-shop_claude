@@ -43,6 +43,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/splithub.css' %}">
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script>
+    // Авто-скролл вверх после любого HTMX-swap каталога (пагинация / сортировка / фильтры)
+    document.addEventListener('htmx:afterSwap', function(e) {
+      if (e.target && e.target.id === 'catalog-results') {
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
+    });
+  </script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="text-ink min-h-screen flex flex-col">
