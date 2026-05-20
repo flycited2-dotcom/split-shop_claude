@@ -7,13 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SplitHome — кондиционеры и сплит-системы в Крыму{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}SplitHome — продажа, доставка и монтаж кондиционеров по всему Крыму. Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.{% endblock %}">
-  <link rel="icon" type="image/png" href="{% static 'img/swirl.png' %}">
+  <link rel="icon" type="image/x-icon" href="{% static 'img/favicon/favicon.ico' %}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon/favicon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/favicon/favicon-192.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/favicon/apple-touch-icon.png' %}">
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="SplitHome">
   <meta property="og:title" content="{% block og_title %}{% block og_title_inner %}{% endblock %}{% endblock %}">
   <meta property="og:description" content="{% block og_description %}SplitHome — продажа и монтаж кондиционеров по всему Крыму.{% endblock %}">
-  <meta property="og:image" content="{% block og_image %}{% static 'img/swirl.png' %}{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{% static 'img/favicon/og-image.jpg' %}{% endblock %}">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
