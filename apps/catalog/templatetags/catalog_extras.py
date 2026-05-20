@@ -4,17 +4,22 @@ import re
 from django import template
 from django.template.defaultfilters import striptags
 
-from apps.catalog.btu import extract_btu, btu_label
+from apps.catalog.btu import extract_btu, btu_label, resolve_btu
 
 register = template.Library()
 
 
 @register.simple_tag
 def btu_for(product):
-    """Возвращает '9 000 BTU (до 25 м²)' для карточки в листинге, либо ''."""
+    """Возвращает '9 000 BTU (до 25 м²)' для карточки в листинге, либо ''.
+
+    Приоритет — tech_values (точное «Холодопроизводительность (kBTU)»),
+    fallback — extract из артикула. Для корректной работы нужен
+    prefetch_related('tech_values__spec') в queryset.
+    """
     if product is None:
         return ''
-    btu = extract_btu(getattr(product, 'articul', ''))
+    btu = resolve_btu(product)
     return btu_label(btu, with_area=True)
 
 

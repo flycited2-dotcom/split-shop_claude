@@ -31,7 +31,7 @@ def home(request):
         .filter(category__title__iregex=r'сплит.?систем')
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .select_related('brand', 'stock')
-        .prefetch_related('images')
+        .prefetch_related('images', 'tech_values__spec')
         .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')
     )
     featured_buffer = []
@@ -52,7 +52,7 @@ def catalog(request):
         Product.objects.filter(is_active=True, category__sync_enabled=True)
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .select_related('brand', 'category', 'stock')
-        .prefetch_related('images')
+        .prefetch_related('images', 'tech_values__spec')
     )
 
     f = ProductFilter(request.GET, queryset=base_qs)
@@ -107,7 +107,9 @@ def product_detail(request, slug):
     )
     show_price = request.user.is_authenticated and request.user.is_approved
 
-    btu = extract_btu(product.articul)
+    # BTU с приоритетом tech_values «Холодопроизводительность (kBTU)» — артикул
+    # XIGMA может содержать площадь, а не мощность (TXE27RHA = 27 м², 9 kBTU).
+    btu = resolve_btu(product)
     is_inverter = bool(re.search(r'инвертор|inverter', product.title, re.I))
 
     # Похожие: тот же BTU, та же категория, не мульти-блоки, в наличии — top 4.
@@ -122,7 +124,7 @@ def product_detail(request, slug):
         similar = similar.filter(category_id=product.category_id)
     similar = (
         similar.select_related('brand', 'stock')
-               .prefetch_related('images')
+               .prefetch_related('images', 'tech_values__spec')
                .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')[:4]
     )
 
