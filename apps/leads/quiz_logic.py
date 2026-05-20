@@ -63,11 +63,9 @@ def btu_candidates(area_sqm):
 
 
 def _btu_q(btus):
-    q = Q()
-    for btu in btus:
-        code = f'{btu:02d}'
-        q |= Q(articul__iregex=rf'(^|[^0-9]){code}([^0-9]|$)')
-    return q
+    """Фильтр по Product.btu_calc (пересчитанный через TechSpec)."""
+    values = [int(b) for b in btus if b is not None]
+    return Q(btu_calc__in=values) if values else Q()
 
 
 _COLOR_BLACK_Q = Q(title__icontains='черн') | Q(title__icontains='black')

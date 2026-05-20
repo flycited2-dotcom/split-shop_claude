@@ -75,6 +75,9 @@ class Product(models.Model):
     video_rutube = models.URLField(max_length=500, blank=True)
     rusklimat_guid = models.CharField(max_length=36, blank=True, db_index=True)
     source = models.CharField(max_length=20, default='breeze', db_index=True)
+    btu_calc = models.IntegerField(null=True, blank=True, db_index=True,
+                                   help_text='kBTU — пересчитывается командой compute_btu '
+                                             'из tech_values (мощность охлаждения + площадь).')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

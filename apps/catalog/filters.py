@@ -10,12 +10,6 @@ _input_cls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:o
 
 
 # BTU code (UI key) → 2-digit token expected inside `articul`
-_BTU_CODES = {
-    '7': '07', '9': '09', '12': '12', '18': '18', '24': '24',
-    '27': '27', '30': '30', '36': '36', '42': '42', '48': '48', '60': '60',
-}
-
-# Stable order for UI rendering
 BTU_VALUES = ['7', '9', '12', '18', '24', '27', '30', '36', '42', '48', '60']
 
 INVERTER_CHOICES = [
@@ -49,13 +43,15 @@ MULTI_SPLIT_BLOCK_Q = (
 
 
 def _btu_q(code_keys):
-    """Build an OR-Q over `articul__iregex` for the given BTU UI keys."""
-    q = Q()
+    """Фильтр по Product.btu_calc — посчитан через `compute_btu` из
+    TechSpec (мощность охлаждения + площадь), а не из артикула."""
+    values = []
     for k in code_keys:
-        code = _BTU_CODES.get(str(k))
-        if code:
-            q |= Q(articul__iregex=rf'(^|[^0-9]){code}([^0-9]|$)')
-    return q
+        try:
+            values.append(int(k))
+        except (TypeError, ValueError):
+            continue
+    return Q(btu_calc__in=values) if values else Q()
 
 
 def _inverter_filter(qs, value):

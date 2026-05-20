@@ -138,7 +138,7 @@ def product_detail(request, slug):
         .exclude(MULTI_SPLIT_BLOCK_Q)
     )
     if btu:
-        similar = similar.filter(articul__iregex=rf'(^|[^0-9]){btu:02d}([^0-9]|$)')
+        similar = similar.filter(btu_calc=btu)
     if product.category_id:
         similar = similar.filter(category_id=product.category_id)
     similar = (
