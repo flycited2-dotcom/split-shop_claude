@@ -1,15 +1,65 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-20 (фикс BTU из tech_values + 500 на product_detail + Бриз Крым открыт)
-**Прогресс:** B2C-pivot + Quiz + TechSpec у всех 3 поставщиков + per-warehouse + Rusklimat REST + регистрация физ/юр + cookie + LLM-SEO + mobile-адаптация + правильный BTU + Бриз Крым работает
+**Дата обновления:** 2026-05-20 (вечер, L-итерация: badge/sort/grid/BTU/favicon)
+**Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + новый favicon/лого + сортировка Крым-first + 4×4 grid
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `b329bf9` (fix(btu): импорт resolve_btu в views.py)
+**Production HEAD на VPS:** `e4eb9d0` (feat(brand): новый favicon)
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
 
 ---
 
-## Update 2026-05-20 — BTU из tech_values, 500 на product_detail, Бриз Крым открыт, Docker-зеркало
+## Update 2026-05-20 (вечер) — L-итерация: badge / sort / grid / BTU / favicon
+
+**L1. Badge «В Крыму» → «На складе»** — `templates/partials/product_card.html`. Зелёный badge только при `Stock.warehouse='Симферополь' AND in_stock`. Всё остальное (Бриз Шерризон/Ростов, Rusklimat Краснодар/Киржач через fallback в `write_warehouse_stocks`) — синий «Под заказ».
+
+**L2. Фильтр «Только в наличии» = только Крым.** `filter_in_stock` в `apps/catalog/filters.py` теперь добавляет `Q(stock__warehouse='Симферополь', stock__quantity__gt=0)`. Раньше просто `quantity__gt=0` ловил fallback-варианты.
+
+**L3. Pagination scroll-to-top.** `hx-on::after-swap="window.scrollTo({top:0, behavior:'smooth'})"` на ссылках «Назад/Вперёд» в `templates/catalog/partials/_results.html`.
+
+**L4. Сетка 4×4 = 16 карточек.** `Paginator(qs, 16)` (было 24). На xl-экранах ровно 4 ряда по 4 карточки.
+
+**L5. Новый favicon SplitHome.** Сгенерировал из исходника владельца (`favicon splithome.jpg`) полный набор: `favicon.ico` (multi-size 16/32/48/64), `favicon-{16,32,48,96,192,512}.png`, `apple-touch-icon.png` (180×180), `og-image.jpg` (1200×630). Все в `static/img/favicon/`. Подключено в `templates/base.html` (4 `<link rel="icon">` + apple-touch + og-image), `header.html`/`footer.html` (логотип через `favicon-192.png`), `home.html` JSON-LD `LocalBusiness.image` через `favicon-512.png`. Старый `swirl.png` больше не используется.
+
+**Деплой favicon — нюанс**: nginx раздаёт `/static/` из `/opt/oasis/staticfiles/` (host-путь), а `collectstatic` пишет в docker volume `/var/lib/docker/volumes/oasis_static_files/_data/`. Нужно после `collectstatic` делать `rsync -a /var/lib/docker/volumes/oasis_static_files/_data/ /opt/oasis/staticfiles/`. См. `memory/server_deploy.md`.
+
+**L6. BTU из tech_values — переработан полностью.** Новое поле `Product.btu_calc` (IntegerField, db_index) хранит вычисленный BTU. `resolve_btu` теперь имеет 3 точки контроля:
+1. TechSpec холодопроизводительность: kBTU > BTU > кВт > Вт (с конвертацией: 1 kW = 3.412 kBTU, 1 Вт = 0.003412 kBTU).
+2. TechSpec рекомендуемая площадь (`Эффективен для помещ`, `Для помещения площад`) → ближайший BTU из `BTU_TO_AREA`.
+3. `extract_btu(articul)` — последний fallback.
+
+Проблема жалобы: артикул `Ballu BPAC-14` → 14 BTU из артикула, но реально это маркетинговый индекс — реальная мощность 7 kBTU (по площади 18 м² и кВт=2). Аналогично XIGMA TXE27 (27 м², НЕ 27 BTU). Теперь `btu_calc` для них корректные 7 и 9 соответственно.
+
+Bootstrap всех 4439 активных товаров — `python manage.py compute_btu`. Покрытие: breeze 99%, daichi 100%, rusklimat 85%. Хук `refresh_btu_calc(product)` подключён после каждого `_sync_tech_specs` в `apps/sync/{breeze_tech,daichi_catalog,rusklimat_rest}.py` — при будущих sync новые товары сразу получат btu_calc.
+
+Фильтр каталога `_btu_q` (filters.py) и квиза (`apps/leads/quiz_logic.py`) переключены с `articul__iregex` на `Q(btu_calc__in=values)`. Это решает проблему «болу 40 ≠ 40 000 BTU» о которой говорил владелец.
+
+### Сортировка каталога (доделано в этой же итерации, K2)
+`catalog()` default ordering — `annotate(is_crimea=Case(When(stock__warehouse='Симферополь', then=1), default=0))` + `order_by(F('is_crimea').desc(), F('stock__quantity').desc(nulls_last=True), 'title')`. Топ-страница — все 16 карточек с зелёным «На складе».
+
+### Свежие коммиты (вечер 20 мая)
+```
+e4eb9d0 feat(brand): новый favicon splithome — ico + png + apple-touch + og-image
+871a270 feat(btu): refresh_btu_calc хук после каждого _sync_tech_specs
+9f3dcfc feat(btu): Product.btu_calc + три точки контроля (мощность/площадь/артикул)
+fe9f9cf feat(catalog): badge «На складе», 4×4 = 16 карточек, фильтр Крым only, scroll top
+910e2b6 fix(catalog): первичный ключ сортировки — реальное наличие в Крыму
+21efd0b feat(catalog): двухуровневая сортировка — Крым → любой склад → title
+9a27a0b feat(prod): LOGGING StreamHandler для 500 traceback в docker logs
+b329bf9 fix(btu): импорт resolve_btu в views.py (фикс 500 на product_detail)
+```
+
+### Открытые задачи (см. `memory/todo_2026_05_20.md`)
+- **Rusklimat auto-refresh JWT** — нужны API-credentials.
+- **SplitHub.ru как 4-й поставщик** — API-credentials.
+- **Rusklimat btu_calc 85%** — у 405 товаров нет ни мощности, ни площади.
+- **Скидка 15%** — реальной механики нет.
+- **Удалить устаревший Rusklimat scraping** и `static/img/swirl.png`.
+- План квиза `hashed-jumping-iverson` ждёт владельца.
+
+---
+
+## Update 2026-05-20 (день) — BTU из tech_values, 500 на product_detail, Бриз Крым открыт, Docker-зеркало
 
 **J4. BTU приоритетно из tech_values.** Изначально жалоба пользователя: на карточке XIGMA `XGI-TXE27RHA` в quick-facts показывалось «27 000 BTU» (из артикула), а в табе характеристик «Холодопроизводительность (kBTU) = 9» (из API Бриза) — рассинхрон. Корень: XIGMA маркирует артикул цифрой ПЛОЩАДИ помещения (м²), а не BTU. Старый `extract_btu(articul)` ловил `27` и трактовал как BTU.
 
