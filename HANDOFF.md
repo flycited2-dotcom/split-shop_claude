@@ -41,7 +41,6 @@
 - **Скидка 15%** — реальной механики нет.
 - **Удалить устаревший Rusklimat scraping**.
 - План квиза `hashed-jumping-iverson` ждёт владельца.
-- **Аккаунт владельца на проде** — id=3 (`flycited@gmail.com`, account_type=individual, is_approved=True), пароль сгенерирован при smoke-регистрации 21 мая, сменить через `/account/` или Django Admin. Тестовое юрлицо id=4 удалено.
 
 ---
 
