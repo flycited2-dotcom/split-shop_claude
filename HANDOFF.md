@@ -1,11 +1,79 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-21 (cleanup устаревшего Rusklimat scraping)
-**Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge на каталоге и карточке товара + надёжный scroll-top на любых HTMX swap каталога
-**Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
+**Дата обновления:** 2026-05-21 (q-итерация: hotfix quiz + Tailwind compiled + тесты + скидка 15% + ЛК физлица + /availability/ + README)
+**Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge на каталоге и карточке товара + надёжный scroll-top на любых HTMX swap каталога + Tailwind compiled из CDN + 5 уровней релаксации в quiz + реальная скидка 15% при регистрации физлица + ЛК физлица + /availability/ + покрытие тестами
+**Ветка:** `develop` (запушена в GitHub; ждёт deploy на VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `205b00d` (HANDOFF cleanup, email-уведомления)
+**Production HEAD на VPS:** `205b00d` (HANDOFF cleanup, email-уведомления) — **отстаёт от develop на 8 коммитов**, нужен deploy
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-21 (q-итерация) — стабильность сайта + покрытие тестами + B2C-фичи
+
+**q1. Hotfix quiz_picker.** На проде AI-подбор после 6 шагов отдавал «не нашлось моделей» + форму контактов, что воспринималось как «выкинуло на регистрацию». Корень: `recommend_products` возвращал пусто, потому что у активных товаров `Product.btu_calc=NULL` после большой переcинхронизации (никто не запустил `compute_btu`). Добавил 5-й уровень релаксации `btu_relaxed`: после снятия цвет→бюджет→инвертор снимаем сам BTU-фильтр и показываем доступные модели с пометкой «точную мощность подтвердит менеджер». Параллельно `logger.warning` в `quiz_step` пишет в `docker logs` диагностический след пустого результата. Файлы: `apps/leads/quiz_logic.py`, `apps/leads/views.py`, `templates/leads/partials/_quiz_step.html`. Прод-фикс параллельно: `docker compose exec web python manage.py compute_btu`.
+
+**q2. Hotfix каталог-flicker.** При быстром browser-back из `product_detail.html` в каталог страница оставалась голой (без стилей). Виновник — `<script src="https://cdn.tailwindcss.com">` в `base.html`: runtime JIT не успевал применить классы при bfcache-нагрузке. Перешли на скомпилированный CSS:
+- `tailwind.config.js` (новый) — переносит бренд-цвета `accent/teal/ink/surface`, шрифт Onest, `rounded-card` из inline-конфига. Content сканирует `templates/**/*.html`, `apps/**/templates/**/*.html` и `apps/**/*.py` (там тоже Tailwind-классы в filters/views).
+- `static/css/tailwind-src.css` — `@tailwind base/components/utilities`.
+- `Dockerfile` — качает Tailwind standalone v3.4.17 (без Node), компилирует в `static/css/tailwind.css`, удаляет binary.
+- `base.html` — `<script cdn>` + inline-config → `<link static 'css/tailwind.css'>`.
+- `production.py` — `STATICFILES_STORAGE = 'ManifestStaticFilesStorage'` (хешированные имена, cache-bust после deploy).
+- `.gitignore` — `static/css/tailwind.css` (output, генерится в build).
+
+Deploy: `docker compose build --no-cache web && docker compose up -d web && docker compose exec web python manage.py collectstatic --no-input`.
+
+**q3. Unit-тесты 5 модулей.** Закрыли исходный пункт TODO 2026-05-20. Стек как в существующем `apps/sync/tests/test_client.py` (`django.test.TestCase` + `unittest.mock`, без новых зависимостей). Покрыто:
+- `apps/catalog/btu.py` — все 4 конвертации (kBTU/BTU/kW/W), приоритет единиц, blacklists, **XIGMA TXE27-trap** (27 в артикуле — площадь, не BTU), **Ballu Eclipse-40-trap** (40 — серия), каскад `compute_btu` → `resolve_btu` (кеш) → `refresh_btu_calc`.
+- `apps/leads/quiz_logic.py` — `btu_candidates` с border tolerance, `_balance_by_source` round-robin 2+2+2 / перекос / dedup / truncation, `recommend_products` все 5 уровней релаксации (включая новый `btu_relaxed`), `commercial`→exclude_mobile, исключение мульти-блоков.
+- `apps/sync/warehouse_stock.py` — `_parse_qty` (`>50`→50, мусор→0), `_normalize_warehouse_name` (Симферополь, опечатка Симфирополь), `_CRIMEA_RE` (Бриз Крым / Ялта), `write_warehouse_stocks` (Крым priority, fallback, идемпотентность, replace-стратегия).
+- `apps/sync/rusklimat_rest._sync_tech_specs` — v1/v2 форматы, TechSpec cache hit/miss, replace-strategy, dedup по `spec.pk`. **Mock-адрес** `apps.catalog.btu.refresh_btu_calc` (импорт inside функции).
+- `apps/sync/tasks._iter_leftoversnew` — все 3 формата (dict / list-of-single / flat), `setdefault('nc')`, edge cases.
+
+**q4. View-тесты.** Защита HTTP-эндпоинтов:
+- `apps/leads/tests/test_views_quiz.py` — GET /quiz/, POST /leads/quiz-step/ промежуточный и финальный (с/без товаров), /leads/quiz-lead/ (200 / 404 / 400).
+- `apps/catalog/tests/test_views_catalog.py` — GET /catalog/ + фильтры + HX-Request фрагмент + /product/<slug>/ + /availability/.
+- `apps/leads/tests/test_views_orders.py` — POST /leads/quick-order/ с/без product_id, invalid form, GET → 405.
+- `apps/accounts/tests/test_views_dashboard.py` — физлицо/юрлицо ветки, `/pending/` для неодобренных юрлиц.
+- `apps/accounts/tests/test_registration.py` — discount_percent ставится при регистрации физлица, override_settings, `get_wholesale_price` реально считает 1000 → 850.
+
+Все мокают `send_telegram` (patch на `apps.leads.views.send_telegram` / `apps.orders.views.send_telegram`).
+
+**q5. Скидка 15% — реальная механика.** Плашка «Скидка до 15% при регистрации» висела по сайту, но `User.discount_percent` никогда не инициализировался — оставался 0. Инфраструктура (поле, `get_wholesale_price`, `CartItem.subtotal`) уже была.
+- `settings.DISCOUNT_PERCENT_INDIVIDUAL=15` (override через `.env` для маркетинговых акций).
+- `IndividualRegistrationForm.save()` ставит `discount_percent`.
+- `accounts/migrations/0003_set_individual_discount.py` — data migration: для всех `account_type='individual'` с `discount_percent=0` ставит значение из settings. Юрлица и уже-настроенные не трогаются.
+- `templates/orders/checkout.html` — строка «Применена ваша скидка −15%» если `user.discount_percent > 0`.
+- `apps/orders/views.py` — email/Telegram уведомления заказа упоминают процент.
+
+Deploy требует `python manage.py migrate accounts`.
+
+**q6. ЛК физлица.** Dashboard был заточен под юрлица (карточки Компания/ИНН + кнопки экспорта оптового прайса). После B2C-пивота физлица — основная аудитория, видели чужие поля. `templates/accounts/dashboard.html` теперь ветвится по `user.account_type`:
+- Физлицо: Email / Телефон+мессенджер / Скидка с пометкой «Применяется автоматически в корзине». Без кнопок прайса.
+- Юрлицо: как раньше (Компания/ИНН/Скидка + Excel/PDF прайс).
+
+**q7. /availability/.** Публичная страница «что прямо сейчас в наличии на крымском складе». View `apps/catalog/views.availability` фильтрует `WarehouseStock` по `warehouse__iexact='Симферополь'` (по умолчанию, можно переопределить `?warehouse=Москва`), `quantity > 0`, активным товарам, `category.sync_enabled=True`, исключая мульти-блоки. Шаблон с таблицей + пустым состоянием. SEO meta_description. URL-имя `availability`.
+
+**q8. README.md.** Onboarding-документ: стек, структура apps, команды `manage.py`, тесты, deploy. Не дублирует HANDOFF.md — он отвечает на «как запустить», HANDOFF на «что мы делали и почему».
+
+### Свежие коммиты (21 мая q-итерация)
+```
+4f44d23 docs: добавлен README.md — onboarding-документ проекта
+4d4245d feat(catalog): публичная страница /availability/ — что прямо сейчас в Крыму
+d130b58 feat(account): ЛК физлица — email/телефон/скидка вместо ИНН/компании
+0ed596b feat(discount): применение скидки 15% при регистрации физлица
+a4ccb89 test(views): HTTP-тесты quiz / catalog / quick-order через Django Client
+87177fd test: unit-тесты для btu / quiz_logic / warehouse_stock / rusklimat / leftovers
+4c8ed23 fix(ui): Tailwind CDN → compiled static/css/tailwind.css
+3997414 fix(quiz): спасательная релаксация BTU + логирование пустого подбора
+```
+
+### Что осталось из TODO
+
+- **Rusklimat JWT auto-refresh** — внешний блокер (нужны API-credentials).
+- **Compare** (сравнение товаров) — большая UX-фича, требует обсуждения.
+- **Кастомная админка** — большая фича, требует обсуждения сценариев.
+- **Прод-deploy q-итерации** — `git pull && docker compose build --no-cache web && docker compose up -d web && docker compose exec web python manage.py migrate && docker compose exec web python manage.py collectstatic --no-input && docker compose exec web python manage.py compute_btu`.
 
 ---
 
