@@ -1,11 +1,91 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-20 (вечер, L-итерация: badge/sort/grid/BTU/favicon)
-**Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + новый favicon/лого + сортировка Крым-first + 4×4 grid
+**Дата обновления:** 2026-05-21 (email-уведомления при регистрации)
+**Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge на каталоге и карточке товара + надёжный scroll-top на любых HTMX swap каталога
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `e4eb9d0` (feat(brand): новый favicon)
+**Production HEAD на VPS:** `9e714ba` (email-уведомления при регистрации)
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-21 — email-уведомления при регистрации
+
+**N1. Welcome / pending email пользователю.** До этой итерации `apps/accounts/signals.py` уведомлял только менеджера (email + Telegram), пользователь молча оказывался либо на главной (физик), либо на `/pending/` (юр). Расширил signal: добавил `_notify_user(user)` с веткой по `instance.account_type`:
+
+- **Физлицо (`individual`)**: subject «Добро пожаловать в SplitHome», тело со скидкой 15%, ссылкой на каталог и номером поддержки.
+- **Юрлицо (`company`)**: subject «Заявка на регистрацию получена — SplitHome», тело «менеджер откроет доступ в течение 1 рабочего дня».
+
+Менеджерская часть (`_notify_manager`) вынесена в отдельную private-функцию без функциональных изменений — email + Telegram продолжают приходить на каждую регистрацию (физ и юр одинаково, по запросу владельца). Receiver переименован `notify_manager_on_registration` → `notify_on_registration`.
+
+Константа `SUPPORT_PHONE = '+7 978 579-29-95'` — подставляется в welcome-тело физлицам.
+
+**Smoke на проде:** регистрация физлица `flycited@gmail.com` (id=3) и юрлица `flycited+company@gmail.com` (id=4, ИНН 7706739445, ООО Тест) через форму в `manage.py shell`. Оба письма доставлены в Gmail-inbox, менеджер получил уведомления — подтверждено владельцем.
+
+**Файлы изменены:** только `apps/accounts/signals.py` (+59 −11). Миграции не нужны.
+
+**Что не трогали:**
+- `apps/accounts/admin.py:approve_users` — email при одобрении дилера уже шлётся, оставили.
+- `apps/accounts/forms.py`, `views.py` — никаких изменений, signal обрабатывает всё.
+- SMTP-настройки уже работали (DKIM/SPF настроены в Hestia, см. `memory/mail_server.md`).
+
+### Свежие коммиты (21 мая)
+```
+9e714ba feat(accounts): welcome email физлицу + pending email юрлицу при регистрации
+```
+
+### Открытые задачи (см. `memory/todo_2026_05_20.md`)
+- **Rusklimat auto-refresh JWT** — нужны API-credentials.
+- **SplitHub.ru как 4-й поставщик** — API-credentials.
+- **Rusklimat btu_calc 85%** — 405 товаров без power/area в tech_values.
+- **Скидка 15%** — реальной механики нет.
+- **Удалить устаревший Rusklimat scraping**.
+- План квиза `hashed-jumping-iverson` ждёт владельца.
+- **Тестовые юзеры на проде** — id=3 (`flycited@gmail.com`) и id=4 (`flycited+company@gmail.com`, не одобрен). Удалить через admin после убеждения, что письма больше не нужны.
+
+---
+
+## Update 2026-05-20 (ночь) — M-полировка: product_detail / scroll-top / favicon revert
+
+**M1. product_detail badge — унификация с каталогом.** Жалоба: на странице товара стояло «В Крыму: N шт.» с зелёным фоном, а в каталоге «На складе» — рассинхрон формулировок. Поправил `templates/catalog/product_detail.html:91-101`: объединил blue+amber в один синий «Под заказ», зелёный «На складе» только при `Stock.warehouse='Симферополь' AND in_stock`. Теперь два состояния: **«На складе: N шт.»** (зелёный) или **«Под заказ[: N шт.]»** (синий) — везде одинаково.
+
+**M2. Global scroll-top на любых HTMX swap каталога.** Жалоба: после клика «Вперёд» на пагинации страница оставалась в той же позиции. Inline `hx-on::after-swap` (добавил в прошлой итерации) не сработал. Заменил на глобальный listener в `templates/base.html:46`:
+```js
+document.addEventListener('htmx:afterSwap', function(e) {
+  if (e.target && e.target.id === 'catalog-results') {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+});
+```
+Сработает на пагинации, сортировке и любых фильтрах. Inline hx-on убран как избыточный.
+
+**M3. Favicon — две итерации отклонены, откат к swirl.png.**
+- Попытка #1: `favicon splithome.jpg` с текстом «splithome.ru» — отклонена (текст не читается в 16×16).
+- Попытка #2: `favvicon2.jpg` (дом+кондиционер без текста) — отклонена.
+- Откат к исходному `static/img/swirl.png` (стеклянная спираль) — принят. Пересобрал полный набор в `static/img/favicon/`.
+- Header/footer лого автоматически обновился (он ссылается на `favicon-192.png`).
+
+**Гочи Docker build.** Дважды попадался: новый favicon.ico в репо был размером 17336, а на проде через nginx отдавался размером 16225 (старая версия). Корень — Docker layer cache: `COPY . .` не пересобирается при изменении бинарных файлов одинакового размера/mtime. Решение: `docker compose build --no-cache web` при замене бинарных asset'ов. Записал в `memory/feedback_docker_cache.md`.
+
+### Свежие коммиты (ночь 20 мая)
+```
+c044c96 revert(brand): favicon ← swirl.png (стеклянная спираль)
+754be8e fix(ux): новый favicon (без текста), product_detail badge, global scroll-top
+2c129b0 docs(handoff): Update 2026-05-20 вечер — L-итерация
+e4eb9d0 feat(brand): новый favicon splithome — ico + png + apple-touch + og-image
+871a270 feat(btu): refresh_btu_calc хук после каждого _sync_tech_specs
+9f3dcfc feat(btu): Product.btu_calc + три точки контроля (мощность/площадь/артикул)
+fe9f9cf feat(catalog): badge «На складе», 4×4 = 16 карточек, фильтр Крым only
+910e2b6 fix(catalog): первичный ключ сортировки — реальное наличие в Крыму
+```
+
+### Открытые задачи (см. `memory/todo_2026_05_20.md`)
+- **Rusklimat auto-refresh JWT** — нужны API-credentials.
+- **SplitHub.ru как 4-й поставщик** — API-credentials.
+- **Rusklimat btu_calc 85%** — у 405 товаров нет мощности/площади в tech_values.
+- **Скидка 15%** — реальной механики нет.
+- **Удалить устаревший Rusklimat scraping**.
+- План квиза `hashed-jumping-iverson` ждёт владельца.
 
 ---
 
