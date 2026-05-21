@@ -118,6 +118,37 @@ def catalog(request):
     return render(request, template, context)
 
 
+def availability(request):
+    """Публичная сводка остатков на крымском (или указанном) складе.
+
+    Клиенты часто звонят узнать «есть ли в Симферополе X». Эта страница
+    отвечает без звонка: список всех товаров с qty > 0 на нужном складе.
+    По дефолту — Симферополь. Может быть переопределён через `?warehouse=...`.
+    """
+    from apps.stock.models import WarehouseStock
+
+    warehouse = (request.GET.get('warehouse') or 'Симферополь').strip()
+    stocks = (
+        WarehouseStock.objects
+        .filter(
+            warehouse__iexact=warehouse,
+            quantity__gt=0,
+            product__is_active=True,
+            product__category__sync_enabled=True,
+        )
+        .exclude(product__title__iregex=r'мульти|multi')
+        .exclude(product__title__iregex=r'блок\s+(внутренний|наружный)')
+        .select_related('product__brand', 'product__category')
+        .order_by('-quantity', 'product__title')
+    )
+    return render(request, 'catalog/availability.html', {
+        'warehouse': warehouse,
+        'stocks': stocks,
+        'total_items': stocks.count(),
+        'total_qty': stocks.aggregate(s=Sum('quantity'))['s'] or 0,
+    })
+
+
 def product_detail(request, slug):
     product = get_object_or_404(
         Product.objects.select_related('brand', 'category', 'stock')

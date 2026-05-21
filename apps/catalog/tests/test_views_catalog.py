@@ -1,5 +1,5 @@
 """View-тесты для каталога. Защита HTTP-эндпоинтов от регрессий —
-GET /catalog/, GET /product/<slug>/, htmx-фрагменты.
+GET /catalog/, GET /product/<slug>/, htmx-фрагменты, /availability/.
 """
 from decimal import Decimal
 
@@ -7,7 +7,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 
 from apps.catalog.models import Brand, Category, Product
-from apps.stock.models import Stock
+from apps.stock.models import Stock, WarehouseStock
 
 
 class CatalogViewTest(TestCase):
@@ -95,3 +95,92 @@ class CatalogViewTest(TestCase):
         self.assertEqual(r.status_code, 200)
         # Paginator 16/page → на page=2 минимум 4.
         self.assertTrue(len(r.context['page_obj'].object_list) >= 4)
+
+
+class AvailabilityViewTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            title='Сплит-системы', slug='split', sync_enabled=True,
+        )
+        cls.brand = Brand.objects.create(title='Midea', slug='midea')
+
+    def _make(self, nc, title=None, is_active=True, category=None):
+        return Product.objects.create(
+            nc_code=nc, articul=nc,
+            title=title or f'AC {nc}',
+            category=category or self.category,
+            brand=self.brand,
+            is_active=is_active,
+        )
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_default_warehouse_simferopol(self):
+        p = self._make('NC-1')
+        WarehouseStock.objects.create(product=p, warehouse='Симферополь', quantity=3)
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'NC-1')
+        self.assertEqual(r.context['warehouse'], 'Симферополь')
+        self.assertEqual(r.context['total_items'], 1)
+        self.assertEqual(r.context['total_qty'], 3)
+
+    def test_zero_quantity_excluded(self):
+        p = self._make('NC-1')
+        WarehouseStock.objects.create(product=p, warehouse='Симферополь', quantity=0)
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.context['total_items'], 0)
+        self.assertNotContains(r, 'NC-1')
+
+    def test_other_warehouse_excluded_by_default(self):
+        p = self._make('NC-msk')
+        WarehouseStock.objects.create(product=p, warehouse='Москва', quantity=10)
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.context['total_items'], 0)
+
+    def test_warehouse_query_param(self):
+        p = self._make('NC-msk')
+        WarehouseStock.objects.create(product=p, warehouse='Москва', quantity=10)
+        r = self.client.get(reverse('availability'), {'warehouse': 'Москва'})
+        self.assertEqual(r.context['warehouse'], 'Москва')
+        self.assertEqual(r.context['total_items'], 1)
+        self.assertContains(r, 'NC-msk')
+
+    def test_inactive_product_excluded(self):
+        p = self._make('NC-1', is_active=False)
+        WarehouseStock.objects.create(product=p, warehouse='Симферополь', quantity=5)
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.context['total_items'], 0)
+
+    def test_disabled_category_excluded(self):
+        disabled = Category.objects.create(
+            title='Off', slug='off', sync_enabled=False,
+        )
+        p = self._make('NC-1', category=disabled)
+        WarehouseStock.objects.create(product=p, warehouse='Симферополь', quantity=5)
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.context['total_items'], 0)
+
+    def test_multi_split_blocks_excluded(self):
+        p = self._make('NC-1', title='Мульти-блок внутренний 9')
+        WarehouseStock.objects.create(product=p, warehouse='Симферополь', quantity=5)
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.context['total_items'], 0)
+
+    def test_empty_state_renders_friendly_message(self):
+        r = self.client.get(reverse('availability'))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'сейчас пусто')
+
+    def test_ordering_by_quantity_desc(self):
+        p1 = self._make('NC-A')
+        p2 = self._make('NC-B')
+        WarehouseStock.objects.create(product=p1, warehouse='Симферополь', quantity=2)
+        WarehouseStock.objects.create(product=p2, warehouse='Симферополь', quantity=10)
+        r = self.client.get(reverse('availability'))
+        stocks = list(r.context['stocks'])
+        self.assertEqual(stocks[0].product.nc_code, 'NC-B')
+        self.assertEqual(stocks[1].product.nc_code, 'NC-A')

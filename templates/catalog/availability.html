@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}В наличии на складе {{ warehouse }} — SplitHome{% endblock %}
+{% block meta_description %}Актуальные остатки кондиционеров на складе {{ warehouse }}: модели, бренды, количество. Обновляется автоматически.{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl sm:text-3xl font-bold mb-2">В наличии на складе {{ warehouse }}</h1>
+<p class="text-ink-3 mb-6">
+  {% if total_items %}
+    {{ total_items }} моделей, всего {{ total_qty }} шт. Обновляется автоматически из систем поставщиков.
+  {% else %}
+    На складе «{{ warehouse }}» сейчас пусто. Загляните в
+    <a href="{% url 'catalog' %}" class="text-accent hover:underline">общий каталог</a> —
+    под заказ привозим за 1-3 дня.
+  {% endif %}
+</p>
+
+{% if stocks %}
+  <div class="card overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-surface">
+        <tr>
+          <th class="px-4 py-3 text-left">Модель</th>
+          <th class="px-4 py-3 text-left">Бренд</th>
+          <th class="px-4 py-3 text-left">Артикул</th>
+          <th class="px-4 py-3 text-right">В наличии</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in stocks %}
+          <tr class="border-t hover:bg-surface/50">
+            <td class="px-4 py-3 font-medium">{{ s.product.title }}</td>
+            <td class="px-4 py-3 text-ink-3">{{ s.product.brand.title|default:"—" }}</td>
+            <td class="px-4 py-3 text-ink-3">{{ s.product.articul|default:s.product.nc_code }}</td>
+            <td class="px-4 py-3 text-right font-bold text-accent">{{ s.quantity }} шт.</td>
+            <td class="px-4 py-3">
+              <a href="{% url 'product_detail' s.product.slug %}" class="text-accent hover:underline">
+                Карточка
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+<p class="text-xs text-ink-3 mt-6">
+  Нужен товар, которого нет в списке? Привезём со склада в Москве или Краснодаре за 1-3 дня —
+  <a href="{% url 'catalog' %}" class="text-accent hover:underline">смотрите каталог</a>.
+</p>
+{% endblock %}
