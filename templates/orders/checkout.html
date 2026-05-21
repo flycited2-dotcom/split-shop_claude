@@ -12,6 +12,12 @@
           <span class="font-semibold">{{ item.subtotal|floatformat:0 }} ₽</span>
         </div>
       {% endfor %}
+      {% if user.discount_percent > 0 %}
+        <div class="flex justify-between text-sm text-accent">
+          <span>Применена ваша скидка</span>
+          <span class="font-semibold">−{{ user.discount_percent|floatformat:0 }}%</span>
+        </div>
+      {% endif %}
       <div class="border-t pt-3 flex justify-between font-bold">
         <span>Итого:</span>
         <span class="text-accent text-lg">{{ cart.total|floatformat:0 }} ₽</span>

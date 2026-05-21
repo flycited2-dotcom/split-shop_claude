@@ -107,6 +107,12 @@ def checkout(request):
                 lines.append(f'• {sku} × {item.quantity} = {item.subtotal:,.0f} ₽')
             items_text = '\n'.join(lines)
 
+            discount_line = (
+                f'Скидка покупателя: {request.user.discount_percent:.0f}%\n'
+                if request.user.discount_percent and request.user.discount_percent > 0
+                else ''
+            )
+
             # Email менеджеру
             if settings.MANAGER_EMAIL:
                 email_body = (
@@ -116,6 +122,7 @@ def checkout(request):
                     f'Email: {request.user.email}\n'
                     f'Адрес доставки: {order.delivery_address}\n\n'
                     f'Состав заказа:\n{items_text}\n\n'
+                    f'{discount_line}'
                     f'Итого: {order.total:,.0f} ₽\n'
                     f'Комментарий: {order.comment or "—"}\n'
                 )
@@ -133,6 +140,11 @@ def checkout(request):
                 company = request.user.company_name or request.user.email
                 phone = request.user.phone or '—'
                 comment_line = f'\n💬 Комментарий: {order.comment}' if order.comment else ''
+                discount_tg = (
+                    f'\n🏷 Скидка: {request.user.discount_percent:.0f}%'
+                    if request.user.discount_percent and request.user.discount_percent > 0
+                    else ''
+                )
                 tg_text = (
                     f'🛒 Новый заказ #{order.pk}\n'
                     f'📅 {created_str}\n'
@@ -140,6 +152,7 @@ def checkout(request):
                     f'📞 {phone}\n'
                     f'📧 {request.user.email}\n\n'
                     f'Состав:\n{items_text}'
+                    f'{discount_tg}'
                     f'\n\n💰 Итого: {order.total:,.0f} ₽'
                     f'{comment_line}\n\n'
                     f'🔗 /admin/orders/order/{order.pk}/change/'

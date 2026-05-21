@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
@@ -50,6 +53,10 @@ class IndividualRegistrationForm(_BaseRegForm):
         user.account_type = 'individual'
         # Физлицо не ждёт одобрения — открываем доступ сразу.
         user.is_approved = True
+        # Применяем обещанную в плашках «Скидка до 15% при регистрации».
+        # CartItem.subtotal → user.get_wholesale_price() автоматически применит
+        # этот процент в корзине и в Order.total.
+        user.discount_percent = Decimal(str(settings.DISCOUNT_PERCENT_INDIVIDUAL))
         if commit:
             user.save()
         return user

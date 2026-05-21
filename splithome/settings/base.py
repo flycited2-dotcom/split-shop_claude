@@ -148,3 +148,9 @@ TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')
 TELEGRAM_API_URL = config('TELEGRAM_API_URL', default='https://api.telegram.org')
 YANDEX_METRIKA_ID = config('YANDEX_METRIKA_ID', default='')
+
+# Скидка физлицу при регистрации (%). Реализует обещание «Скидка до 15% при
+# регистрации» из шаблонов home.html / product_card.html / product_detail.html.
+# Применяется в IndividualRegistrationForm.save() и в data migration
+# accounts/0003_set_individual_discount для уже зарегистрированных физлиц.
+DISCOUNT_PERCENT_INDIVIDUAL = config('DISCOUNT_PERCENT_INDIVIDUAL', default=15, cast=int)
