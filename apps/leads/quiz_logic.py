@@ -145,10 +145,10 @@ def recommend_products(btu, *, budget_max=None, needs_inverter=False,
     """Подбор товаров с последовательным ослаблением фильтров и балансировкой по поставщикам.
 
     Возвращает (products, relaxed). `relaxed` — список причин ослабления:
-        'color_relaxed', 'budget_relaxed', 'inverter_relaxed', 'nothing_found'.
+        'color_relaxed', 'budget_relaxed', 'inverter_relaxed', 'btu_relaxed', 'nothing_found'.
     Пустой список = нашли по строгим параметрам.
-    Порядок ослабления: цвет → бюджет → инвертор (от менее критичного
-    к более — инвертор/тишина для юзера важнее всего).
+    Порядок ослабления: цвет → бюджет → инвертор → BTU (если у товаров не пересчитан
+    btu_calc — снимаем фильтр мощности, чтобы юзер увидел хоть какие-то модели).
 
     `room_type='commercial'` — для коммерции/офисов исключаем мобильные кондиционеры.
 
@@ -159,9 +159,9 @@ def recommend_products(btu, *, budget_max=None, needs_inverter=False,
     relaxed = []
     exclude_mobile = (room_type == 'commercial')
 
-    def _try(*, needs_inverter, budget_max, needs_black):
+    def _try(*, btus, needs_inverter, budget_max, needs_black):
         qs = _base_qs(
-            all_btus,
+            btus,
             needs_inverter=needs_inverter,
             budget_max=budget_max,
             needs_black=needs_black,
@@ -170,30 +170,44 @@ def recommend_products(btu, *, budget_max=None, needs_inverter=False,
         return list(qs[:_BUFFER])
 
     # 1. Строго по всем фильтрам.
-    products = _try(needs_inverter=needs_inverter, budget_max=budget_max, needs_black=needs_black)
+    products = _try(btus=all_btus, needs_inverter=needs_inverter,
+                    budget_max=budget_max, needs_black=needs_black)
     if products:
         return _balance_by_source(products, per_source, total), relaxed
 
     # 2. Снять цвет.
     if needs_black:
         relaxed.append('color_relaxed')
-        products = _try(needs_inverter=needs_inverter, budget_max=budget_max, needs_black=False)
+        products = _try(btus=all_btus, needs_inverter=needs_inverter,
+                        budget_max=budget_max, needs_black=False)
         if products:
             return _balance_by_source(products, per_source, total), relaxed
 
     # 3. Снять бюджет.
     if budget_max:
         relaxed.append('budget_relaxed')
-        products = _try(needs_inverter=needs_inverter, budget_max=None, needs_black=False)
+        products = _try(btus=all_btus, needs_inverter=needs_inverter,
+                        budget_max=None, needs_black=False)
         if products:
             return _balance_by_source(products, per_source, total), relaxed
 
     # 4. Снять инвертор.
     if needs_inverter:
         relaxed.append('inverter_relaxed')
-        products = _try(needs_inverter=False, budget_max=None, needs_black=False)
+        products = _try(btus=all_btus, needs_inverter=False,
+                        budget_max=None, needs_black=False)
         if products:
             return _balance_by_source(products, per_source, total), relaxed
+
+    # 5. Снять BTU. Спасательный круг: если у активных товаров btu_calc=NULL
+    # (например, не запускали `compute_btu` после большой переcинхронизации),
+    # каскад выше вернёт пусто на любой комбинации фильтров. Лучше показать
+    # любые доступные модели, чем пустоту, — менеджер уточнит мощность по
+    # заявке.
+    relaxed.append('btu_relaxed')
+    products = _try(btus=[], needs_inverter=False, budget_max=None, needs_black=False)
+    if products:
+        return _balance_by_source(products, per_source, total), relaxed
 
     relaxed.append('nothing_found')
     return [], relaxed

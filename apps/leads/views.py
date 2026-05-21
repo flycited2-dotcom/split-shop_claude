@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
@@ -9,6 +11,8 @@ from apps.notifications.telegram import send_telegram
 from .forms import QuickOrderForm, SelectionRequestForm, InstallationRequestForm
 from .models import QuickOrder, SelectionRequest, InstallationRequest, QuizResult
 from . import quiz_logic
+
+logger = logging.getLogger(__name__)
 
 
 SUCCESS_HTML = '<p class="text-green-600 font-semibold py-4">✅ Заявка принята! Менеджер свяжется с вами в ближайшее время.</p>'
@@ -241,6 +245,12 @@ def quiz_step(request):
         room_type=ctx['room_type'] or None,
         secondary_btus=secondary_btus,
     )
+    if not products or 'btu_relaxed' in relaxed:
+        logger.warning(
+            'quiz_empty_or_btu_relaxed btu=%s budget=%s inverter=%s black=%s room=%s relaxed=%s found=%s',
+            btu, budget_max, needs_inverter, needs_black,
+            ctx['room_type'], relaxed, len(products),
+        )
 
     quiz = QuizResult.objects.create(
         area_sqm=area,
