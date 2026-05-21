@@ -1,0 +1,164 @@
+"""Юнит-тесты для apps/sync/rusklimat_rest._sync_tech_specs.
+
+Функция парсит ответ Rusklimat REST API v1/v2 в TechSpec/ProductTech и
+вызывает refresh_btu_calc после записи. refresh_btu_calc мокаем по
+адресу определения (`apps.catalog.btu.refresh_btu_calc`), т.к. импорт
+сделан внутри функции.
+"""
+from decimal import Decimal
+from unittest.mock import patch
+
+from django.test import TestCase
+
+from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
+from apps.sync.rusklimat_rest import _sync_tech_specs
+
+
+class _SyncTechSpecsBase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            title='Сплиты', slug='split', sync_enabled=True,
+        )
+        cls.brand = Brand.objects.create(title='Midea', slug='midea')
+
+    def _make_product(self, nc='NC-1'):
+        return Product.objects.create(
+            nc_code=nc, title=f'Test {nc}',
+            category=self.category, brand=self.brand,
+            price_wholesale=Decimal('1000.00'),
+        )
+
+
+class SyncTechSpecsTest(_SyncTechSpecsBase):
+
+    def test_returns_zero_on_empty_dict(self):
+        p = self._make_product()
+        with patch('apps.catalog.btu.refresh_btu_calc') as m:
+            count = _sync_tech_specs(p, {}, {}, {}, {})
+        self.assertEqual(count, 0)
+        # refresh_btu_calc не вызывается, если нечего записать.
+        m.assert_not_called()
+
+    def test_returns_zero_on_non_dict(self):
+        p = self._make_product()
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            self.assertEqual(_sync_tech_specs(p, None, {}, {}, {}), 0)
+            self.assertEqual(_sync_tech_specs(p, 'not dict', {}, {}, {}), 0)
+
+    def test_v2_format_with_dict_value_and_unit(self):
+        p = self._make_product()
+        props = {'prop-uuid-1': {'value': '2.65', 'unit': 'unit-kw'}}
+        meta = {'prop-uuid-1': {'id': 'prop-uuid-1', 'name': 'Мощность охлаждения', 'sort': 5}}
+        units = {'unit-kw': {'name': 'кВт', 'nameFull': 'киловатт'}}
+        with patch('apps.catalog.btu.refresh_btu_calc') as m:
+            count = _sync_tech_specs(p, props, {}, meta, units)
+        self.assertEqual(count, 1)
+        pt = ProductTech.objects.get(product=p)
+        self.assertEqual(pt.value, '2.65')
+        self.assertEqual(pt.spec.title, 'Мощность охлаждения')
+        self.assertEqual(pt.spec.unit, 'кВт')
+        self.assertEqual(pt.spec.order, 5)
+        m.assert_called_once_with(p)
+
+    def test_v1_format_string_value(self):
+        p = self._make_product()
+        props = {'prop-uuid-1': 'просто строка'}
+        meta = {'prop-uuid-1': {'name': 'Тип компрессора', 'sort': 0}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            count = _sync_tech_specs(p, props, {}, meta, {})
+        self.assertEqual(count, 1)
+        pt = ProductTech.objects.get(product=p)
+        self.assertEqual(pt.value, 'просто строка')
+
+    def test_empty_value_skipped(self):
+        p = self._make_product()
+        props = {
+            'a': {'value': '', 'unit': ''},
+            'b': {'value': None, 'unit': ''},
+            'c': '   ',  # whitespace
+        }
+        meta = {'a': {'name': 'A'}, 'b': {'name': 'B'}, 'c': {'name': 'C'}}
+        with patch('apps.catalog.btu.refresh_btu_calc') as m:
+            count = _sync_tech_specs(p, props, {}, meta, {})
+        self.assertEqual(count, 0)
+        m.assert_not_called()
+
+    def test_meta_missing_name_skipped(self):
+        p = self._make_product()
+        # prop-uuid-1 нет в meta → spec не создастся.
+        props = {'prop-uuid-1': {'value': '5', 'unit': ''}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            count = _sync_tech_specs(p, props, {}, {}, {})
+        self.assertEqual(count, 0)
+        self.assertFalse(ProductTech.objects.filter(product=p).exists())
+
+    def test_meta_empty_name_skipped(self):
+        p = self._make_product()
+        props = {'prop-uuid-1': {'value': '5', 'unit': ''}}
+        meta = {'prop-uuid-1': {'name': '   ', 'sort': 0}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            count = _sync_tech_specs(p, props, {}, meta, {})
+        self.assertEqual(count, 0)
+
+    def test_cache_hit_skips_db_create(self):
+        # Spec уже в cache → update_or_create в БД не вызывается.
+        p = self._make_product()
+        existing_spec = TechSpec.objects.create(
+            external_uuid='prop-uuid-cached', title='Cached', unit='', order=0,
+        )
+        cache = {'prop-uuid-cached': existing_spec}
+        props = {'prop-uuid-cached': 'value-1'}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            count = _sync_tech_specs(p, props, cache, {}, {})
+        self.assertEqual(count, 1)
+        # Один TechSpec — тот, что в cache. Дубля не появилось.
+        self.assertEqual(TechSpec.objects.filter(external_uuid='prop-uuid-cached').count(), 1)
+        pt = ProductTech.objects.get(product=p)
+        self.assertEqual(pt.spec_id, existing_spec.pk)
+
+    def test_cache_populated_for_new_spec(self):
+        # При cache-miss spec создаётся в БД И добавляется в cache.
+        p = self._make_product()
+        cache = {}
+        props = {'prop-uuid-new': {'value': 'x', 'unit': ''}}
+        meta = {'prop-uuid-new': {'name': 'NewSpec', 'sort': 1}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            _sync_tech_specs(p, props, cache, meta, {})
+        self.assertIn('prop-uuid-new', cache)
+        self.assertEqual(cache['prop-uuid-new'].title, 'NewSpec')
+
+    def test_replace_strategy_clears_old_product_tech(self):
+        p = self._make_product()
+        old_spec = TechSpec.objects.create(
+            external_uuid='old', title='Old', unit='', order=0,
+        )
+        ProductTech.objects.create(product=p, spec=old_spec, value='legacy')
+        # Новый sync без 'old' — старые ProductTech должны удалиться.
+        props = {'new': {'value': '7', 'unit': ''}}
+        meta = {'new': {'name': 'New'}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            _sync_tech_specs(p, props, {}, meta, {})
+        # Старый ProductTech ушёл.
+        self.assertFalse(ProductTech.objects.filter(product=p, spec=old_spec).exists())
+        # Новый есть.
+        self.assertEqual(ProductTech.objects.filter(product=p).count(), 1)
+
+    def test_value_stripped(self):
+        p = self._make_product()
+        props = {'a': {'value': '  9.5  ', 'unit': ''}}
+        meta = {'a': {'name': 'A'}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            _sync_tech_specs(p, props, {}, meta, {})
+        pt = ProductTech.objects.get(product=p)
+        self.assertEqual(pt.value, '9.5')
+
+    def test_invalid_sort_defaults_to_zero(self):
+        p = self._make_product()
+        props = {'a': {'value': 'x', 'unit': ''}}
+        meta = {'a': {'name': 'A', 'sort': 'not-an-int'}}
+        with patch('apps.catalog.btu.refresh_btu_calc'):
+            _sync_tech_specs(p, props, {}, meta, {})
+        spec = TechSpec.objects.get(external_uuid='a')
+        self.assertEqual(spec.order, 0)
