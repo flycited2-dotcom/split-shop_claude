@@ -106,18 +106,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'sync.sync_catalog',
         'schedule': crontab(minute=0, hour='*/4'),
     },
-    'sync-rusklimat-stock-hourly': {
-        'task': 'sync.sync_rusklimat_stock',
-        'schedule': crontab(minute=15),
-    },
-    'sync-rusklimat-catalog-daily': {
-        'task': 'sync.sync_rusklimat_catalog',
-        'schedule': crontab(minute=30, hour=3),
-    },
     'sync-daichi-hourly': {
         'task': 'sync.sync_daichi',
         'schedule': crontab(minute=25),
     },
+    # Rusklimat REST sync пока ручной (python manage.py sync_rusklimat_rest):
+    # JWT нужно обновлять раз в сутки вручную до получения API-credentials.
 }
 
 STATIC_URL = '/static/'
@@ -137,12 +131,6 @@ BREEZ_BASE_URL = config('BREEZ_BASE_URL', default='https://api.breez.ru/v1/')
 
 RUSKLIMAT_JWT_TOKEN = config('RUSKLIMAT_JWT_TOKEN', default='')
 RUSKLIMAT_CONTRACTOR_GUID = config('RUSKLIMAT_CONTRACTOR_GUID', default='')
-RUSKLIMAT_LOGIN = config('RUSKLIMAT_LOGIN', default='')
-RUSKLIMAT_PASSWORD = config('RUSKLIMAT_PASSWORD', default='')
-RUSKLIMAT_AC_CATALOG_URL = config(
-    'RUSKLIMAT_AC_CATALOG_URL',
-    default='https://b2b.rusklimat.com/catalog/1162450-konditsionery-bytovye/',
-)
 
 DAICHI_ACCESS_TOKEN = config('DAICHI_ACCESS_TOKEN', default='')
 DAICHI_BASE_URL = config('DAICHI_BASE_URL', default='https://api.daichi.ru/b2b/v1/')

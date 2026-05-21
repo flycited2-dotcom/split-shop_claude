@@ -1,11 +1,35 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-21 (email-уведомления при регистрации)
+**Дата обновления:** 2026-05-21 (cleanup устаревшего Rusklimat scraping)
 **Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge на каталоге и карточке товара + надёжный scroll-top на любых HTMX swap каталога
 **Ветка:** `develop` (запушена в GitHub, синхронизирована с VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `9e714ba` (email-уведомления при регистрации)
+**Production HEAD на VPS:** `205b00d` (HANDOFF cleanup, email-уведомления)
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-21 (вечер) — cleanup устаревшего Rusklimat scraping
+
+**O1. Удалены legacy-файлы.** Старый scraping `b2b.rusklimat.com` давно заменён REST-клиентом `internet-partner.rusklimat.com` (см. `memory/rusklimat_rest.md`), но мёртвый код висел в репо и в Celery Beat. Снёс:
+- `apps/sync/rusklimat_scraper.py` — login + BeautifulSoup парсинг HTML-каталога.
+- `apps/sync/rusklimat_catalog.py` — CSV-импорт прайса.
+- `apps/sync/rusklimat_stock.py` — YML-парсер остатков.
+- `apps/sync/rusklimat_client.py` — клиент `remains.b2b-one.rusklimat.com` (резервный, тоже legacy).
+- `apps/sync/management/commands/sync_rusklimat.py`, `remap_rusklimat_categories.py`.
+
+**O2. Helpers вынесены.** `_resolve_master_category`, `_make_unique_slug`, `_CATEGORY_RULES` использовались `apps/sync/management/commands/remap_categories.py` (актуальная объединённая команда). Заинлайнил их прямо в `remap_categories.py` — теперь файл self-contained, не тянет legacy.
+
+**O3. Celery Beat schedule почищен.** `splithome/settings/base.py:CELERY_BEAT_SCHEDULE` — убраны `sync-rusklimat-stock-hourly` (`sync.sync_rusklimat_stock`) и `sync-rusklimat-catalog-daily` (`sync.sync_rusklimat_catalog`). Новый REST-sync пока **не на расписании** — JWT-токен надо обновлять руками раз в сутки, авто-refresh нужно ждать API-credentials от Rusklimat. До тех пор владелец запускает `python manage.py sync_rusklimat_rest` руками.
+
+**O4. Settings + .env подчищены.** Убраны `RUSKLIMAT_LOGIN`, `RUSKLIMAT_PASSWORD`, `RUSKLIMAT_AC_CATALOG_URL` — нужны были только scraper'у. Оставлены `RUSKLIMAT_JWT_TOKEN`, `RUSKLIMAT_CONTRACTOR_GUID` — используются новым REST-клиентом.
+
+**O5. Celery tasks почищены.** `apps/sync/tasks.py` — удалены три legacy-task: `build_rusklimat_mapping` (rusklimat_guid теперь пишется при REST-sync), `sync_rusklimat_catalog`, `sync_rusklimat_stock`. Импорт `RusklimatClient` тоже снят.
+
+### Свежие коммиты (21 мая вечер)
+```
+(будет добавлен после коммита)
+```
 
 ---
 

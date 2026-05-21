@@ -1,9 +1,10 @@
+import re
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
 
 from apps.catalog.models import Category, Product
-from apps.sync.rusklimat_catalog import _resolve_master_category, _make_unique_slug
 
 
 # Master breez_ids and titles must match ensure_master_categories migration.
@@ -12,6 +13,59 @@ MASTER_TITLES = {
     'Полупромышленные кондиционеры',
     'Аксессуары для кондиционеров',
 }
+
+
+# 5 master catalog categories shown in sidebar:
+#   1. Бытовые сплит-системы (breez_id=2)
+#   2. Мульти-сплит системы (breez_id=9)
+#   3. Полупромышленные кондиционеры (master, no breez_id)
+#   4. Мобильные кондиционеры (breez_id=10)
+#   5. Аксессуары для кондиционеров (master, no breez_id)
+_CATEGORY_RULES = [
+    (re.compile(
+        r'мультисплит|мульти.?сплит|multi.?split|'
+        r'внутренн\w*\s+блок|наружн\w*\s+блок|indoor.?unit|outdoor.?unit',
+        re.I | re.UNICODE,
+     ),
+     'breez:9'),
+    (re.compile(r'мобильн', re.I | re.UNICODE),
+     'breez:10'),
+    (re.compile(r'полупромышленн|канальн|кассетн|напольн|потолочн|кровельн',
+                re.I | re.UNICODE),
+     'master:Полупромышленные кондиционеры'),
+    (re.compile(r'аксессуар|запчаст|комплектующ|расходн',
+                re.I | re.UNICODE),
+     'master:Аксессуары для кондиционеров'),
+    (re.compile(r'сплит|split|кондиционер|инвертор|настенн|бытов|он.?офф|on.?off',
+                re.I | re.UNICODE),
+     'breez:2'),
+]
+
+
+def _resolve_master_category(path):
+    """Return (kind, value): kind='breez_id'|'master', value=int|str."""
+    for pattern, target in _CATEGORY_RULES:
+        if pattern.search(path):
+            kind, val = target.split(':', 1)
+            if kind == 'breez':
+                return 'breez_id', int(val)
+            return 'master', val
+    return None, None
+
+
+def _make_unique_slug(model, base, exclude_pk=None):
+    slug = base[:490]
+    qs = model.objects.filter(slug=slug)
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    if not qs.exists():
+        return slug
+    slug = f'{base[:480]}-rk'
+    if not model.objects.filter(slug=slug).exclude(pk=exclude_pk or 0).exists():
+        return slug
+    import hashlib
+    suffix = hashlib.md5(base.encode()).hexdigest()[:6]
+    return f'{base[:480]}-{suffix}'
 
 
 class Command(BaseCommand):
