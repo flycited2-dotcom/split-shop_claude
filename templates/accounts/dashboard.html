@@ -2,28 +2,57 @@
 {% block title %}Личный кабинет — SplitHome{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">Личный кабинет</h1>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-  <div class="card p-6">
-    <p class="text-sm text-gray-400 mb-1">Компания</p>
-    <p class="font-bold">{{ user.company_name }}</p>
+
+{% if user.account_type == 'individual' %}
+  {# Карточки физлица: email / телефон / скидка #}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="card p-6">
+      <p class="text-sm text-ink-3 mb-1">Email</p>
+      <p class="font-bold break-all">{{ user.email }}</p>
+    </div>
+    <div class="card p-6">
+      <p class="text-sm text-ink-3 mb-1">Телефон</p>
+      <p class="font-bold">{{ user.phone|default:"—" }}</p>
+      {% if user.messenger %}
+        <p class="text-xs text-ink-3 mt-1">Мессенджер: {{ user.messenger }}</p>
+      {% endif %}
+    </div>
+    <div class="card p-6">
+      <p class="text-sm text-ink-3 mb-1">Ваша скидка</p>
+      {% if user.discount_percent > 0 %}
+        <p class="font-bold text-accent text-2xl">−{{ user.discount_percent|floatformat:0 }}%</p>
+        <p class="text-xs text-ink-3 mt-1">Применяется автоматически в корзине</p>
+      {% else %}
+        <p class="font-bold text-ink-3">Не активна</p>
+      {% endif %}
+    </div>
   </div>
-  <div class="card p-6">
-    <p class="text-sm text-gray-400 mb-1">ИНН</p>
-    <p class="font-bold">{{ user.inn }}</p>
+{% else %}
+  {# Карточки юрлица: компания / ИНН / скидка #}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="card p-6">
+      <p class="text-sm text-ink-3 mb-1">Компания</p>
+      <p class="font-bold">{{ user.company_name }}</p>
+    </div>
+    <div class="card p-6">
+      <p class="text-sm text-ink-3 mb-1">ИНН</p>
+      <p class="font-bold">{{ user.inn }}</p>
+    </div>
+    <div class="card p-6">
+      <p class="text-sm text-ink-3 mb-1">Скидка</p>
+      <p class="font-bold text-accent">{{ user.discount_percent|floatformat:0 }}%</p>
+    </div>
   </div>
-  <div class="card p-6">
-    <p class="text-sm text-gray-400 mb-1">Скидка</p>
-    <p class="font-bold text-accent">{{ user.discount_percent }}%</p>
+  <div class="flex gap-4 mb-6">
+    <a href="/export/price/excel/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
+      📊 Скачать прайс Excel
+    </a>
+    <a href="/export/price/pdf/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
+      📄 Скачать прайс PDF
+    </a>
   </div>
-</div>
-<div class="flex gap-4 mb-6">
-  <a href="/export/price/excel/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
-    📊 Скачать прайс Excel
-  </a>
-  <a href="/export/price/pdf/" class="btn-accent px-6 py-2 rounded-lg font-semibold">
-    📄 Скачать прайс PDF
-  </a>
-</div>
+{% endif %}
+
 <h2 class="text-xl font-bold mb-4">Мои заказы</h2>
 {% if orders %}
   <div class="card overflow-hidden">
@@ -55,6 +84,6 @@
     </table>
   </div>
 {% else %}
-  <p class="text-gray-400">Заказов пока нет.</p>
+  <p class="text-ink-3">Заказов пока нет.{% if user.account_type == 'individual' %} <a href="{% url 'catalog' %}" class="text-accent hover:underline">Перейти в каталог</a>{% endif %}</p>
 {% endif %}
 {% endblock %}
