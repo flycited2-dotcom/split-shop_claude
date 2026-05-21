@@ -18,29 +18,10 @@
   <meta property="og:description" content="{% block og_description %}SplitHome — продажа и монтаж кондиционеров по всему Крыму.{% endblock %}">
   <meta property="og:image" content="{% block og_image %}{% static 'img/favicon/og-image.jpg' %}{% endblock %}">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            accent: '#2e7cf6',
-            'accent-dark': '#1e5bd1',
-            teal: '#1fc8c5',
-            ink: '#0e1a2b',
-            'ink-2': '#3a4a60',
-            'ink-3': '#7a8a9f',
-            surface: '#f4f8fc'
-          },
-          fontFamily: { sans: ['Onest', 'sans-serif'] },
-          borderRadius: { card: '18px' }
-        }
-      }
-    }
-  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/splithub.css' %}">
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <script>

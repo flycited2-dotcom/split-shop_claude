@@ -7,6 +7,11 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_TRUSTED_ORIGINS = ['https://splithome.ru', 'https://www.splithome.ru']
 
+# Cache-busting через хешированные имена: tailwind.css → tailwind.a1b2c3d4.css.
+# Браузер не отдаёт устаревший CSS после deploy, что важно после ухода с
+# Tailwind CDN — раньше CSS жил на стороне Tailwind, теперь у нас в static/.
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
 # При DEBUG=False Django не пишет traceback'и нигде по умолчанию (AdminEmailHandler
 # не сконфигурирован) — 500 уходят в /dev/null. Минимальный StreamHandler даёт
 # полный traceback в `docker compose logs web`.

@@ -21,6 +21,9 @@ staticfiles/
 media/
 *.log
 
+# Tailwind output (генерируется в Dockerfile при build из tailwind-src.css)
+static/css/tailwind.css
+
 # Database
 *.sqlite3
 *.db
