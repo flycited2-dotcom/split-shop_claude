@@ -9,7 +9,7 @@ need to stay in sync with the filter sidebar on every change.
   <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
     <p class="text-sm text-gray-500">
       Найдено: <span class="font-semibold text-gray-800">{{ page_obj.paginator.count }}</span> товаров
-      {% if request.GET.in_stock %}<span class="ml-2 text-green-600 text-xs font-semibold">● в наличии</span>{% endif %}
+      {% if request.GET.with_order %}<span class="ml-2 text-blue-600 text-xs font-semibold">● включая «под заказ»</span>{% else %}<span class="ml-2 text-green-600 text-xs font-semibold">● на складе в Крыму</span>{% endif %}
     </p>
     <div class="flex items-center gap-2">
       <label class="text-sm text-gray-500">Сортировка:</label>

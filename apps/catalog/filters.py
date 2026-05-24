@@ -99,10 +99,6 @@ class ProductFilter(django_filters.FilterSet):
         field_name='price_wholesale', lookup_expr='lte', label='Цена до',
         widget=forms.NumberInput(attrs={'class': _input_cls, 'placeholder': 'до ₽'}),
     )
-    in_stock = django_filters.BooleanFilter(
-        method='filter_in_stock', label='Только в наличии',
-        widget=forms.CheckboxInput(attrs={'class': 'w-4 h-4 accent-orange-500'}),
-    )
     btu = django_filters.MultipleChoiceFilter(
         choices=[(v, v) for v in BTU_VALUES],
         method='filter_btu', label='Мощность BTU', conjoined=False,
@@ -119,19 +115,10 @@ class ProductFilter(django_filters.FilterSet):
     class Meta:
         model = Product
         fields = ['q', 'brand', 'category', 'price_min', 'price_max',
-                  'in_stock', 'btu', 'inverter', 'color']
+                  'btu', 'inverter', 'color']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(Q(title__icontains=value) | Q(articul__icontains=value))
-
-    def filter_in_stock(self, queryset, name, value):
-        # «Только в наличии» = именно крымский склад. Бриз Шерризон/Ростов и
-        # Rusklimat Краснодар попадают в Stock.warehouse через fallback,
-        # но это «под заказ», а не «в наличии».
-        if value:
-            return queryset.filter(stock__warehouse='Симферополь',
-                                   stock__quantity__gt=0)
-        return queryset
 
     def filter_btu(self, queryset, name, value):
         q = _btu_q(value or [])

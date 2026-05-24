@@ -26,9 +26,12 @@ def home(request):
     # stock он уходит в хвост), собираем буфер ОТ КАЖДОГО источника отдельно
     # — топ-15 по запасу и цене, — затем round-robin распределяем.
     # Только сплит-системы — без аксессуаров, осушителей, мобильных и пр.
+    # ТОЛЬКО товары, физически лежащие на крымском складе (Симферополь) —
+    # главная не должна продавать «под заказ из Москвы», правило владельца.
     base_qs = (
         Product.objects
-        .filter(is_active=True, category__sync_enabled=True, stock__quantity__gt=0)
+        .filter(is_active=True, category__sync_enabled=True,
+                stock__warehouse='Симферополь', stock__quantity__gt=0)
         .filter(category__title__iregex=r'сплит.?систем')
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .select_related('brand', 'stock')
@@ -66,6 +69,15 @@ def catalog(request):
         .select_related('brand', 'category', 'stock')
         .prefetch_related('images', 'tech_values__spec')
     )
+
+    # Правило владельца (2026-05-24): по умолчанию каталог показывает только
+    # то, что фактически лежит на крымском складе. Юзер может явно расширить
+    # выдачу до «под заказ» через `?with_order=1`. Бэкап URL для фильтров,
+    # категорий, поиска — без специальных условий, всё работает поверх
+    # сокращённого base_qs.
+    if not request.GET.get('with_order'):
+        base_qs = base_qs.filter(stock__warehouse='Симферополь',
+                                 stock__quantity__gt=0)
 
     f = ProductFilter(request.GET, queryset=base_qs)
 
@@ -163,20 +175,34 @@ def product_detail(request, slug):
     is_inverter = bool(re.search(r'инвертор|inverter', product.title, re.I))
 
     # Похожие: тот же BTU, та же категория, не мульти-блоки, в наличии — top 4.
-    similar = (
+    # Сначала пытаемся найти только то, что физически на крымском складе —
+    # рекомендуем «здесь и сейчас». Если в Крыму ничего нет — fallback на
+    # любые наличия (чтобы блок «Похожие» не был пустым).
+    similar_base = (
         Product.objects.filter(is_active=True, category__sync_enabled=True)
         .exclude(pk=product.pk)
         .exclude(MULTI_SPLIT_BLOCK_Q)
     )
     if btu:
-        similar = similar.filter(btu_calc=btu)
+        similar_base = similar_base.filter(btu_calc=btu)
     if product.category_id:
-        similar = similar.filter(category_id=product.category_id)
-    similar = (
-        similar.select_related('brand', 'stock')
-               .prefetch_related('images', 'tech_values__spec')
-               .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')[:4]
+        similar_base = similar_base.filter(category_id=product.category_id)
+
+    similar_crimea = (
+        similar_base.filter(stock__warehouse='Симферополь',
+                            stock__quantity__gt=0)
+                    .select_related('brand', 'stock')
+                    .prefetch_related('images', 'tech_values__spec')
+                    .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')[:4]
     )
+    similar = list(similar_crimea)
+    if not similar:
+        # Fallback — любые подходящие, чтобы пользователь увидел хоть что-то.
+        similar = list(
+            similar_base.select_related('brand', 'stock')
+                        .prefetch_related('images', 'tech_values__spec')
+                        .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')[:4]
+        )
 
     return render(request, 'catalog/product_detail.html', {
         'product': product,

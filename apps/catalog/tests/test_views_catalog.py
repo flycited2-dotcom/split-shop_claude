@@ -66,13 +66,22 @@ class CatalogViewTest(TestCase):
         ncs = {p.nc_code for p in r.context['page_obj'].object_list}
         self.assertEqual(ncs, {'NC-active'})
 
-    def test_catalog_in_stock_filter_crimea_only(self):
+    def test_catalog_default_only_crimea_stock(self):
+        # Правило владельца (2026-05-24): по умолчанию каталог показывает
+        # только то, что физически на крымском складе.
         self._make('NC-crimea', warehouse='Симферополь', qty=5)
         self._make('NC-moscow', warehouse='Москва', qty=10)
-        r = self.client.get(reverse('catalog'), {'in_stock': 'on'})
+        r = self.client.get(reverse('catalog'))
         ncs = {p.nc_code for p in r.context['page_obj'].object_list}
-        # Только крымский считается «в наличии».
         self.assertEqual(ncs, {'NC-crimea'})
+
+    def test_catalog_with_order_param_includes_non_crimea(self):
+        # Opt-out через ?with_order=1 — показываем всё, включая «под заказ».
+        self._make('NC-crimea', warehouse='Симферополь', qty=5)
+        self._make('NC-moscow', warehouse='Москва', qty=10)
+        r = self.client.get(reverse('catalog'), {'with_order': '1'})
+        ncs = {p.nc_code for p in r.context['page_obj'].object_list}
+        self.assertEqual(ncs, {'NC-crimea', 'NC-moscow'})
 
     def test_product_detail_returns_200(self):
         p = self._make('NC-1')
