@@ -84,9 +84,12 @@ def catalog(request):
     f = ProductFilter(request.GET, queryset=base_qs)
 
     ordering_key = request.GET.get('ordering', '')
+    # Сортировка по ric (РРЦ — цена, которую видит покупатель), не по
+    # price_wholesale: на B2C-сайте оптовая цена скрыта, а ric может
+    # отличаться (например у Rusklimat ric выше pw из-за маржи).
     ordering_map = {
-        'price': F('price_wholesale').asc(nulls_last=True),
-        '-price': F('price_wholesale').desc(nulls_last=True),
+        'price': F('ric').asc(nulls_last=True),
+        '-price': F('ric').desc(nulls_last=True),
         '-created': F('created_at').desc(),
         'title': F('title').asc(),
     }
