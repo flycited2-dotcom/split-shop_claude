@@ -24,6 +24,21 @@ COLOR_CHOICES = [
     ('green', 'Green'),
 ]
 
+# Тип внутреннего блока — для полупромышленной категории. Подкатегория задаётся
+# через URL `?type=cassette` (или duct, или floor_ceiling). Реализован как
+# title__iregex, потому что в БД эти варианты живут в одной категории
+# id=6 «Полупромышленные сплит-системы», различимы только по названию.
+TYPE_CHOICES = [
+    ('cassette', 'Кассетные'),
+    ('duct', 'Канальные'),
+    ('floor_ceiling', 'Напольно-потолочные'),
+]
+_TYPE_PATTERNS = {
+    'cassette':     r'кассет',
+    'duct':         r'канальн',
+    'floor_ceiling': r'напольн.*потолочн|потолочн.*напольн',
+}
+
 # Title substrings used by the color facet. Case-insensitive `icontains`.
 _COLOR_NEEDLES = {
     'black':  ['черн', 'black'],
@@ -122,11 +137,15 @@ class ProductFilter(django_filters.FilterSet):
         choices=COLOR_CHOICES,
         method='filter_color', label='Цвет', conjoined=False,
     )
+    type = django_filters.ChoiceFilter(
+        choices=TYPE_CHOICES,
+        method='filter_type', label='Тип блока',
+    )
 
     class Meta:
         model = Product
         fields = ['q', 'brand', 'category', 'price_min', 'price_max',
-                  'btu', 'inverter', 'color']
+                  'btu', 'inverter', 'color', 'type']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(Q(title__icontains=value) | Q(articul__icontains=value))
@@ -141,3 +160,9 @@ class ProductFilter(django_filters.FilterSet):
     def filter_color(self, queryset, name, value):
         q = _color_q(value or [])
         return queryset.filter(q) if q else queryset
+
+    def filter_type(self, queryset, name, value):
+        pattern = _TYPE_PATTERNS.get(value)
+        if not pattern:
+            return queryset
+        return queryset.filter(title__iregex=pattern)

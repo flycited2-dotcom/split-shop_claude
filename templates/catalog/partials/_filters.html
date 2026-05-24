@@ -17,6 +17,9 @@ when parsing a response.
     {% if request.GET.category %}
       <input type="hidden" name="category" value="{{ request.GET.category }}">
     {% endif %}
+    {% if request.GET.type %}
+      <input type="hidden" name="type" value="{{ request.GET.type }}">
+    {% endif %}
     {% if current_ordering %}
       <input type="hidden" name="ordering" value="{{ current_ordering }}">
     {% endif %}
@@ -137,9 +140,12 @@ when parsing a response.
       <span class="text-sm text-gray-700">Показать также «под заказ»</span>
     </label>
 
-    <a href="{% url 'catalog' %}{% if request.GET.category %}?category={{ request.GET.category }}{% endif %}"
+    {# Сброс фильтров сохраняет category+type (выбор раздела каталога). #}
+    {% with cat=request.GET.category btype=request.GET.type %}
+    <a href="{% url 'catalog' %}{% if cat or btype %}?{% endif %}{% if cat %}category={{ cat }}{% if btype %}&{% endif %}{% endif %}{% if btype %}type={{ btype }}{% endif %}"
        class="block text-center text-xs text-gray-400 mt-4 hover:text-accent">
       Сбросить фильтры
     </a>
+    {% endwith %}
   </form>
 </div>
