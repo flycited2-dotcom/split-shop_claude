@@ -114,6 +114,18 @@ class GetJwtTest(TestCase):
         self.assertEqual(token, 'legacy-static')
 
     @override_settings(
+        RUSKLIMAT_LOGIN='u', RUSKLIMAT_PASSWORD='p',
+        RUSKLIMAT_JWT_TOKEN='legacy-static',
+    )
+    @patch('apps.sync.rusklimat_auth.requests.post')
+    def test_get_jwt_fallback_to_legacy_when_fetch_fails(self, mock_post):
+        # Креды заданы, но auth-эндпоинт упал (например, неверный пароль).
+        # Чтобы не ронять sync — используем legacy токен.
+        mock_post.return_value = _MockResp(200, json_data={'code': 401, 'errors': []})
+        token = rusklimat_auth.get_jwt()
+        self.assertEqual(token, 'legacy-static')
+
+    @override_settings(
         RUSKLIMAT_LOGIN='', RUSKLIMAT_PASSWORD='',
         RUSKLIMAT_JWT_TOKEN='',
     )

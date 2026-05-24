@@ -109,7 +109,18 @@ def get_jwt():
             return token
 
         if _credentials_configured():
-            return fetch_jwt()
+            try:
+                return fetch_jwt()
+            except RusklimatAuthError as exc:
+                # Auth-эндпоинт упал (сменили пароль, временный 401, network).
+                # Чтобы не ронять весь sync — fallback на статичный токен.
+                if settings.RUSKLIMAT_JWT_TOKEN:
+                    logger.warning(
+                        'fetch_jwt failed (%s) — fallback на статичный RUSKLIMAT_JWT_TOKEN.',
+                        exc,
+                    )
+                    return settings.RUSKLIMAT_JWT_TOKEN
+                raise
 
         legacy = settings.RUSKLIMAT_JWT_TOKEN
         if legacy:
