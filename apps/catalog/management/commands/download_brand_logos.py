@@ -88,14 +88,22 @@ class Command(BaseCommand):
             base_qs = base_qs.filter(featured_in_quiz=True)
 
         # Шаг 1 (опционально): заполнить logo_url из rusklimat API для тех,
-        # у кого пусто. Matching по title.lower() == api.name.lower().
+        # у кого пусто. Matching: точное → substring (поймает «Mitsubishi» =
+        # «MITSUBISHI ELECTRIC»).
         if opts['from_rusklimat']:
             self.stdout.write('Тяну rusklimat brand index...')
             index = _fetch_rusklimat_brand_index()
             self.stdout.write(f'  получено {len(index)} брендов с лого')
             updated = 0
             for brand in base_qs.filter(logo_url=''):
-                api_url = index.get(brand.title.lower())
+                key = brand.title.lower()
+                api_url = index.get(key)
+                if not api_url:
+                    # fuzzy: либо наш title содержится в API name, либо наоборот
+                    for api_name, url in index.items():
+                        if key in api_name or api_name in key:
+                            api_url = url
+                            break
                 if api_url:
                     brand.logo_url = api_url
                     brand.save(update_fields=['logo_url'])
