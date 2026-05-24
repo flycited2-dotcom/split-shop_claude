@@ -317,3 +317,17 @@ def sync_daichi():
     result = daichi_sync()
     logger.info('sync_daichi: %s', result)
     return result
+
+
+@shared_task(name='sync.refresh_rusklimat_jwt')
+def refresh_rusklimat_jwt():
+    """Обновляет JWT для Rusklimat REST. Запускается Celery Beat в 23:50 МСК
+    (токен сбрасывается строго в 00:00 МСК, не +24ч от выпуска).
+    """
+    from apps.sync.rusklimat_auth import RusklimatAuthError, fetch_jwt
+    try:
+        token = fetch_jwt()
+    except RusklimatAuthError as exc:
+        logger.error('refresh_rusklimat_jwt failed: %s', exc)
+        return {'ok': False, 'error': str(exc)}
+    return {'ok': True, 'length': len(token)}

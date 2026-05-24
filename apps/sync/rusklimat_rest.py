@@ -11,10 +11,11 @@ Endpoints:
   GET  /api/v1/InternetPartner/units
   POST /api/v{1|2|3}/InternetPartner/{partnerId}/products/{requestKey}
 
-Авторизация: JWT в Authorization header. JWT валиден ~сутки, хранится в
-RUSKLIMAT_JWT_TOKEN в .env. Auto-refresh пока не реализован (требует отдельных
-API-учётных данных; phone+password из user-логина отдают «Invalid user/password»
-на /api/v1/auth/jwt/). При 401 — клиент бросает понятную ошибку.
+Авторизация: JWT через `rusklimat_auth.get_jwt()`. Auto-refresh:
+  - cache в Redis (см. apps/sync/rusklimat_auth);
+  - cron 23:50 МСК (`sync.refresh_rusklimat_jwt` в CELERY_BEAT_SCHEDULE);
+  - на 401 — invalidate + refresh + retry один раз (см. `_request`).
+Legacy fallback на статичный RUSKLIMAT_JWT_TOKEN сохранён в `rusklimat_auth`.
 """
 import base64
 import json
@@ -28,6 +29,7 @@ from django.db import transaction
 
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
+from apps.sync import rusklimat_auth
 from apps.sync.warehouse_stock import write_warehouse_stocks
 
 
@@ -71,41 +73,69 @@ class RusklimatRestClient:
     """
 
     def __init__(self):
-        self.jwt = settings.RUSKLIMAT_JWT_TOKEN
-        if not self.jwt:
-            raise RuntimeError('RUSKLIMAT_JWT_TOKEN is not set')
-        # partnerId берём ИЗ JWT (поле `guid`), а не из .env — JWT привязан
-        # к конкретному партнёру, иначе будет 403 «PartnerId не соответствует JWT».
-        jwt_guid = _jwt_payload(self.jwt).get('guid')
-        self.guid = jwt_guid or settings.RUSKLIMAT_CONTRACTOR_GUID
+        # JWT тянем через auth-модуль: cache → fetch (если есть LOGIN/PASSWORD) →
+        # legacy fallback на settings.RUSKLIMAT_JWT_TOKEN.
+        self.jwt = rusklimat_auth.get_jwt()
+        # partnerId: приоритет settings.RUSKLIMAT_PARTNER_ID (известная константа
+        # из спецификации). Fallback на guid из JWT-payload, потом на legacy
+        # CONTRACTOR_GUID. Без partnerId catalog API вернёт 403.
+        self.guid = (
+            settings.RUSKLIMAT_PARTNER_ID
+            or _jwt_payload(self.jwt).get('guid')
+            or settings.RUSKLIMAT_CONTRACTOR_GUID
+        )
         if not self.guid:
-            raise RuntimeError('Не удалось определить partnerId (JWT.guid + .env пусты)')
+            raise RuntimeError('Не удалось определить partnerId (settings + JWT.guid пусты)')
         self._request_key = None
         self._request_key_until = 0.0
         self._session = requests.Session()
-        self._session.headers.update({
-            'Authorization': self.jwt,
-            'Accept': 'application/json',
-        })
+        self._session.headers.update({'Accept': 'application/json'})
+        self._set_token(self.jwt)
+
+    def _set_token(self, token):
+        """Обновляет Authorization-заголовок в session."""
+        self.jwt = token
+        # Catalog API принимает токен БЕЗ префикса Bearer — так работает текущий прод.
+        self._session.headers['Authorization'] = token
 
     def _check(self, response, where):
         if response.status_code == 401:
             raise RusklimatJWTExpired(
-                f'Rusklimat 401 на {where}. JWT истёк или невалиден — '
-                f'обновите RUSKLIMAT_JWT_TOKEN в /opt/oasis/.env.'
+                f'Rusklimat 401 на {where}. JWT истёк и refresh не помог — '
+                f'проверьте RUSKLIMAT_LOGIN/PASSWORD в .env.'
             )
         if response.status_code >= 400:
             raise RuntimeError(
                 f'Rusklimat {response.status_code} на {where}: {response.text[:200]}'
             )
 
+    def _request(self, method, url, where, **kw):
+        """HTTP-запрос с авто-retry на 401 (invalidate + refresh + один retry).
+
+        Используется во всех методах вместо прямого self._session.get/post.
+        """
+        fn = self._session.post if method == 'POST' else self._session.get
+        r = fn(url, **kw)
+        if r.status_code == 401:
+            logger.warning('Rusklimat 401 на %s — пробую refresh JWT', where)
+            rusklimat_auth.invalidate_jwt()
+            try:
+                new_token = rusklimat_auth.get_jwt()
+            except rusklimat_auth.RusklimatAuthError as exc:
+                raise RusklimatJWTExpired(
+                    f'401 на {where} и refresh не удался: {exc}'
+                ) from exc
+            self._set_token(new_token)
+            r = fn(url, **kw)
+        self._check(r, where)
+        return r
+
     def request_key(self, force=False):
         now = time.time()
         if not force and self._request_key and self._request_key_until > now + 3:
             return self._request_key
         url = f'{_RK_BASE}/api/v1/InternetPartner/{self.guid}/requestKey'
-        r = self._session.get(url, timeout=30)
-        self._check(r, 'requestKey')
+        r = self._request('GET', url, 'requestKey', timeout=30)
         data = r.json()
         self._request_key = data['requestKey']
         self._request_key_until = now + 55  # запас от expire ~60 сек
@@ -113,22 +143,19 @@ class RusklimatRestClient:
 
     def get_units(self):
         url = f'{_RK_BASE}/api/v1/InternetPartner/units'
-        r = self._session.get(url, timeout=60)
-        self._check(r, '/units')
+        r = self._request('GET', url, '/units', timeout=60)
         return r.json().get('data') or []
 
     def get_categories(self):
         key = self.request_key()
         url = f'{_RK_BASE}/api/v1/InternetPartner/categories/{key}'
-        r = self._session.get(url, timeout=120)
-        self._check(r, '/categories')
+        r = self._request('GET', url, '/categories', timeout=120)
         return r.json().get('data') or []
 
     def get_properties(self):
         key = self.request_key()
         url = f'{_RK_BASE}/api/v1/InternetPartner/properties/{key}'
-        r = self._session.get(url, timeout=120)
-        self._check(r, '/properties')
+        r = self._request('GET', url, '/properties', timeout=120)
         return r.json().get('data') or []
 
     def get_products(self, *, page=1, page_size=500, version=2,
@@ -141,13 +168,12 @@ class RusklimatRestClient:
         body = {'filter': {}, 'sort': sort or {'nsCode': 'asc'}}
         if category_ids:
             body['filter']['categoryIds'] = list(category_ids)
-        r = self._session.post(
-            url,
+        r = self._request(
+            'POST', url, f'/products page={page}',
             json=body,
             headers={'Content-Type': 'application/json'},
             timeout=180,
         )
-        self._check(r, f'/products page={page}')
         return r.json()
 
 

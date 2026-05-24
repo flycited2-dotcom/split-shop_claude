@@ -110,8 +110,13 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'sync.sync_daichi',
         'schedule': crontab(minute=25),
     },
-    # Rusklimat REST sync пока ручной (python manage.py sync_rusklimat_rest):
-    # JWT нужно обновлять раз в сутки вручную до получения API-credentials.
+    # Rusklimat: JWT сбрасывается строго в 00:00 МСК (не +24ч). Обновляем
+    # за 10 минут до сброса. CELERY_TIMEZONE=Europe/Moscow — crontab уже МСК.
+    'refresh-rusklimat-jwt': {
+        'task': 'sync.refresh_rusklimat_jwt',
+        'schedule': crontab(hour=23, minute=50),
+    },
+    # Rusklimat REST sync пока ручной (python manage.py sync_rusklimat_rest).
 }
 
 STATIC_URL = '/static/'
@@ -131,6 +136,15 @@ BREEZ_BASE_URL = config('BREEZ_BASE_URL', default='https://api.breez.ru/v1/')
 
 RUSKLIMAT_JWT_TOKEN = config('RUSKLIMAT_JWT_TOKEN', default='')
 RUSKLIMAT_CONTRACTOR_GUID = config('RUSKLIMAT_CONTRACTOR_GUID', default='')
+# Auto-refresh JWT (см. apps/sync/rusklimat_auth.py). Если LOGIN/PASSWORD заданы —
+# используем их для получения свежего токена через POST b2b.rusklimat.com/api/v1/auth/jwt/.
+# Если не заданы — fallback на статичный RUSKLIMAT_JWT_TOKEN.
+RUSKLIMAT_LOGIN = config('RUSKLIMAT_LOGIN', default='')
+RUSKLIMAT_PASSWORD = config('RUSKLIMAT_PASSWORD', default='')
+RUSKLIMAT_PARTNER_ID = config(
+    'RUSKLIMAT_PARTNER_ID',
+    default='e51a9046-47ff-4d7e-977d-7dba40c0a979',
+)
 
 DAICHI_ACCESS_TOKEN = config('DAICHI_ACCESS_TOKEN', default='')
 DAICHI_BASE_URL = config('DAICHI_BASE_URL', default='https://api.daichi.ru/b2b/v1/')
