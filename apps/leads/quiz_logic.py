@@ -1,7 +1,7 @@
 from django.db.models import F, Q
 
 from apps.catalog.models import Product
-from apps.catalog.filters import MULTI_SPLIT_BLOCK_Q
+from apps.catalog.filters import MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q
 
 BTU_VALUES = [7, 9, 12, 18, 24, 30]
 
@@ -96,7 +96,7 @@ def _base_qs(btus, *, needs_inverter, budget_max, needs_wifi, brand_id,
         _btu_q(btus),
         is_active=True,
         category__sync_enabled=True,
-    ).exclude(MULTI_SPLIT_BLOCK_Q)
+    ).exclude(MULTI_SPLIT_BLOCK_Q).exclude(NON_RETAIL_Q)
     if exclude_mobile:
         qs = qs.exclude(_MOBILE_Q)
     if needs_inverter:

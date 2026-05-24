@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q, F, Sum, Value, Case, When, IntegerField
 from django.db.models.functions import Coalesce
 from .models import Product, Category, Brand
-from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q
+from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q
 from .facets import compute_facets
 from .btu import extract_btu, resolve_btu
 from apps.leads.quiz_logic import _balance_by_source
@@ -34,6 +34,7 @@ def home(request):
                 stock__warehouse='Симферополь', stock__quantity__gt=0)
         .filter(category__title__iregex=r'сплит.?систем')
         .exclude(MULTI_SPLIT_BLOCK_Q)
+        .exclude(NON_RETAIL_Q)
         .select_related('brand', 'stock')
         .prefetch_related('images', 'tech_values__spec')
         .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')
@@ -59,6 +60,7 @@ def catalog(request):
     base_qs = (
         Product.objects.filter(is_active=True, category__sync_enabled=True)
         .exclude(MULTI_SPLIT_BLOCK_Q)
+        .exclude(NON_RETAIL_Q)
         .annotate(
             is_crimea=Case(
                 When(stock__warehouse='Симферополь', then=Value(1)),
@@ -182,6 +184,7 @@ def product_detail(request, slug):
         Product.objects.filter(is_active=True, category__sync_enabled=True)
         .exclude(pk=product.pk)
         .exclude(MULTI_SPLIT_BLOCK_Q)
+        .exclude(NON_RETAIL_Q)
     )
     if btu:
         similar_base = similar_base.filter(btu_calc=btu)
