@@ -1,13 +1,18 @@
 """Скачивает логотипы брендов в static/images/brands/{slug}.{ext}.
 
-Берёт все Brand с featured_in_quiz=True и непустым logo_url, тянет файл,
-сохраняет с расширением по Content-Type. Используется шагом «Бренд» в квизе:
-`apps/leads/views.py:_brand_logo_static` ищет файл `images/brands/{slug}.*`.
+Источник URL: либо `Brand.logo_url` из БД, либо публичное API
+`b2b.rusklimat.com/api/v1/brands/` (357 брендов с лого на rkcdn.ru, по
+name matching case-insensitive). API не требует авторизации.
 
 Usage:
-    python manage.py download_brand_logos                  # все featured-бренды
-    python manage.py download_brand_logos --slug daichi    # один бренд
-    python manage.py download_brand_logos --all-brands     # все, не только featured
+    python manage.py download_brand_logos                # featured-бренды, источник = БД
+    python manage.py download_brand_logos --slug daichi  # один бренд
+    python manage.py download_brand_logos --all-brands   # все бренды из БД
+    python manage.py download_brand_logos --from-rusklimat  # подтянуть logo_url
+                                                            # с rusklimat API
+                                                            # для featured-брендов
+                                                            # без logo_url, и сразу качать
+    python manage.py download_brand_logos --from-rusklimat --all-brands
 """
 import mimetypes
 import os
@@ -28,6 +33,8 @@ _CONTENT_TYPE_TO_EXT = {
     'image/gif': '.gif',
 }
 
+_RUSKLIMAT_BRANDS_URL = 'https://b2b.rusklimat.com/api/v1/brands/?limit=200&page={page}'
+
 
 def _ext_from_response(resp, fallback_url):
     """Определяет расширение по Content-Type или по URL."""
@@ -43,27 +50,64 @@ def _ext_from_response(resp, fallback_url):
     return '.png'
 
 
+def _fetch_rusklimat_brand_index():
+    """Скачивает 357 брендов с b2b.rusklimat.com и возвращает {name_lower: image_url}."""
+    index = {}
+    for page in (1, 2):
+        resp = requests.get(_RUSKLIMAT_BRANDS_URL.format(page=page), timeout=30)
+        resp.raise_for_status()
+        for item in resp.json().get('data', {}).get('items') or []:
+            name = (item.get('name') or '').strip()
+            image = (item.get('image') or '').strip()
+            if name and image:
+                index[name.lower()] = image
+    return index
+
+
 class Command(BaseCommand):
-    help = 'Скачивает логотипы featured-брендов в static/images/brands/'
+    help = 'Скачивает логотипы брендов в static/images/brands/'
 
     def add_arguments(self, parser):
         parser.add_argument('--slug', type=str, default='',
                             help='Скачать только один бренд по slug')
         parser.add_argument('--all-brands', action='store_true',
                             help='Все бренды (не только featured_in_quiz=True)')
+        parser.add_argument('--from-rusklimat', action='store_true',
+                            help='Перед скачиванием подтянуть Brand.logo_url из '
+                                 'b2b.rusklimat.com/api/v1/brands/ для брендов с пустым logo_url')
 
     def handle(self, *args, **opts):
         out_dir = os.path.join(settings.BASE_DIR, 'static', 'images', 'brands')
         os.makedirs(out_dir, exist_ok=True)
 
-        qs = Brand.objects.exclude(logo_url='')
+        # Стартовый queryset — featured-бренды или все.
+        base_qs = Brand.objects.all()
         if opts['slug']:
-            qs = qs.filter(slug=opts['slug'])
+            base_qs = base_qs.filter(slug=opts['slug'])
         elif not opts['all_brands']:
-            qs = qs.filter(featured_in_quiz=True)
+            base_qs = base_qs.filter(featured_in_quiz=True)
 
-        ok = skip = err = 0
-        for brand in qs.order_by('order', 'title'):
+        # Шаг 1 (опционально): заполнить logo_url из rusklimat API для тех,
+        # у кого пусто. Matching по title.lower() == api.name.lower().
+        if opts['from_rusklimat']:
+            self.stdout.write('Тяну rusklimat brand index...')
+            index = _fetch_rusklimat_brand_index()
+            self.stdout.write(f'  получено {len(index)} брендов с лого')
+            updated = 0
+            for brand in base_qs.filter(logo_url=''):
+                api_url = index.get(brand.title.lower())
+                if api_url:
+                    brand.logo_url = api_url
+                    brand.save(update_fields=['logo_url'])
+                    updated += 1
+                    self.stdout.write(f'  → {brand.slug}: {api_url}')
+            self.stdout.write(self.style.SUCCESS(
+                f'logo_url обновлён у {updated} брендов.'
+            ))
+
+        # Шаг 2: скачивание.
+        ok = err = 0
+        for brand in base_qs.exclude(logo_url='').order_by('order', 'title'):
             try:
                 resp = requests.get(brand.logo_url, timeout=30)
                 resp.raise_for_status()
@@ -80,5 +124,5 @@ class Command(BaseCommand):
             self.stdout.write(f'OK  {brand.slug}{ext} ({len(resp.content)} bytes)')
 
         self.stdout.write(self.style.SUCCESS(
-            f'Готово: {ok} скачано, {err} ошибок, пропущено без logo_url: {skip}'
+            f'Готово: {ok} скачано, {err} ошибок.'
         ))
