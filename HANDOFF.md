@@ -99,6 +99,8 @@ Auth-эндпоинт `POST b2b.rusklimat.com/api/v1/auth/jwt/` с `User-Agent: 
 ### Свежие коммиты (24 мая r-итерация)
 
 ```
+93c29ea fix(leads): /selection/ — форма пропадает после отправки + quick-order модалка auto-close
+42523d3 docs(handoff): финал r-итерации — все 7 featured-брендов с лого
 f1697ce feat(catalog): локальные лого Daichi/Daikin/Kentatsu/Midea/Axioma + опция --from-breeze
 ef8d840 docs(handoff): полное состояние после деплоя r-итерации
 30c6284 fix(quiz): _brand_logo_static проверяет и STATIC_ROOT, не только BASE_DIR/static
