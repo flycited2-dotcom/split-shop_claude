@@ -198,13 +198,19 @@ _BRAND_LOGO_EXTENSIONS = ('.svg', '.png', '.webp', '.jpg', '.jpeg')
 
 
 def _brand_logo_static(slug):
-    """Возвращает путь от STATIC_URL (`images/brands/{slug}.{ext}`),
-    если файл лежит в `static/images/brands/`. Иначе — пустую строку.
+    """Возвращает путь от STATIC_URL (`images/brands/{slug}.{ext}`), если
+    файл лежит в `static/` (dev) или `STATIC_ROOT` (после collectstatic в
+    docker-volume). Иначе — пустую строку.
     """
-    base = os.path.join(settings.BASE_DIR, 'static', 'images', 'brands')
+    candidate_bases = [
+        os.path.join(settings.BASE_DIR, 'static'),
+        str(settings.STATIC_ROOT) if settings.STATIC_ROOT else '',
+    ]
     for ext in _BRAND_LOGO_EXTENSIONS:
-        if os.path.exists(os.path.join(base, f'{slug}{ext}')):
-            return f'images/brands/{slug}{ext}'
+        rel = f'images/brands/{slug}{ext}'
+        for base in candidate_bases:
+            if base and os.path.exists(os.path.join(base, rel)):
+                return rel
     return ''
 
 
