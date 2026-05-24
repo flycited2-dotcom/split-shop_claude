@@ -106,7 +106,7 @@ class Command(BaseCommand):
             ))
 
         # Шаг 2: скачивание.
-        ok = err = 0
+        ok = err = skipped = 0
         for brand in base_qs.exclude(logo_url='').order_by('order', 'title'):
             try:
                 resp = requests.get(brand.logo_url, timeout=30)
@@ -114,6 +114,15 @@ class Command(BaseCommand):
             except requests.RequestException as exc:
                 err += 1
                 self.stderr.write(f'ERR {brand.slug}: {exc}')
+                continue
+
+            ctype = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+            if not ctype.startswith('image/'):
+                # Сервер вернул HTML/JSON — обычно 404-страницу. Не сохраняем.
+                skipped += 1
+                self.stderr.write(
+                    f'SKIP {brand.slug}: not an image (Content-Type={ctype}, url={brand.logo_url})'
+                )
                 continue
 
             ext = _ext_from_response(resp, brand.logo_url)
@@ -124,5 +133,5 @@ class Command(BaseCommand):
             self.stdout.write(f'OK  {brand.slug}{ext} ({len(resp.content)} bytes)')
 
         self.stdout.write(self.style.SUCCESS(
-            f'Готово: {ok} скачано, {err} ошибок.'
+            f'Готово: {ok} скачано, {skipped} пропущено (не image), {err} ошибок.'
         ))
