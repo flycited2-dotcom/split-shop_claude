@@ -3,15 +3,15 @@
 {% block content %}
 <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
 
-  {# Mobile filter toggle — кнопка над товарами на узких экранах #}
+  {# Mobile filter toggle — заметная primary-кнопка над товарами на узких экранах #}
   <button type="button" onclick="toggleCatalogSidebar()"
-          class="lg:hidden inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white border border-ink/10 font-semibold text-sm">
+          class="lg:hidden inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-accent text-white font-semibold text-sm shadow-sm hover:bg-accent/90 transition">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
       <line x1="4" y1="6" x2="20" y2="6"/>
       <line x1="7" y1="12" x2="17" y2="12"/>
       <line x1="10" y1="18" x2="14" y2="18"/>
     </svg>
-    Категории и фильтры
+    <span>Категории и фильтры</span>
   </button>
 
   <aside id="catalog-sidebar"

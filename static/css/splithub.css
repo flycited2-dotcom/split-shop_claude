@@ -279,21 +279,22 @@ h1, h2, h3, h4 {
   .nav-btn { padding: 0.4rem 0.75rem; font-size: 0.8125rem; }
 }
 
-/* Catalog sidebar — category buttons (in /catalog/ left column). */
+/* Catalog sidebar — category buttons (в /catalog/ левый сайдбар). */
 .cat-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.625rem 0.85rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(14, 26, 43, 0.12);
+  padding: 0.75rem 1rem;
+  border-radius: 0.875rem;
+  border: 1.5px solid rgba(14, 26, 43, 0.14);
   background: #fff;
   color: var(--ink);
   font-weight: 600;
-  font-size: 0.875rem;
-  transition: border-color .15s, color .15s, background .15s;
+  font-size: 0.9rem;
+  transition: border-color .15s, color .15s, background .15s, transform .1s;
   text-decoration: none;
+  width: 100%;
 }
 .cat-btn:hover {
   border-color: var(--primary);
@@ -308,34 +309,51 @@ h1, h2, h3, h4 {
 .cat-btn .cat-btn-count {
   color: var(--ink-3);
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(14, 26, 43, 0.05);
 }
-.cat-btn.is-active .cat-btn-count { color: var(--primary); }
+.cat-btn.is-active .cat-btn-count {
+  color: var(--primary);
+  background: rgba(46, 124, 246, 0.12);
+}
 
 /* Sub-category links (под кнопкой категории). */
 .subcat-link {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.375rem 0.625rem 0.375rem 1.5rem;
-  border-radius: 0.5rem;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.6rem;
+  border-radius: 0.625rem;
+  border: 1px solid transparent;
   color: var(--ink-2);
-  font-size: 0.8125rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  transition: color .15s, background .15s;
+  transition: color .15s, background .15s, border-color .15s;
   text-decoration: none;
   position: relative;
 }
 .subcat-link::before {
   content: "↳";
   position: absolute;
-  left: 0.4rem;
+  left: 0.55rem;
   color: var(--ink-3);
   font-weight: 400;
 }
-.subcat-link:hover { color: var(--primary); background: rgba(46, 124, 246, 0.05); }
-.subcat-link.is-active { color: var(--primary); font-weight: 600; }
+.subcat-link:hover {
+  color: var(--primary);
+  background: rgba(46, 124, 246, 0.05);
+  border-color: rgba(46, 124, 246, 0.15);
+}
+.subcat-link.is-active {
+  color: var(--primary);
+  font-weight: 600;
+  background: rgba(46, 124, 246, 0.08);
+  border-color: rgba(46, 124, 246, 0.2);
+}
+.subcat-link.is-active::before { color: var(--primary); }
 
 
 
@@ -365,43 +383,60 @@ h1, h2, h3, h4 {
 
 
 
-/* Share chips на странице товара — четыре цветные pill-кнопки.
-   Стиль: outline с круглой иконкой+подписью, цвет иконки и hover-border = brand color. */
+/* Share chips на странице товара — четыре цветные pill-кнопки в эталонном
+   стиле. SVG-иконка цветная (brand color), фон белый, бордер серый pill.
+   На hover — pill окрашивается в brand-color: border, текст и фон-тинт. */
 .share-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.55rem 1rem;
+  padding: 0.6rem 1rem;
   border-radius: 999px;
   border: 1px solid rgba(14, 26, 43, 0.12);
   background: #fff;
   color: var(--ink);
   font-weight: 600;
   font-size: 0.875rem;
+  line-height: 1;
   cursor: pointer;
-  transition: border-color .15s, color .15s, background .15s, transform .15s;
+  transition: border-color .15s, color .15s, background .15s, transform .15s, box-shadow .15s;
   text-decoration: none;
   width: 100%;
+  min-height: 42px;
 }
 .share-chip:hover {
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 26, 43, 0.08);
 }
-.share-chip svg { flex-shrink: 0; }
+.share-chip svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
 
 /* MAX — фиолетовый */
 .share-chip-max svg { color: #7e3ff2; }
-.share-chip-max:hover { border-color: #7e3ff2; color: #7e3ff2; }
+.share-chip-max:hover { border-color: #7e3ff2; color: #7e3ff2; background: rgba(126, 63, 242, 0.06); }
 
 /* Telegram — голубой */
 .share-chip-tg svg { color: #229ED9; }
-.share-chip-tg:hover { border-color: #229ED9; color: #229ED9; }
+.share-chip-tg:hover { border-color: #229ED9; color: #229ED9; background: rgba(34, 158, 217, 0.06); }
 
 /* Email — оранжевый */
 .share-chip-email svg { color: #ee7a30; }
-.share-chip-email:hover { border-color: #ee7a30; color: #ee7a30; }
+.share-chip-email:hover { border-color: #ee7a30; color: #ee7a30; background: rgba(238, 122, 48, 0.06); }
 
 /* Скопировать ссылку — серый/нейтральный */
 .share-chip-link svg { color: var(--ink-3); }
-.share-chip-link:hover { border-color: var(--ink-2); color: var(--ink-2); }
+.share-chip-link:hover { border-color: var(--ink-2); color: var(--ink-2); background: rgba(14, 26, 43, 0.04); }
+
+@media (max-width: 640px) {
+  .share-chip {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.8125rem;
+    min-height: 40px;
+  }
+  .share-chip svg { width: 18px; height: 18px; }
+}
 
