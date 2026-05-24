@@ -82,21 +82,25 @@ docker compose exec web python manage.py test apps.leads.tests apps.sync.tests a
 **r5. JWT auto-refresh — критическая деталь формата логина.**  
 Auth-эндпоинт `POST b2b.rusklimat.com/api/v1/auth/jwt/` с `User-Agent: catalog-ip` принимает **только 10 цифр без префикса**. Пример из официальной документации: `9651111111`. У нас в `.env` был `+79152757788` — отсюда «Invalid user/password». Поменял на `9152757788` — auth заработал, `refresh_rusklimat_jwt` выдаёт свежий токен. Cron в 23:50 МСК настроен через `django_celery_beat.PeriodicTask` (на проде используется `DatabaseScheduler`, settings.CELERY_BEAT_SCHEDULE не подхватывается автоматически).
 
-**Featured brands в БД (выставлено автоматически по числу AC-товаров):**
-1. Ballu (897) ✓ лого
-2. Electrolux (721)
-3. Shuft (323) ✓ лого
-4. Royal Clima (301) ✓ лого
-5. Royal Thermo (268) ✓ лого
-6. Hisense (235) ✓ лого
-7. Funai (198) ✓ лого
-8. Kentatsu (125)
+**Featured brands в БД (вечером 24 мая, после получения брендбуков от владельца):**
+1. Ballu ✓ лого (rkcdn.ru)
+2. Electrolux ✗ нет лого ни в API, ни локально — рендерится как текст
+3. Royal Clima ✓ лого (breez.ru SVG)
+4. Hisense ✓ лого (breez.ru SVG)
+5. Funai ✓ лого (breez.ru SVG)
+6. Midea ✓ лого (PNG, локально из брендбука)
+7. Daichi ✓ лого (SVG, локально из брендбука Daichi 2021)
+8. Kentatsu ✓ лого (SVG, локально из брендбука)
 
-Shuft — это вентиляция, попал по data quirk в AC-категории. Владелец может убрать/заменить через `/admin/catalog/brand/`.
+Файлы хранятся в `static/images/brands/` (закоммичены в репо). View `_brand_logo_static` ищет файл в `BASE_DIR/static/` ИЛИ `STATIC_ROOT` — оба пути работают.
+
+**r6. Breeze API для лого** — `api.breez.ru/v1/brands/` (Basic Auth через `BREEZ_AUTH_HEADER`). Опция `--from-breeze` в `download_brand_logos`. Breeze отдаёт 53 бренда — преимущественно собственные торговые марки (Zilon, etc.). Полезен в комбинации с `--from-rusklimat` для разных источников.
 
 ### Свежие коммиты (24 мая r-итерация)
 
 ```
+f1697ce feat(catalog): локальные лого Daichi/Daikin/Kentatsu/Midea/Axioma + опция --from-breeze
+ef8d840 docs(handoff): полное состояние после деплоя r-итерации
 30c6284 fix(quiz): _brand_logo_static проверяет и STATIC_ROOT, не только BASE_DIR/static
 7e64ed0 fix(catalog): fuzzy match для брендов из rusklimat API
 1ce91ac fix(catalog): download_brand_logos пропускает не-image Content-Type
