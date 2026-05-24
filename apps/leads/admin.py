@@ -28,7 +28,10 @@ class InstallationRequestAdmin(admin.ModelAdmin):
 
 @admin.register(QuizResult)
 class QuizResultAdmin(admin.ModelAdmin):
-    list_display = ('area_sqm', 'room_type', 'recommended_btu', 'budget_max', 'contact_phone', 'created_at')
-    list_filter = ('room_type', 'needs_inverter', 'needs_heating', 'needs_black', 'created_at')
+    list_display = ('area_sqm', 'room_type', 'recommended_btu', 'budget_max',
+                    'needs_inverter', 'needs_wifi', 'wanted_brand',
+                    'contact_phone', 'created_at')
+    list_filter = ('room_type', 'needs_inverter', 'needs_wifi', 'needs_heating',
+                   'wanted_brand', 'created_at')
     search_fields = ('contact_name', 'contact_phone')
-    readonly_fields = ('created_at', 'recommended_product_ids')
+    readonly_fields = ('created_at', 'recommended_product_ids', 'needs_black')

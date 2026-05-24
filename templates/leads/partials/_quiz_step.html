@@ -13,6 +13,7 @@
       <p class="text-ink-3 text-sm sm:text-base">
         Под площадь до {{ area_sqm }} м²{% if budget_max %} и бюджет до {{ budget_max }} ₽{% endif %}.
         {% if inverter == 'yes' %} С тихим инверторным компрессором.{% endif %}
+        {% if wifi == 'yes' %} С Wi-Fi управлением.{% endif %}
       </p>
       {% if secondary_btus %}
         <p class="mt-3 text-sm text-ink-3">
@@ -30,7 +31,8 @@
         Под точные параметры моделей не нашлось — показываем близкие варианты:
         <ul class="list-disc list-inside mt-1">
           {% for r in relaxed %}
-            {% if r == 'color_relaxed' %}<li>чёрные не в наличии — показываем другие цвета</li>{% endif %}
+            {% if r == 'brand_relaxed' %}<li>под бренд {{ brand_title|default:"" }} в нужной мощности не нашли — показываем других производителей</li>{% endif %}
+            {% if r == 'wifi_relaxed' %}<li>моделей с Wi-Fi управлением не нашли — показываем без Wi-Fi</li>{% endif %}
             {% if r == 'budget_relaxed' %}<li>в бюджет не уложились — показываем чуть дороже</li>{% endif %}
             {% if r == 'inverter_relaxed' %}<li>инверторов нужной мощности нет — добавили обычные</li>{% endif %}
             {% if r == 'btu_relaxed' %}<li>точную мощность подтвердит менеджер — показываем доступные модели</li>{% endif %}
@@ -89,20 +91,21 @@
   </div>
 
 {% else %}
-  {# === Шаги 1-6 wizard === #}
+  {# === Шаги 1-7 wizard === #}
   <form hx-post="{% url 'quiz_step' %}" hx-target="#quiz-content" hx-swap="innerHTML" class="space-y-6">
     {% csrf_token %}
     <input type="hidden" name="step" value="{{ step }}">
     {% if step != 1 %}<input type="hidden" name="area_sqm" value="{{ area_sqm }}">{% endif %}
     {% if step != 2 %}<input type="hidden" name="room_type" value="{{ room_type }}">{% endif %}
-    {% if step != 3 %}<input type="hidden" name="budget" value="{{ budget }}">{% endif %}
-    {% if step != 4 %}<input type="hidden" name="inverter" value="{{ inverter }}">{% endif %}
+    {% if step != 3 %}<input type="hidden" name="inverter" value="{{ inverter }}">{% endif %}
+    {% if step != 4 %}<input type="hidden" name="wifi" value="{{ wifi }}">{% endif %}
     {% if step != 5 %}<input type="hidden" name="heating" value="{{ heating }}">{% endif %}
-    {% if step != 6 %}<input type="hidden" name="color" value="{{ color }}">{% endif %}
+    {% if step != 6 %}<input type="hidden" name="budget" value="{{ budget }}">{% endif %}
+    {% if step != 7 %}<input type="hidden" name="brand" value="{{ brand }}">{% endif %}
 
     {# progress bar #}
     <div class="flex items-center gap-2">
-      {% for i in "123456"|make_list %}
+      {% for i in "1234567"|make_list %}
         {% if forloop.counter < step %}
           <div class="h-1.5 rounded-full flex-1 bg-accent"></div>
         {% elif forloop.counter == step %}
@@ -111,7 +114,7 @@
           <div class="h-1.5 rounded-full flex-1 bg-ink/10"></div>
         {% endif %}
       {% endfor %}
-      <span class="text-xs sm:text-sm text-ink-3 ml-2 whitespace-nowrap">{{ step }} / 6</span>
+      <span class="text-xs sm:text-sm text-ink-3 ml-2 whitespace-nowrap">{{ step }} / 7</span>
     </div>
 
     {% if step == 1 %}
@@ -149,22 +152,6 @@
 
     {% elif step == 3 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какой бюджет?</h2>
-        <p class="text-ink-3 mb-5">За одну сплит-систему (без монтажа).</p>
-        <div class="grid grid-cols-2 gap-3">
-          {% for v, label in budget_options %}
-            <label class="relative cursor-pointer block {% if forloop.last %}col-span-2{% endif %}">
-              <input type="radio" name="budget" value="{{ v }}" required class="peer sr-only" {% if budget == v %}checked{% endif %}>
-              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold">
-                {{ label }}
-              </div>
-            </label>
-          {% endfor %}
-        </div>
-      </div>
-
-    {% elif step == 4 %}
-      <div>
         <h2 class="text-2xl sm:text-3xl font-bold mb-2">Тихий и экономичный?</h2>
         <p class="text-ink-3 mb-5">Инверторный компрессор работает тише обычного и тратит на 30–40% меньше электричества — но стоит дороже.</p>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -187,6 +174,35 @@
             <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
               <div class="font-semibold mb-1">Не знаю</div>
               <div class="text-sm text-ink-3">Менеджер подскажет</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+    {% elif step == 4 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Wi-Fi управление со смартфона?</h2>
+        <p class="text-ink-3 mb-5">Включать кондиционер из дороги — через приложение. У части моделей модуль встроен, у других подключается опцией.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="wifi" value="yes" required class="peer sr-only" {% if wifi == 'yes' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold mb-1">Да, нужно</div>
+              <div class="text-sm text-ink-3">Управление со смартфона</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="wifi" value="any" required class="peer sr-only" {% if wifi == 'any' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold mb-1">Не важно</div>
+              <div class="text-sm text-ink-3">Обычного пульта хватит</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer block">
+            <input type="radio" name="wifi" value="dontknow" required class="peer sr-only" {% if wifi == 'dontknow' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold mb-1">Не знаю</div>
+              <div class="text-sm text-ink-3">Менеджер расскажет</div>
             </div>
           </label>
         </div>
@@ -220,25 +236,46 @@
 
     {% elif step == 6 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какой цвет?</h2>
-        <p class="text-ink-3 mb-5">Большинство моделей белые; чёрных в наличии меньше — если не нашлось, покажем другие.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какой бюджет?</h2>
+        <p class="text-ink-3 mb-5">За одну сплит-систему (без монтажа).</p>
+        <div class="grid grid-cols-2 gap-3">
+          {% for v, label in budget_options %}
+            <label class="relative cursor-pointer block {% if forloop.last %}col-span-2{% endif %}">
+              <input type="radio" name="budget" value="{{ v }}" required class="peer sr-only" {% if budget == v %}checked{% endif %}>
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold">
+                {{ label }}
+              </div>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+    {% elif step == 7 %}
+      <div>
+        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Предпочтения по бренду?</h2>
+        <p class="text-ink-3 mb-5">Если есть бренд, к которому привыкли — выбирайте. Иначе «Не важно» — покажем подходящие из всех.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {% for b in brand_options %}
+            <label class="relative cursor-pointer block">
+              <input type="radio" name="brand" value="{{ b.id }}" required class="peer sr-only" {% if brand == b.id|stringformat:"s" %}checked{% endif %}>
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex flex-col items-center justify-center gap-2 min-h-[88px]">
+                {% if b.logo_static %}
+                  <img src="{% static b.logo_static %}" alt="{{ b.title }}" class="h-8 max-w-full object-contain">
+                {% endif %}
+                <div class="font-semibold text-sm text-center">{{ b.title }}</div>
+              </div>
+            </label>
+          {% endfor %}
           <label class="relative cursor-pointer block">
-            <input type="radio" name="color" value="black" required class="peer sr-only" {% if color == 'black' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold">Чёрный</div>
+            <input type="radio" name="brand" value="any" required class="peer sr-only" {% if brand == 'any' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[88px]">
+              <div class="font-semibold text-sm text-center">Не важно</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
-            <input type="radio" name="color" value="any" required class="peer sr-only" {% if color == 'any' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold">Любой</div>
-            </div>
-          </label>
-          <label class="relative cursor-pointer block">
-            <input type="radio" name="color" value="dontknow" required class="peer sr-only" {% if color == 'dontknow' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold">Не знаю</div>
+            <input type="radio" name="brand" value="dontknow" required class="peer sr-only" {% if brand == 'dontknow' %}checked{% endif %}>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[88px]">
+              <div class="font-semibold text-sm text-center">Не знаю</div>
             </div>
           </label>
         </div>
@@ -246,10 +283,18 @@
     {% endif %}
 
     <div class="flex items-center justify-between gap-3 pt-2">
-      <span class="text-sm text-ink-3 hidden sm:inline">{{ step }} из 6</span>
-      <button type="submit" class="btn btn-primary ml-auto">
-        {% if step == 6 %}Показать подбор{% else %}Далее →{% endif %}
-      </button>
+      <span class="text-sm text-ink-3 hidden sm:inline">{{ step }} из 7</span>
+      <div class="flex items-center gap-2 ml-auto">
+        {% if step != 1 %}
+          <button type="submit" name="action" value="back" formnovalidate
+                  class="px-4 py-2 rounded-xl border border-ink/10 bg-white text-ink-3 hover:bg-surface transition text-sm font-medium">
+            ← Назад
+          </button>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">
+          {% if step == 7 %}Показать подбор{% else %}Далее →{% endif %}
+        </button>
+      </div>
     </div>
   </form>
 {% endif %}

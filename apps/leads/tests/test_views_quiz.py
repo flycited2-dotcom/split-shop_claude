@@ -51,32 +51,76 @@ class QuizFlowTest(TestCase):
     def test_quiz_final_step_returns_products(self):
         self._make_product('NC-1')
         r = self.client.post(reverse('quiz_step'), {
-            'step': '6',
+            'step': '7',
             'area_sqm': '25',
             'room_type': 'apartment',
-            'budget': '50000',
             'inverter': 'yes',
+            'wifi': 'any',
             'heating': 'no',
-            'color': 'any',
+            'budget': '50000',
+            'brand': '',
         })
         self.assertEqual(r.status_code, 200)
         # Создан QuizResult.
         self.assertTrue(QuizResult.objects.exists())
 
+    def test_quiz_final_step_persists_wifi_and_brand(self):
+        self._make_product('NC-2')
+        r = self.client.post(reverse('quiz_step'), {
+            'step': '7',
+            'area_sqm': '25',
+            'room_type': 'apartment',
+            'inverter': 'yes',
+            'wifi': 'yes',
+            'heating': 'no',
+            'budget': '50000',
+            'brand': str(self.brand.id),
+        })
+        self.assertEqual(r.status_code, 200)
+        quiz = QuizResult.objects.latest('id')
+        self.assertTrue(quiz.needs_wifi)
+        self.assertEqual(quiz.wanted_brand_id, self.brand.id)
+
     def test_quiz_final_step_with_empty_db_still_creates_quiz_result(self):
         # Регрессия: даже когда товаров нет, view не должен 500'ить —
         # должен создать QuizResult и вернуть фрагмент с пустым результатом.
         r = self.client.post(reverse('quiz_step'), {
-            'step': '6',
+            'step': '7',
             'area_sqm': '25',
             'room_type': 'apartment',
-            'budget': '50000',
             'inverter': 'yes',
+            'wifi': 'any',
             'heating': 'no',
-            'color': 'any',
+            'budget': '50000',
+            'brand': '',
         })
         self.assertEqual(r.status_code, 200)
         self.assertTrue(QuizResult.objects.exists())
+
+    def test_quiz_back_button_renders_previous_step(self):
+        # Кнопка «Назад» на шаге 4 → возвращает шаг 3 с сохранёнными ответами.
+        r = self.client.post(reverse('quiz_step'), {
+            'action': 'back',
+            'step': '4',
+            'area_sqm': '25',
+            'room_type': 'apartment',
+            'inverter': 'yes',
+        })
+        self.assertEqual(r.status_code, 200)
+        # QuizResult не создаётся, т.к. кнопка back.
+        self.assertFalse(QuizResult.objects.exists())
+        # В ответе должно быть значение шага 3 (inverter) — сохранённое hidden или checked.
+        self.assertIn(b'inverter', r.content)
+
+    def test_quiz_back_button_from_step_1_clamps_to_1(self):
+        # «Назад» с шага 1 не должно ломаться — остаёмся на шаге 1.
+        r = self.client.post(reverse('quiz_step'), {
+            'action': 'back',
+            'step': '1',
+            'area_sqm': '',
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(QuizResult.objects.exists())
 
     def test_quiz_lead_success_returns_thanks(self):
         self._make_product('NC-1')

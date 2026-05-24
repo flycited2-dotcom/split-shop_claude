@@ -46,7 +46,9 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
-    list_display = ['title', 'order']
+    list_display = ['title', 'featured_in_quiz', 'order', 'logo_url']
+    list_editable = ['featured_in_quiz', 'order']
+    list_filter = ['featured_in_quiz']
     prepopulated_fields = {'slug': ('title',)}
     search_fields = ['title']
 

@@ -68,14 +68,30 @@ def _btu_q(btus):
     return Q(btu_calc__in=values) if values else Q()
 
 
-_COLOR_BLACK_Q = Q(title__icontains='черн') | Q(title__icontains='black')
 _MOBILE_Q = Q(title__icontains='мобильн')
+
+# Wi-Fi-управление: гибрид TechSpec-фильтра и regex по тексту.
+# Поставщики могут отдавать характеристику с разными названиями («Wi-Fi», «Wi Fi»,
+# «Беспроводное управление», «Удалённое управление»). Значение варьируется
+# («Да», «Есть», «опция», «возможность подключения»). Считаем как «есть Wi-Fi»
+# всё, что НЕ выглядит явным отрицанием. Если у товара tech-характеристики
+# отсутствуют — пробуем найти упоминание в title/description.
+_WIFI_TECH_Q = (
+    Q(tech_values__spec__title__iregex=r'wi[\s\-]?fi|вай[\s\-]?фай|беспровод|удал.{0,5}управлен')
+    & ~Q(tech_values__value__iregex=r'^\s*(нет|no|−|—|-|отсутств)\s*$')
+)
+_WIFI_TEXT_Q = (
+    Q(description__iregex=r'wi[\s\-]?fi|wifi|вай[\s\-]?фай')
+    | Q(title__iregex=r'wi[\s\-]?fi|wifi|вай[\s\-]?фай')
+)
+_WIFI_Q = _WIFI_TECH_Q | _WIFI_TEXT_Q
 
 # Сколько брать товаров на pre-filter (буфер для балансировки по поставщикам).
 _BUFFER = 30
 
 
-def _base_qs(btus, *, needs_inverter, budget_max, needs_black, exclude_mobile=False):
+def _base_qs(btus, *, needs_inverter, budget_max, needs_wifi, brand_id,
+             exclude_mobile=False):
     qs = Product.objects.filter(
         _btu_q(btus),
         is_active=True,
@@ -87,8 +103,11 @@ def _base_qs(btus, *, needs_inverter, budget_max, needs_black, exclude_mobile=Fa
         qs = qs.filter(title__iregex=r'инвертор|inverter')
     if budget_max:
         qs = qs.filter(ric__lte=budget_max)
-    if needs_black:
-        qs = qs.filter(_COLOR_BLACK_Q)
+    if needs_wifi:
+        # join через tech_values может дублировать строки — distinct() обязателен.
+        qs = qs.filter(_WIFI_Q).distinct()
+    if brand_id:
+        qs = qs.filter(brand_id=brand_id)
     return qs.select_related('brand').prefetch_related('images').order_by(
         F('stock__quantity').desc(nulls_last=True),
         'ric',
@@ -140,15 +159,18 @@ def _balance_by_source(products, per_source=2, total=6):
 
 
 def recommend_products(btu, *, budget_max=None, needs_inverter=False,
-                       needs_black=False, room_type=None,
+                       needs_wifi=False, brand_id=None, room_type=None,
                        per_source=2, total=6, secondary_btus=None):
     """Подбор товаров с последовательным ослаблением фильтров и балансировкой по поставщикам.
 
     Возвращает (products, relaxed). `relaxed` — список причин ослабления:
-        'color_relaxed', 'budget_relaxed', 'inverter_relaxed', 'btu_relaxed', 'nothing_found'.
+        'brand_relaxed', 'wifi_relaxed', 'budget_relaxed', 'inverter_relaxed',
+        'btu_relaxed', 'nothing_found'.
     Пустой список = нашли по строгим параметрам.
-    Порядок ослабления: цвет → бюджет → инвертор → BTU (если у товаров не пересчитан
-    btu_calc — снимаем фильтр мощности, чтобы юзер увидел хоть какие-то модели).
+
+    Порядок ослабления (от менее важного к более): бренд → Wi-Fi → бюджет →
+    инвертор → BTU. Если у товаров не пересчитан btu_calc — снимаем фильтр
+    мощности, чтобы юзер увидел хоть какие-то модели.
 
     `room_type='commercial'` — для коммерции/офисов исключаем мобильные кондиционеры.
 
@@ -159,53 +181,66 @@ def recommend_products(btu, *, budget_max=None, needs_inverter=False,
     relaxed = []
     exclude_mobile = (room_type == 'commercial')
 
-    def _try(*, btus, needs_inverter, budget_max, needs_black):
+    def _try(*, btus, needs_inverter, budget_max, needs_wifi, brand_id):
         qs = _base_qs(
             btus,
             needs_inverter=needs_inverter,
             budget_max=budget_max,
-            needs_black=needs_black,
+            needs_wifi=needs_wifi,
+            brand_id=brand_id,
             exclude_mobile=exclude_mobile,
         )
         return list(qs[:_BUFFER])
 
     # 1. Строго по всем фильтрам.
     products = _try(btus=all_btus, needs_inverter=needs_inverter,
-                    budget_max=budget_max, needs_black=needs_black)
+                    budget_max=budget_max, needs_wifi=needs_wifi,
+                    brand_id=brand_id)
     if products:
         return _balance_by_source(products, per_source, total), relaxed
 
-    # 2. Снять цвет.
-    if needs_black:
-        relaxed.append('color_relaxed')
+    # 2. Снять бренд (самый сильный сужающий фильтр).
+    if brand_id:
+        relaxed.append('brand_relaxed')
         products = _try(btus=all_btus, needs_inverter=needs_inverter,
-                        budget_max=budget_max, needs_black=False)
+                        budget_max=budget_max, needs_wifi=needs_wifi,
+                        brand_id=None)
         if products:
             return _balance_by_source(products, per_source, total), relaxed
 
-    # 3. Снять бюджет.
+    # 3. Снять Wi-Fi.
+    if needs_wifi:
+        relaxed.append('wifi_relaxed')
+        products = _try(btus=all_btus, needs_inverter=needs_inverter,
+                        budget_max=budget_max, needs_wifi=False,
+                        brand_id=None)
+        if products:
+            return _balance_by_source(products, per_source, total), relaxed
+
+    # 4. Снять бюджет.
     if budget_max:
         relaxed.append('budget_relaxed')
         products = _try(btus=all_btus, needs_inverter=needs_inverter,
-                        budget_max=None, needs_black=False)
+                        budget_max=None, needs_wifi=False, brand_id=None)
         if products:
             return _balance_by_source(products, per_source, total), relaxed
 
-    # 4. Снять инвертор.
+    # 5. Снять инвертор.
     if needs_inverter:
         relaxed.append('inverter_relaxed')
         products = _try(btus=all_btus, needs_inverter=False,
-                        budget_max=None, needs_black=False)
+                        budget_max=None, needs_wifi=False, brand_id=None)
         if products:
             return _balance_by_source(products, per_source, total), relaxed
 
-    # 5. Снять BTU. Спасательный круг: если у активных товаров btu_calc=NULL
+    # 6. Снять BTU. Спасательный круг: если у активных товаров btu_calc=NULL
     # (например, не запускали `compute_btu` после большой переcинхронизации),
     # каскад выше вернёт пусто на любой комбинации фильтров. Лучше показать
     # любые доступные модели, чем пустоту, — менеджер уточнит мощность по
     # заявке.
     relaxed.append('btu_relaxed')
-    products = _try(btus=[], needs_inverter=False, budget_max=None, needs_black=False)
+    products = _try(btus=[], needs_inverter=False, budget_max=None,
+                    needs_wifi=False, brand_id=None)
     if products:
         return _balance_by_source(products, per_source, total), relaxed
 

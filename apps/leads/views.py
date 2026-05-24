@@ -1,4 +1,5 @@
 import logging
+import os
 
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
@@ -6,7 +7,7 @@ from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.conf import settings
 
-from apps.catalog.models import Product
+from apps.catalog.models import Brand, Product
 from apps.notifications.telegram import send_telegram
 from .forms import QuickOrderForm, SelectionRequestForm, InstallationRequestForm
 from .models import QuickOrder, SelectionRequest, InstallationRequest, QuizResult
@@ -193,6 +194,31 @@ AREA_OPTIONS = [
     ('100', 'более 65 м² (30 BTU)'),
 ]
 
+_BRAND_LOGO_EXTENSIONS = ('.svg', '.png', '.webp', '.jpg', '.jpeg')
+
+
+def _brand_logo_static(slug):
+    """Возвращает путь от STATIC_URL (`images/brands/{slug}.{ext}`),
+    если файл лежит в `static/images/brands/`. Иначе — пустую строку.
+    """
+    base = os.path.join(settings.BASE_DIR, 'static', 'images', 'brands')
+    for ext in _BRAND_LOGO_EXTENSIONS:
+        if os.path.exists(os.path.join(base, f'{slug}{ext}')):
+            return f'images/brands/{slug}{ext}'
+    return ''
+
+
+def _brand_options():
+    return [
+        {
+            'id': b.id,
+            'slug': b.slug,
+            'title': b.title,
+            'logo_static': _brand_logo_static(b.slug),
+        }
+        for b in Brand.objects.filter(featured_in_quiz=True).order_by('order', 'title')
+    ]
+
 
 def _quiz_ctx_base(step, post=None):
     post = post or {}
@@ -200,13 +226,15 @@ def _quiz_ctx_base(step, post=None):
         'step': step,
         'area_sqm': post.get('area_sqm', ''),
         'room_type': post.get('room_type', ''),
-        'budget': post.get('budget', ''),
         'inverter': post.get('inverter', ''),
+        'wifi': post.get('wifi', ''),
         'heating': post.get('heating', ''),
-        'color': post.get('color', ''),
+        'budget': post.get('budget', ''),
+        'brand': post.get('brand', ''),
         'room_options': ROOM_OPTIONS,
         'budget_options': BUDGET_OPTIONS,
         'area_options': AREA_OPTIONS,
+        'brand_options': _brand_options(),
     }
 
 
@@ -224,31 +252,46 @@ def _quiz_int(value, default=0):
 @require_POST
 def quiz_step(request):
     current = _quiz_int(request.POST.get('step'), 1)
+
+    # Кнопка «Назад» — рендерим предыдущий шаг с сохранёнными ответами.
+    if request.POST.get('action') == 'back':
+        prev = max(1, current - 1)
+        return render(request, 'leads/partials/_quiz_step.html',
+                      _quiz_ctx_base(prev, request.POST))
+
     next_step = current + 1
     ctx = _quiz_ctx_base(next_step, request.POST)
 
-    if next_step <= 6:
+    if next_step <= 7:
         return render(request, 'leads/partials/_quiz_step.html', ctx)
 
     area = max(5, _quiz_int(ctx['area_sqm'], 25))
     btu, secondary_btus = quiz_logic.btu_candidates(area)
     budget_max = _quiz_int(ctx['budget']) or None
     needs_inverter = ctx['inverter'] == 'yes'
+    needs_wifi = ctx['wifi'] == 'yes'
     needs_heating = ctx['heating'] == 'yes'
-    needs_black = ctx['color'] == 'black'
+    brand_id = _quiz_int(ctx['brand']) or None
+
+    brand_obj = None
+    if brand_id:
+        brand_obj = Brand.objects.filter(pk=brand_id).first()
+        if brand_obj is None:
+            brand_id = None
 
     products, relaxed = quiz_logic.recommend_products(
         btu,
         budget_max=budget_max,
         needs_inverter=needs_inverter,
-        needs_black=needs_black,
+        needs_wifi=needs_wifi,
+        brand_id=brand_id,
         room_type=ctx['room_type'] or None,
         secondary_btus=secondary_btus,
     )
     if not products or 'btu_relaxed' in relaxed:
         logger.warning(
-            'quiz_empty_or_btu_relaxed btu=%s budget=%s inverter=%s black=%s room=%s relaxed=%s found=%s',
-            btu, budget_max, needs_inverter, needs_black,
+            'quiz_empty_or_btu_relaxed btu=%s budget=%s inverter=%s wifi=%s brand=%s room=%s relaxed=%s found=%s',
+            btu, budget_max, needs_inverter, needs_wifi, brand_id,
             ctx['room_type'], relaxed, len(products),
         )
 
@@ -258,7 +301,8 @@ def quiz_step(request):
         budget_max=budget_max,
         needs_inverter=needs_inverter,
         needs_heating=needs_heating,
-        needs_black=needs_black,
+        needs_wifi=needs_wifi,
+        wanted_brand=brand_obj,
         recommended_btu=btu,
         recommended_product_ids=[p.id for p in products],
     )
@@ -271,6 +315,7 @@ def quiz_step(request):
         'relaxed': relaxed,
         'quiz_id': quiz.id,
         'budget_max': budget_max,
+        'brand_title': brand_obj.title if brand_obj else '',
     })
     return render(request, 'leads/partials/_quiz_step.html', ctx)
 
@@ -285,7 +330,7 @@ def quiz_lead(request, quiz_id):
             status=400,
         )
 
-    quiz = QuizResult.objects.filter(pk=quiz_id).first()
+    quiz = QuizResult.objects.select_related('wanted_brand').filter(pk=quiz_id).first()
     if not quiz:
         return HttpResponse(
             '<p class="text-red-500 text-sm py-2">Сессия квиза истекла, начните заново</p>',
@@ -296,14 +341,18 @@ def quiz_lead(request, quiz_id):
     quiz.contact_phone = phone
     quiz.save(update_fields=['contact_name', 'contact_phone'])
 
+    budget_str = f'до {quiz.budget_max:,} ₽'.replace(',', ' ') if quiz.budget_max else 'любой'
+    brand_str = quiz.wanted_brand.title if quiz.wanted_brand else 'любой'
+
     send_telegram(
         f'🎯 <b>Quiz: подбор</b>\n'
         f'👤 {name} | 📞 {phone}\n'
         f'📐 {quiz.area_sqm} м² | {quiz.get_room_type_display()}\n'
-        f'💰 Бюджет: {f"до {quiz.budget_max:,} ₽".replace(",", " ") if quiz.budget_max else "любой"}\n'
+        f'💰 Бюджет: {budget_str}\n'
         f'⚙️ BTU: {quiz.recommended_btu}k · Инвертор: {"да" if quiz.needs_inverter else "нет"} · '
-        f'Обогрев: {"да" if quiz.needs_heating else "нет"} · '
-        f'Цвет: {"чёрный" if quiz.needs_black else "любой"}\n'
+        f'Wi-Fi: {"да" if quiz.needs_wifi else "нет"} · '
+        f'Обогрев: {"да" if quiz.needs_heating else "нет"}\n'
+        f'🏷 Бренд: {brand_str}\n'
         f'🔗 /admin/leads/quizresult/{quiz.id}/'
     )
 

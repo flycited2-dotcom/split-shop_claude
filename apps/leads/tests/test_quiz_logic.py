@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from django.db.models import Q
 from django.test import SimpleTestCase, TestCase
 
-from apps.catalog.models import Brand, Category, Product
+from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
 from apps.leads import quiz_logic
 from apps.stock.models import Stock
 
@@ -168,11 +168,13 @@ class _RecommendBase(TestCase):
         cls.brand = Brand.objects.create(title='TestBrand', slug='testbrand')
 
     def _make(self, *, nc_code, title, source='breeze', btu_calc=9,
-              ric=30000, stock_qty=5, is_active=True):
+              ric=30000, stock_qty=5, is_active=True, brand=None,
+              description=''):
         p = Product.objects.create(
             nc_code=nc_code, articul=nc_code,
-            category=self.category, brand=self.brand,
+            category=self.category, brand=brand or self.brand,
             title=title,
+            description=description,
             ric=Decimal(str(ric)),
             source=source,
             btu_calc=btu_calc,
@@ -185,37 +187,28 @@ class _RecommendBase(TestCase):
 class RecommendProductsTest(_RecommendBase):
 
     def test_strict_match_no_relaxation(self):
-        self._make(nc_code='NC-1', title='AC Inverter 9 чёрный',
+        self._make(nc_code='NC-1', title='AC Inverter 9',
                    btu_calc=9, ric=40000)
         products, relaxed = quiz_logic.recommend_products(
-            9, budget_max=50000, needs_inverter=True, needs_black=True,
+            9, budget_max=50000, needs_inverter=True,
         )
         self.assertEqual(len(products), 1)
         self.assertEqual(relaxed, [])
 
-    def test_color_relaxed_when_no_black(self):
-        # Чёрного нет, но есть подходящий по остальным фильтрам.
-        self._make(nc_code='NC-2', title='AC Inverter 9 белый', btu_calc=9, ric=40000)
-        products, relaxed = quiz_logic.recommend_products(
-            9, budget_max=50000, needs_inverter=True, needs_black=True,
-        )
-        self.assertEqual(len(products), 1)
-        self.assertIn('color_relaxed', relaxed)
-
     def test_budget_relaxed_when_too_cheap(self):
         # Нет ничего в бюджете 10к, но есть за 40к.
-        self._make(nc_code='NC-3', title='AC Inverter 9 белый', btu_calc=9, ric=40000)
+        self._make(nc_code='NC-3', title='AC Inverter 9', btu_calc=9, ric=40000)
         products, relaxed = quiz_logic.recommend_products(
-            9, budget_max=10000, needs_inverter=True, needs_black=False,
+            9, budget_max=10000, needs_inverter=True,
         )
         self.assertEqual(len(products), 1)
         self.assertIn('budget_relaxed', relaxed)
 
     def test_inverter_relaxed_when_no_inverters(self):
         # Нет инверторов, но есть обычный.
-        self._make(nc_code='NC-4', title='AC Standard 9 белый', btu_calc=9, ric=40000)
+        self._make(nc_code='NC-4', title='AC Standard 9', btu_calc=9, ric=40000)
         products, relaxed = quiz_logic.recommend_products(
-            9, budget_max=None, needs_inverter=True, needs_black=False,
+            9, budget_max=None, needs_inverter=True,
         )
         self.assertEqual(len(products), 1)
         self.assertIn('inverter_relaxed', relaxed)
@@ -223,16 +216,16 @@ class RecommendProductsTest(_RecommendBase):
     def test_btu_relaxed_when_btu_calc_null(self):
         # Свежий критический фикс: btu_calc=NULL у всех → каскад выше всё равно
         # пуст; 5-й уровень снимает BTU и показывает что есть.
-        self._make(nc_code='NC-5', title='AC 9 белый', btu_calc=None, ric=30000)
+        self._make(nc_code='NC-5', title='AC 9', btu_calc=None, ric=30000)
         products, relaxed = quiz_logic.recommend_products(
-            9, budget_max=None, needs_inverter=False, needs_black=False,
+            9, budget_max=None, needs_inverter=False,
         )
         self.assertEqual(len(products), 1)
         self.assertIn('btu_relaxed', relaxed)
 
     def test_nothing_found_when_empty_db(self):
         products, relaxed = quiz_logic.recommend_products(
-            9, budget_max=None, needs_inverter=False, needs_black=False,
+            9, budget_max=None, needs_inverter=False,
         )
         self.assertEqual(products, [])
         # btu_relaxed добавлен последним перед nothing_found.
@@ -240,20 +233,20 @@ class RecommendProductsTest(_RecommendBase):
         self.assertIn('nothing_found', relaxed)
 
     def test_commercial_excludes_mobile(self):
-        self._make(nc_code='NC-10', title='AC Mobile 9 белый', btu_calc=9)
-        self._make(nc_code='NC-11', title='AC Standard 9 белый', btu_calc=9)
+        self._make(nc_code='NC-10', title='AC Mobile 9', btu_calc=9)
+        self._make(nc_code='NC-11', title='AC Standard 9', btu_calc=9)
         products, relaxed = quiz_logic.recommend_products(
             9, budget_max=None, room_type='commercial',
         )
         titles = [p.title for p in products]
-        self.assertNotIn('AC Mobile 9 белый', titles)
-        self.assertIn('AC Standard 9 белый', titles)
+        self.assertNotIn('AC Mobile 9', titles)
+        self.assertIn('AC Standard 9', titles)
 
     def test_room_type_none_keeps_mobile(self):
-        self._make(nc_code='NC-20', title='AC Mobile 9 белый', btu_calc=9)
+        self._make(nc_code='NC-20', title='AC Mobile 9', btu_calc=9)
         products, relaxed = quiz_logic.recommend_products(9, room_type=None)
         titles = [p.title for p in products]
-        self.assertIn('AC Mobile 9 белый', titles)
+        self.assertIn('AC Mobile 9', titles)
 
     def test_multi_split_excluded(self):
         # Внутренние блоки мульти-сплита засоряют каталог — должны выпасть.
@@ -279,3 +272,80 @@ class RecommendProductsTest(_RecommendBase):
         self.assertEqual(sources.count('breeze'), 2)
         self.assertEqual(sources.count('rusklimat'), 2)
         self.assertEqual(sources.count('daichi'), 2)
+
+
+class WifiFilterTest(_RecommendBase):
+
+    def test_wifi_filter_via_techspec(self):
+        # Товар с TechSpec «Wi-Fi управление» = «Да» должен проходить фильтр.
+        spec = TechSpec.objects.create(title='Wi-Fi управление')
+        with_wifi = self._make(nc_code='NC-W1', title='AC Standard 9 with', btu_calc=9)
+        ProductTech.objects.create(product=with_wifi, spec=spec, value='Да')
+        # Контрольный товар без Wi-Fi — но в title нет «wi-fi» и tech нет.
+        self._make(nc_code='NC-W0', title='AC Standard 9 plain', btu_calc=9)
+
+        products, relaxed = quiz_logic.recommend_products(9, needs_wifi=True)
+        titles = [p.title for p in products]
+        self.assertIn('AC Standard 9 with', titles)
+        self.assertNotIn('AC Standard 9 plain', titles)
+        self.assertEqual(relaxed, [])
+
+    def test_wifi_filter_excludes_explicit_no(self):
+        # Если в TechSpec написано «Нет» — товар НЕ должен попасть.
+        spec = TechSpec.objects.create(title='Wi-Fi')
+        no_wifi = self._make(nc_code='NC-WN', title='AC Standard 9 no-wifi', btu_calc=9)
+        ProductTech.objects.create(product=no_wifi, spec=spec, value='Нет')
+
+        products, relaxed = quiz_logic.recommend_products(9, needs_wifi=True)
+        titles = [p.title for p in products]
+        self.assertNotIn('AC Standard 9 no-wifi', titles)
+        # При пустой выдаче wifi снимается с релаксацией.
+        self.assertIn('wifi_relaxed', relaxed)
+
+    def test_wifi_filter_via_description(self):
+        # Товар без TechSpec, но с упоминанием Wi-Fi в description — пройдёт.
+        self._make(nc_code='NC-WD', title='AC Standard 9 desc', btu_calc=9,
+                   description='Возможность подключения Wi-Fi через опциональный модуль.')
+        self._make(nc_code='NC-PD', title='AC Standard 9 plain', btu_calc=9,
+                   description='Простой кондиционер без удалёнки.')
+
+        products, _ = quiz_logic.recommend_products(9, needs_wifi=True)
+        titles = [p.title for p in products]
+        self.assertIn('AC Standard 9 desc', titles)
+        self.assertNotIn('AC Standard 9 plain', titles)
+
+    def test_wifi_relaxed_when_nothing_matches(self):
+        # Wi-Fi нигде, релаксация вернёт все товары с меткой wifi_relaxed.
+        self._make(nc_code='NC-NW', title='AC Standard 9', btu_calc=9)
+        products, relaxed = quiz_logic.recommend_products(9, needs_wifi=True)
+        self.assertEqual(len(products), 1)
+        self.assertIn('wifi_relaxed', relaxed)
+
+
+class BrandFilterTest(_RecommendBase):
+
+    def test_brand_filter(self):
+        other = Brand.objects.create(title='OtherBrand', slug='other')
+        self._make(nc_code='NC-BR1', title='AC default 9', btu_calc=9)
+        self._make(nc_code='NC-BR2', title='AC other 9', btu_calc=9, brand=other)
+
+        products, relaxed = quiz_logic.recommend_products(9, brand_id=other.id)
+        titles = [p.title for p in products]
+        self.assertIn('AC other 9', titles)
+        self.assertNotIn('AC default 9', titles)
+        self.assertEqual(relaxed, [])
+
+    def test_brand_relaxed_first_before_wifi(self):
+        # Бренд указан, его товаров нет — снимаем brand, оставляя wifi.
+        spec = TechSpec.objects.create(title='Wi-Fi')
+        with_wifi = self._make(nc_code='NC-RW', title='AC with wifi 9', btu_calc=9)
+        ProductTech.objects.create(product=with_wifi, spec=spec, value='Да')
+
+        empty_brand = Brand.objects.create(title='Empty', slug='empty')
+        products, relaxed = quiz_logic.recommend_products(
+            9, needs_wifi=True, brand_id=empty_brand.id,
+        )
+        self.assertEqual(len(products), 1)
+        # brand снят, wifi остался строгим — не должен быть в relaxed.
+        self.assertIn('brand_relaxed', relaxed)
+        self.assertNotIn('wifi_relaxed', relaxed)

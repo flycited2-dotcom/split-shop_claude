@@ -37,6 +37,11 @@ class Brand(models.Model):
     logo_url = models.URLField(max_length=500, blank=True)
     site_url = models.URLField(max_length=500, blank=True)
     order = models.PositiveIntegerField(default=0)
+    featured_in_quiz = models.BooleanField(
+        'Показывать в квизе',
+        default=False,
+        help_text='Выводить бренд на шаге выбора бренда в квиз-подборщике',
+    )
 
     class Meta:
         ordering = ['order', 'title']
