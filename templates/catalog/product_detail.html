@@ -130,50 +130,54 @@
         {% endif %}
       {% endif %}
 
-      {# Primary CTAs #}
-      <div class="flex flex-wrap gap-2 mb-4">
-        <button type="button" onclick="openModal('quick-order-modal')" class="btn btn-primary">
+      {# Primary actions: одна строка — Купить / Подобрать / Монтаж #}
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-5">
+        <button type="button" onclick="openModal('quick-order-modal')"
+                class="btn btn-primary justify-center">
           ⚡ Купить в 1 клик
         </button>
-        <div class="relative">
-          <button type="button" onclick="toggleShare()" id="share-btn"
-                  class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-ink/15 text-ink font-semibold text-sm hover:border-accent hover:text-accent transition">
-            Поделиться
-          </button>
-          <div id="share-menu"
-               class="hidden absolute z-30 mt-2 right-0 min-w-[220px] bg-white border border-ink/10 rounded-xl shadow-lg py-1">
-            <a id="share-email" href="#"
-               class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
-              <span>Email</span>
-            </a>
-            <button type="button" onclick="copyProductLink()"
-                    class="w-full text-left flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
-              <span>Скопировать ссылку</span>
-            </button>
-            <a id="share-tg" href="#" target="_blank" rel="noopener"
-               class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
-              <span>Telegram</span>
-            </a>
-            <a id="share-max" href="#" target="_blank" rel="noopener"
-               class="flex items-center gap-2 px-4 py-2.5 text-sm text-ink hover:bg-surface">
-              <span>MAX</span>
-            </a>
-          </div>
-        </div>
-        <span id="share-toast"
-              class="hidden inline-flex items-center text-sm text-green-700 font-semibold ml-1">✓ Ссылка скопирована</span>
-      </div>
-
-      {# Secondary actions: outline buttons instead of plain links #}
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
         <a href="{% url 'quiz' %}" class="btn-outline">Подобрать другую</a>
         <a href="{% url 'installation' %}" class="btn-outline">Заказать монтаж</a>
-        {% if product.manual_url %}
-          <a href="{{ product.manual_url }}" target="_blank" rel="noopener" class="btn-outline">Инструкция</a>
-        {% elif product.booklet_url %}
-          <a href="{{ product.booklet_url }}" target="_blank" rel="noopener" class="btn-outline">Буклет</a>
-        {% endif %}
       </div>
+
+      {# Share row — четыре цветные pill-кнопки по эталону. #}
+      <div class="mb-4">
+        <p class="text-sm text-ink-3 mb-2 font-medium">Поделиться:</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <a id="share-max" href="#" target="_blank" rel="noopener"
+             class="share-chip share-chip-max">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.06 2 11.06c0 2.86 1.45 5.42 3.74 7.13L4.6 22l4.04-2.13c1.07.31 2.2.48 3.36.48 5.52 0 10-4.06 10-9.06S17.52 2 12 2z"/></svg>
+            <span>MAX</span>
+          </a>
+          <a id="share-tg" href="#" target="_blank" rel="noopener"
+             class="share-chip share-chip-tg">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+            <span>Telegram</span>
+          </a>
+          <a id="share-email" href="#"
+             class="share-chip share-chip-email">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span>Email</span>
+          </a>
+          <button type="button" onclick="copyProductLink()"
+                  class="share-chip share-chip-link">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <span>Ссылка</span>
+          </button>
+        </div>
+        <span id="share-toast"
+              class="hidden inline-flex items-center text-sm text-green-700 font-semibold mt-2">✓ Ссылка скопирована</span>
+      </div>
+
+      {% if product.manual_url or product.booklet_url %}
+        <div class="grid grid-cols-2 gap-2 mt-1">
+          {% if product.manual_url %}
+            <a href="{{ product.manual_url }}" target="_blank" rel="noopener" class="btn-outline">Инструкция</a>
+          {% elif product.booklet_url %}
+            <a href="{{ product.booklet_url }}" target="_blank" rel="noopener" class="btn-outline">Буклет</a>
+          {% endif %}
+        </div>
+      {% endif %}
     </div>
   </div>
 
@@ -410,8 +414,6 @@ document.addEventListener('keydown', function(e) {
     document.querySelectorAll('[id$="-modal"]:not(.hidden)').forEach(function(m) {
       m.classList.add('hidden');
     });
-    var sm = document.getElementById('share-menu');
-    if (sm) sm.classList.add('hidden');
   } else if (lbOpen && e.key === 'ArrowRight') {
     lightboxNext();
   } else if (lbOpen && e.key === 'ArrowLeft') {
@@ -476,47 +478,38 @@ document.querySelectorAll('.tab-btn').forEach(function(btn) {
   });
 });
 
-// Share
-var SHARE_URL = window.location.href;
-var SHARE_TITLE = "{{ product.title|escapejs }}";
-function toggleShare() {
-  var m = document.getElementById('share-menu');
-  m.classList.toggle('hidden');
-  if (!m.classList.contains('hidden')) {
-    document.getElementById('share-email').href =
-      'mailto:?subject=' + encodeURIComponent(SHARE_TITLE) +
-      '&body=' + encodeURIComponent(SHARE_TITLE + '\n\n' + SHARE_URL);
-    document.getElementById('share-tg').href =
-      'https://t.me/share/url?url=' + encodeURIComponent(SHARE_URL) +
-      '&text=' + encodeURIComponent(SHARE_TITLE);
-    document.getElementById('share-max').href =
-      'https://max.ru/share?url=' + encodeURIComponent(SHARE_URL) +
-      '&text=' + encodeURIComponent(SHARE_TITLE);
-  }
-}
-function copyProductLink() {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(SHARE_URL).then(showShareToast).catch(showShareToast);
-  } else {
-    var ta = document.createElement('textarea');
-    ta.value = SHARE_URL; document.body.appendChild(ta);
-    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    showShareToast();
-  }
-  document.getElementById('share-menu').classList.add('hidden');
-}
-function showShareToast() {
-  var t = document.getElementById('share-toast');
-  t.classList.remove('hidden');
-  setTimeout(function() { t.classList.add('hidden'); }, 2500);
-}
-document.addEventListener('click', function(e) {
-  var menu = document.getElementById('share-menu');
-  var btn = document.getElementById('share-btn');
-  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
-    menu.classList.add('hidden');
-  }
-});
+// Share — четыре прямые ссылки + копирование. Без dropdown'а.
+(function() {
+  var SHARE_URL = window.location.href;
+  var SHARE_TITLE = "{{ product.title|escapejs }}";
+  // Подставляем href при загрузке — пользователь сразу видит активные ссылки.
+  var tg = document.getElementById('share-tg');
+  if (tg) tg.href = 'https://t.me/share/url?url=' + encodeURIComponent(SHARE_URL) +
+                    '&text=' + encodeURIComponent(SHARE_TITLE);
+  var max = document.getElementById('share-max');
+  if (max) max.href = 'https://max.ru/share?url=' + encodeURIComponent(SHARE_URL) +
+                       '&text=' + encodeURIComponent(SHARE_TITLE);
+  var email = document.getElementById('share-email');
+  if (email) email.href = 'mailto:?subject=' + encodeURIComponent(SHARE_TITLE) +
+                          '&body=' + encodeURIComponent(SHARE_TITLE + '\n\n' + SHARE_URL);
+
+  window.copyProductLink = function() {
+    var done = function() {
+      var t = document.getElementById('share-toast');
+      if (!t) return;
+      t.classList.remove('hidden');
+      setTimeout(function() { t.classList.add('hidden'); }, 2500);
+    };
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(SHARE_URL).then(done).catch(done);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = SHARE_URL; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+      done();
+    }
+  };
+})();
 </script>
 
 {% if YANDEX_METRIKA_ID %}

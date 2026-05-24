@@ -363,3 +363,45 @@ h1, h2, h3, h4 {
 }
 .catalog-toggle-btn:active { transform: translateY(0); }
 
+
+
+/* Share chips на странице товара — четыре цветные pill-кнопки.
+   Стиль: outline с круглой иконкой+подписью, цвет иконки и hover-border = brand color. */
+.share-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 26, 43, 0.12);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s, transform .15s;
+  text-decoration: none;
+  width: 100%;
+}
+.share-chip:hover {
+  transform: translateY(-1px);
+}
+.share-chip svg { flex-shrink: 0; }
+
+/* MAX — фиолетовый */
+.share-chip-max svg { color: #7e3ff2; }
+.share-chip-max:hover { border-color: #7e3ff2; color: #7e3ff2; }
+
+/* Telegram — голубой */
+.share-chip-tg svg { color: #229ED9; }
+.share-chip-tg:hover { border-color: #229ED9; color: #229ED9; }
+
+/* Email — оранжевый */
+.share-chip-email svg { color: #ee7a30; }
+.share-chip-email:hover { border-color: #ee7a30; color: #ee7a30; }
+
+/* Скопировать ссылку — серый/нейтральный */
+.share-chip-link svg { color: var(--ink-3); }
+.share-chip-link:hover { border-color: var(--ink-2); color: var(--ink-2); }
+
