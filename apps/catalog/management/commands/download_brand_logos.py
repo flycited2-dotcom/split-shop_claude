@@ -36,6 +36,26 @@ _CONTENT_TYPE_TO_EXT = {
 _RUSKLIMAT_BRANDS_URL = 'https://b2b.rusklimat.com/api/v1/brands/?limit=200&page={page}'
 
 
+def _fetch_breeze_brand_index():
+    """Скачивает бренды с api.breez.ru/v1/brands/ через BreezClient.
+
+    Возвращает {name_lower: image_url}. Поле `image` ведёт на прямую
+    ссылку лого (см. https://api.breez.ru/api). Часть URL может быть
+    «https://breez.ru» (404-страница) — фильтруется при скачивании по
+    Content-Type.
+    """
+    from apps.sync.client import BreezClient
+    client = BreezClient()
+    items = client.get_brands()
+    index = {}
+    for item in items or []:
+        title = (item.get('title') or '').strip()
+        image = (item.get('image') or '').strip()
+        if title and image:
+            index[title.lower()] = image
+    return index
+
+
 def _ext_from_response(resp, fallback_url):
     """Определяет расширение по Content-Type или по URL."""
     ctype = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
@@ -75,6 +95,9 @@ class Command(BaseCommand):
         parser.add_argument('--from-rusklimat', action='store_true',
                             help='Перед скачиванием подтянуть Brand.logo_url из '
                                  'b2b.rusklimat.com/api/v1/brands/ для брендов с пустым logo_url')
+        parser.add_argument('--from-breeze', action='store_true',
+                            help='Перед скачиванием подтянуть Brand.logo_url из '
+                                 'api.breez.ru/v1/brands/ для брендов с пустым logo_url')
 
     def handle(self, *args, **opts):
         out_dir = os.path.join(settings.BASE_DIR, 'static', 'images', 'brands')
@@ -87,19 +110,28 @@ class Command(BaseCommand):
         elif not opts['all_brands']:
             base_qs = base_qs.filter(featured_in_quiz=True)
 
-        # Шаг 1 (опционально): заполнить logo_url из rusklimat API для тех,
-        # у кого пусто. Matching: точное → substring (поймает «Mitsubishi» =
-        # «MITSUBISHI ELECTRIC»).
+        # Шаг 1 (опционально): заполнить logo_url из внешних API для брендов
+        # с пустым logo_url. Matching: точное → substring (поймает «Mitsubishi»
+        # = «MITSUBISHI ELECTRIC»).
+        sources = []
         if opts['from_rusklimat']:
-            self.stdout.write('Тяну rusklimat brand index...')
-            index = _fetch_rusklimat_brand_index()
+            sources.append(('rusklimat', _fetch_rusklimat_brand_index))
+        if opts['from_breeze']:
+            sources.append(('breeze', _fetch_breeze_brand_index))
+
+        for source_name, fetcher in sources:
+            self.stdout.write(f'Тяну {source_name} brand index...')
+            try:
+                index = fetcher()
+            except Exception as exc:
+                self.stderr.write(f'  ERR {source_name}: {exc}')
+                continue
             self.stdout.write(f'  получено {len(index)} брендов с лого')
             updated = 0
             for brand in base_qs.filter(logo_url=''):
                 key = brand.title.lower()
                 api_url = index.get(key)
                 if not api_url:
-                    # fuzzy: либо наш title содержится в API name, либо наоборот
                     for api_name, url in index.items():
                         if key in api_name or api_name in key:
                             api_url = url
@@ -110,7 +142,7 @@ class Command(BaseCommand):
                     updated += 1
                     self.stdout.write(f'  → {brand.slug}: {api_url}')
             self.stdout.write(self.style.SUCCESS(
-                f'logo_url обновлён у {updated} брендов.'
+                f'  {source_name}: logo_url обновлён у {updated} брендов.'
             ))
 
         # Шаг 2: скачивание.
