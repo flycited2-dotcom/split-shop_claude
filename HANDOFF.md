@@ -1,11 +1,82 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-21 (q-итерация: hotfix quiz + Tailwind compiled + тесты + скидка 15% + ЛК физлица + /availability/ + README)
-**Прогресс:** B2C-pivot + Quiz + TechSpec + per-warehouse + Rusklimat REST + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge на каталоге и карточке товара + надёжный scroll-top на любых HTMX swap каталога + Tailwind compiled из CDN + 5 уровней релаксации в quiz + реальная скидка 15% при регистрации физлица + ЛК физлица + /availability/ + покрытие тестами
+**Дата обновления:** 2026-05-24 (r-итерация: квиз v2 — Wi-Fi/бренд/«Назад»/убрали цвет + JWT auto-refresh для Rusklimat)
+**Прогресс:** B2C-pivot + Quiz v2 (7 шагов с Wi-Fi и брендом) + Rusklimat JWT auto-refresh + TechSpec + per-warehouse + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge + scroll-top + Tailwind compiled + 5 уровней релаксации + реальная скидка 15% + ЛК физлица + /availability/ + покрытие тестами
 **Ветка:** `develop` (запушена в GitHub; ждёт deploy на VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `205b00d` (HANDOFF cleanup, email-уведомления) — **отстаёт от develop на 8 коммитов**, нужен deploy
+**Production HEAD на VPS:** `205b00d` (HANDOFF cleanup, email-уведомления) — **отстаёт от develop на 10 коммитов**, нужен deploy
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-24 (r-итерация) — квиз v2 + JWT auto-refresh
+
+**r1. Квиз v2: Wi-Fi, бренд, кнопка «Назад», убрали «Цвет».** План `hashed-jumping-iverson.md` (6 шагов) был уже выполнен в q-итерации. Эта итерация — следующий слой. Теперь 7 шагов: площадь → тип → инвертор → **Wi-Fi** → обогрев → бюджет → **бренд** → результат. Бюджет перенесён ближе к финалу, после функциональных предпочтений. Шаг «Цвет» удалён из UI (поле `QuizResult.needs_black` сохранено для legacy записей).
+- **Wi-Fi-фильтр** — гибрид: TechSpec по title icontains `wi-fi|вай-фай|беспровод|удал…управлен` + значение НЕ `нет/−/—/отсутств`, OR fallback на regex по `Product.description`/`title`. Включает кейс «возможность подключения Wi-Fi» (по словам владельца). Релаксация `wifi_relaxed`.
+- **Бренд-фильтр** — manual select через новое поле `Brand.featured_in_quiz` (BooleanField) + сортировка по `order`. В админке `/admin/catalog/brand/` — list_editable для `featured_in_quiz` и `order`. Логотипы скачиваются в `static/images/brands/{slug}.{ext}` через `python manage.py download_brand_logos` (берёт `Brand.logo_url`, расширение из Content-Type). В шаблоне `<img>` если logo есть, иначе только название. Релаксация `brand_relaxed` (первой при пустоте — снимаем самый сильный сужающий фильтр).
+- **Кнопка «Назад»** — `<button name="action" value="back" formnovalidate>` в каждом шаге кроме 1. View: `if request.POST.get('action') == 'back': render(prev_step, ...)` — POST hidden inputs автоматически восстанавливают предыдущие ответы.
+- **Порядок релаксации** (от менее важного к более): `brand → wifi → budget → inverter → btu`.
+- **Telegram-уведомление** при заявке: убрана строка про цвет, добавлены строки «Wi-Fi: да/нет» и «Бренд: …».
+- Файлы: `apps/catalog/models.py:Brand` (+ migration 0011), `apps/catalog/admin.py`, `apps/catalog/management/commands/download_brand_logos.py` (новый), `apps/leads/models.py:QuizResult` (+ migration 0004 — `needs_wifi`, `wanted_brand` FK, переименован `needs_black` → «(legacy)»), `apps/leads/quiz_logic.py`, `apps/leads/views.py`, `apps/leads/admin.py`, `templates/leads/partials/_quiz_step.html`, `templates/leads/quiz.html`.
+- Тесты: `apps/leads/tests/test_quiz_logic.py` — `WifiFilterTest` (4 кейса: TechSpec hit, явное Нет, description fallback, релаксация), `BrandFilterTest` (фильтр + brand_relaxed первой). `apps/leads/tests/test_views_quiz.py` — flow по 7 шагам, persist Wi-Fi и brand_id в QuizResult, кнопка «Назад» возвращает шаг N-1 без создания QuizResult.
+
+**r2. JWT auto-refresh для Rusklimat REST.** Старая память утверждала, что auth-эндпоинт `POST b2b.rusklimat.com/api/v1/auth/jwt/` требует «отдельные API-credentials» — это было неверно. Спецификация владельца от 2026-05-24:
+- Auth работает с обычными user-кредами при условии заголовка `User-Agent: catalog-ip` (без него 401 / «Invalid user/password»).
+- Токен сбрасывается строго **в 00:00 МСК** (не +24ч от выпуска). Поэтому cron не «раз в сутки», а каждый день в **23:50 Europe/Moscow**.
+- **Новый модуль `apps/sync/rusklimat_auth.py`** — `fetch_jwt()` (POST + cache.set), `get_jwt()` (cache → fetch → legacy fallback на статичный `RUSKLIMAT_JWT_TOKEN`), `invalidate_jwt()`. Кэш в Django cache (Redis), TTL 24ч (верхняя граница; реально сбрасывается cron-задачей). `threading.Lock` от race внутри процесса, между процессами безопасно (худший случай — два refresh параллельно, оба токена валидны).
+- **RusklimatRestClient** теперь тянет JWT через `get_jwt()`, новый helper `_request(method, url, where, **kw)` на 401 делает invalidate → refresh → retry один раз. Если повторно 401 — бросает `RusklimatJWTExpired`. Все методы (`request_key`, `get_units`, `get_categories`, `get_properties`, `get_products`) перешли на `_request`. `partnerId` теперь из `settings.RUSKLIMAT_PARTNER_ID` (дефолт `e51a9046-...`), fallback на `JWT.payload.guid`.
+- **Celery Beat** — задача `sync.refresh_rusklimat_jwt` в `apps/sync/tasks.py`, расписание в `splithome/settings/base.py`: `crontab(hour=23, minute=50)` (CELERY_TIMEZONE=`Europe/Moscow`).
+- **Management command** `python manage.py refresh_rusklimat_jwt [--show]` — для первого запуска после деплоя (когда кэш пуст) и дебага.
+- **Новые .env-переменные:** `RUSKLIMAT_LOGIN`, `RUSKLIMAT_PASSWORD`, `RUSKLIMAT_PARTNER_ID` (опционально, дефолт в settings). Статичный `RUSKLIMAT_JWT_TOKEN` оставлен как legacy fallback.
+- Тесты `apps/sync/tests/test_rusklimat_auth.py` — `fetch_jwt` happy + 4xx + network + malformed; `get_jwt` cached / fetch-on-miss / legacy / no-creds; интеграционный 401→refresh→retry на `RusklimatRestClient.request_key`.
+
+### Deploy-чеклист после `git pull`
+
+```bash
+# 1. В /opt/oasis/.env добавить:
+#    RUSKLIMAT_LOGIN=<логин от b2b.rusklimat.com>
+#    RUSKLIMAT_PASSWORD=<пароль>
+
+# 2. Build + migrate + statics
+docker compose build web
+docker compose run --rm web python manage.py migrate
+docker compose run --rm web python manage.py collectstatic --noinput
+docker compose up -d
+
+# 3. В admin /admin/catalog/brand/ — выставить featured_in_quiz=True
+#    для 6 топ-брендов, расставить order (или сделать update через shell).
+
+# 4. Скачать лого брендов:
+docker compose exec web python manage.py download_brand_logos
+docker compose exec web python manage.py collectstatic --noinput
+# rsync статики на nginx host (см. server_deploy.md)
+
+# 5. Первичное наполнение кэша JWT (без него первый sync_rusklimat_rest
+#    дёрнет fetch_jwt сам, но лучше прогреть):
+docker compose exec web python manage.py refresh_rusklimat_jwt --show
+
+# 6. Перезапустить celery beat, чтобы подхватилось новое расписание:
+docker compose restart celery-beat
+# (или весь docker compose restart, если beat в общем контейнере)
+
+# 7. Тесты:
+docker compose exec web python manage.py test apps.leads.tests apps.sync.tests apps.catalog.tests
+```
+
+### Smoke-тест в браузере
+
+1. https://splithome.ru/quiz/ — happy path: «до 25 м² (9 BTU)» → Квартира → Инвертор «Да» → Wi-Fi «Да» → Обогрев «Нет» → Бюджет «до 50k» → Daichi. Ожидаем 3–5 моделей с Wi-Fi, инвертором, под бюджет, бренд Daichi.
+2. На шаге 5 кликнуть «← Назад» → шаг 4 с сохранённым Wi-Fi=Да.
+3. Релаксация: выбрать бренд с одним товаром в нужной мощности + Wi-Fi=Да → плашка «Под бренд X не нашли — расширили поиск».
+4. Заявка → Telegram: проверить строки «Wi-Fi: да» и «Бренд: …».
+5. Около 23:50 МСК — `docker logs` должен показать `Rusklimat JWT refreshed (length=...)`.
+
+### Свежие коммиты (24 мая r-итерация)
+
+```
+8d97a25 feat(sync): auto-refresh Rusklimat JWT (User-Agent catalog-ip, cron 23:50 МСК)
+4a7d9fa feat(quiz): Wi-Fi и бренд как шаги, кнопка «Назад», удалить шаг «Цвет»
+```
 
 ---
 
