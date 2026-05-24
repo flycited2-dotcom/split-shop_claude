@@ -99,6 +99,7 @@ Auth-эндпоинт `POST b2b.rusklimat.com/api/v1/auth/jwt/` с `User-Agent: 
 ### Свежие коммиты (24 мая r-итерация)
 
 ```
+492963b fix(catalog): объединить полупромышленные категории + убрать аксессуары
 03aeb3e feat(catalog): по умолчанию показываем только то, что в Крыму (home/catalog/similar)
 4f632ff feat: модальный success для лидов + кнопка «Поделиться» в карточке товара
 93c29ea fix(leads): /selection/ — форма пропадает после отправки + quick-order модалка auto-close
