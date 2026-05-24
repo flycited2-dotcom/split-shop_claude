@@ -312,7 +312,8 @@
     <h3 class="text-xl font-bold mb-1">Купить в 1 клик</h3>
     <p class="text-sm text-ink-3 mb-4">{{ product.title }}</p>
     <div id="quick-order-result" aria-live="polite">
-      <form hx-post="{% url 'quick_order_submit' %}" hx-target="#quick-order-result" hx-swap="innerHTML">
+      <form hx-post="{% url 'quick_order_submit' %}" hx-target="#quick-order-result" hx-swap="innerHTML"
+            hx-on::after-request="if (event.detail.successful && event.detail.xhr.status === 200) setTimeout(() => closeModal('quick-order-modal'), 2500)">
         {% csrf_token %}
         <input type="hidden" name="product_id" value="{{ product.pk }}">
         <div class="mb-3">
