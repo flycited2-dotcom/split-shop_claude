@@ -16,7 +16,30 @@ from . import quiz_logic
 logger = logging.getLogger(__name__)
 
 
+# Inline success — для модалки (quick-order), где сам контейнер модалки уже виден.
 SUCCESS_HTML = '<p class="text-green-600 font-semibold py-4">✅ Заявка принята! Менеджер свяжется с вами в ближайшее время.</p>'
+
+# Overlay-модалка — для full-page форм (/selection/, /installation/). HTMX
+# подменяет контейнер с формой на этот блок, и он fixed-overlay'ом
+# отображается поверх страницы.
+SUCCESS_MODAL_HTML = '''
+<div class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-in fade-in"
+     onclick="if(event.target===this){this.remove();}">
+  <div class="bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-md text-center relative">
+    <button type="button" onclick="this.closest('.fixed').remove()"
+            class="absolute top-3 right-4 text-ink-3 hover:text-ink text-2xl leading-none"
+            aria-label="Закрыть">&times;</button>
+    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+      <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h3 class="text-2xl font-bold mb-2">Заявка принята!</h3>
+    <p class="text-ink-3 mb-6">Менеджер свяжется с вами в течение часа.</p>
+    <a href="/" class="inline-block w-full bg-blue-600 text-white rounded-lg px-6 py-3 text-sm font-semibold hover:bg-blue-700 transition">На главную</a>
+  </div>
+</div>
+'''
 
 
 @require_POST
@@ -109,7 +132,7 @@ def selection_submit(request):
             fail_silently=True,
         )
 
-    return HttpResponse(SUCCESS_HTML)
+    return HttpResponse(SUCCESS_MODAL_HTML)
 
 
 @require_POST
@@ -157,7 +180,7 @@ def installation_submit(request):
             fail_silently=True,
         )
 
-    return HttpResponse(SUCCESS_HTML)
+    return HttpResponse(SUCCESS_MODAL_HTML)
 
 
 def selection_page(request):

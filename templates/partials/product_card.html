@@ -1,8 +1,16 @@
 {% load static catalog_extras %}
 {% btu_for product as btu_line %}
 <a href="{% url 'product_detail' product.slug %}"
-   class="card p-4 flex flex-col hover:shadow-md hover:border-accent/40 transition group"
+   class="card p-4 flex flex-col hover:shadow-md hover:border-accent/40 transition group relative"
    aria-label="{{ product.title }}">
+  <button type="button"
+          onclick="return shareProduct(event, '{% url 'product_detail' product.slug %}', '{{ product.title|escapejs }}');"
+          class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 border border-ink/10 shadow-sm flex items-center justify-center text-ink-3 hover:text-accent hover:border-accent transition"
+          aria-label="Поделиться">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.032 4.026a3 3 0 10-2.684 0m2.684 0a3 3 0 11-2.684 0m0-9.032a3 3 0 102.684 0m-2.684 0L8.684 10.658m6.632-3.026L8.684 13.342"/>
+    </svg>
+  </button>
   {% with img=product.images.first %}
     <div class="aspect-square bg-surface rounded-xl mb-3 overflow-hidden flex items-center justify-center">
       <img src="{% if img %}{{ img.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"

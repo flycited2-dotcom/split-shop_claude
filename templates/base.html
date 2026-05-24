@@ -96,6 +96,29 @@ ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBo
       if (b) b.classList.add('hidden');
     };
   })();
+
+  // Share product card: Web Share API (mobile) → clipboard fallback (desktop).
+  window.shareProduct = function(ev, relativeUrl, title) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    var url = location.origin + relativeUrl;
+    if (navigator.share) {
+      navigator.share({title: title, url: url}).catch(function(){});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(function(){
+        window.showToast && window.showToast('Ссылка скопирована');
+      }).catch(function(){});
+    }
+    return false;
+  };
+  // Lightweight global toast.
+  window.showToast = function(text) {
+    var el = document.createElement('div');
+    el.textContent = text;
+    el.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm px-4 py-2 rounded-lg shadow-lg';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 2200);
+  };
   </script>
 </body>
 </html>
