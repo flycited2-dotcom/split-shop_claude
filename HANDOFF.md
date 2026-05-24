@@ -1,10 +1,10 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-24 (r-итерация: квиз v2 — Wi-Fi/бренд/«Назад»/убрали цвет + JWT auto-refresh для Rusklimat)
-**Прогресс:** B2C-pivot + Quiz v2 (7 шагов с Wi-Fi и брендом) + Rusklimat JWT auto-refresh + TechSpec + per-warehouse + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge + scroll-top + Tailwind compiled + 5 уровней релаксации + реальная скидка 15% + ЛК физлица + /availability/ + покрытие тестами
-**Ветка:** `develop` (запушена в GitHub; ждёт deploy на VPS)
+**Дата обновления:** 2026-05-24 (r-итерация — задеплоено и работает: квиз v2 + JWT auto-refresh + brand logos)
+**Прогресс:** B2C-pivot + Quiz v2 (7 шагов, Wi-Fi, бренд с лого, «Назад») + Rusklimat JWT auto-refresh (cron 23:50 МСК) + brand logos из публичного Rusklimat API + TechSpec + per-warehouse + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge + scroll-top + Tailwind compiled + 5 уровней релаксации + реальная скидка 15% + ЛК физлица + /availability/ + покрытие тестами
+**Ветка:** `develop` (синхронизирована с прод-VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `205b00d` (HANDOFF cleanup, email-уведомления) — **отстаёт от develop на 10 коммитов**, нужен deploy
+**Production HEAD на VPS:** `30c6284` (fix(quiz): _brand_logo_static проверяет и STATIC_ROOT) — **синхронизировано с develop**
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
 
 ---
@@ -71,11 +71,61 @@ docker compose exec web python manage.py test apps.leads.tests apps.sync.tests a
 4. Заявка → Telegram: проверить строки «Wi-Fi: да» и «Бренд: …».
 5. Около 23:50 МСК — `docker logs` должен показать `Rusklimat JWT refreshed (length=...)`.
 
+### Что добавилось в процессе деплоя 24 мая
+
+**r3. Brand logos из публичного Rusklimat API.**  
+`b2b.rusklimat.com/api/v1/brands/?limit=200&page=N` — публичный endpoint (без авторизации), 357 брендов с лого на rkcdn.ru. Расширил `download_brand_logos`: опция `--from-rusklimat` подтягивает `Brand.logo_url` (точный + substring match, поймает `Mitsubishi` ↔ `MITSUBISHI ELECTRIC`), потом качает в `static/images/brands/{slug}.{ext}`. Skip для не-image Content-Type (часть URL отдаёт 404-страницу как text/html). Результат на проде: **66 логотипов скачано**, из топ-8 featured-AC брендов 6 с лого (Ballu, Royal Clima, Royal Thermo, Hisense, Funai, Midea, Dantex, Shuft), 2 без (Electrolux, Kentatsu — их нет в Rusklimat API). Через админку `/admin/catalog/brand/` для них можно загрузить лого вручную.
+
+**r4. Фикс `_brand_logo_static`.**  
+В контейнере `BASE_DIR/static/` содержит только исходники из git (пустая папка `images/brands/`), после collectstatic файлы лежат в `STATIC_ROOT` (docker volume). View искал только в `static/` и не передавал `logo_static` в шаблон. Теперь проверка в обоих местах.
+
+**r5. JWT auto-refresh — критическая деталь формата логина.**  
+Auth-эндпоинт `POST b2b.rusklimat.com/api/v1/auth/jwt/` с `User-Agent: catalog-ip` принимает **только 10 цифр без префикса**. Пример из официальной документации: `9651111111`. У нас в `.env` был `+79152757788` — отсюда «Invalid user/password». Поменял на `9152757788` — auth заработал, `refresh_rusklimat_jwt` выдаёт свежий токен. Cron в 23:50 МСК настроен через `django_celery_beat.PeriodicTask` (на проде используется `DatabaseScheduler`, settings.CELERY_BEAT_SCHEDULE не подхватывается автоматически).
+
+**Featured brands в БД (выставлено автоматически по числу AC-товаров):**
+1. Ballu (897) ✓ лого
+2. Electrolux (721)
+3. Shuft (323) ✓ лого
+4. Royal Clima (301) ✓ лого
+5. Royal Thermo (268) ✓ лого
+6. Hisense (235) ✓ лого
+7. Funai (198) ✓ лого
+8. Kentatsu (125)
+
+Shuft — это вентиляция, попал по data quirk в AC-категории. Владелец может убрать/заменить через `/admin/catalog/brand/`.
+
 ### Свежие коммиты (24 мая r-итерация)
 
 ```
+30c6284 fix(quiz): _brand_logo_static проверяет и STATIC_ROOT, не только BASE_DIR/static
+7e64ed0 fix(catalog): fuzzy match для брендов из rusklimat API
+1ce91ac fix(catalog): download_brand_logos пропускает не-image Content-Type
+b5337b8 feat(catalog): download_brand_logos --from-rusklimat — авто-подтяжка logo_url
+662fd03 fix(sync): fallback на статичный RUSKLIMAT_JWT_TOKEN при ошибке fetch_jwt
+adc744a docs(handoff): запись о r-итерации (квиз v2 + JWT auto-refresh)
 8d97a25 feat(sync): auto-refresh Rusklimat JWT (User-Agent catalog-ip, cron 23:50 МСК)
 4a7d9fa feat(quiz): Wi-Fi и бренд как шаги, кнопка «Назад», удалить шаг «Цвет»
+```
+
+### Финальный smoke-test на проде (24 мая, 15:35 МСК)
+
+Полный flow квиза через curl с CSRF:
+```
+POST /leads/quiz-step/  step=7 → result
+  area_sqm=25, room_type=apartment, inverter=yes, wifi=yes,
+  heating=no, budget=50000, brand=56 (Ballu)
+→ HTTP 200, 5085 bytes
+→ 3 товара Ballu (BSTI-09HN8 34590₽, BSTI-12HN8 42490₽, BSOI-12HN8 41490₽)
+→ alt 12k BTU (secondary, граница 25 м²), релаксаций нет
+→ QuizResult: area=25, wifi=True, brand=Ballu, btu=9
+```
+
+JWT auto-refresh:
+```
+$ manage.py refresh_rusklimat_jwt --show
+JWT обновлён (длина 232 символа)
+$ manage.py sync_rusklimat_rest --max-pages 1
+Rusklimat REST sync: updated=326, stocks=326, specs=115  (без 401)
 ```
 
 ---
