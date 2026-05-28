@@ -17,7 +17,16 @@
   <meta property="og:title" content="{% block og_title %}{% block og_title_inner %}{% endblock %}{% endblock %}">
   <meta property="og:description" content="{% block og_description %}SplitHome — продажа и монтаж кондиционеров по всему Крыму.{% endblock %}">
   <meta property="og:image" content="{% block og_image %}{% static 'img/favicon/og-image.jpg' %}{% endblock %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="SplitHome — кондиционеры по Крыму">
   <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:locale" content="ru_RU">
+  <!-- Twitter / прочие SMS-app превью -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}SplitHome — кондиционеры и сплит-системы в Крыму{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}Продажа и монтаж кондиционеров по всему Крыму.{% endblock %}">
+  <meta name="twitter:image" content="{% block twitter_image %}{% static 'img/favicon/og-image.jpg' %}{% endblock %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
