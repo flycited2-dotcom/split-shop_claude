@@ -114,16 +114,16 @@ ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBo
   // Префилл «+7 » во всех полях телефона — чтобы пользователь не вводил
   // префикс вручную каждый раз. Работает и на htmx-вставленных формах
   // (selection result, quiz lead, quick-order modal).
-  function prefillPhoneInputs(root) {
+  window.prefillPhoneInputs = function(root) {
     (root || document).querySelectorAll('input[type="tel"], input[name="phone"]').forEach(function(inp) {
       if (!inp.value || inp.value.trim() === '') {
         inp.value = '+7 ';
       }
     });
-  }
-  document.addEventListener('DOMContentLoaded', function() { prefillPhoneInputs(document); });
+  };
+  document.addEventListener('DOMContentLoaded', function() { window.prefillPhoneInputs(document); });
   document.body.addEventListener('htmx:afterSwap', function(e) {
-    if (e.target) prefillPhoneInputs(e.target);
+    if (e.target) window.prefillPhoneInputs(e.target);
   });
 
   // Catalog: toggle ?with_order=1 в URL (показать/скрыть «под заказ»).

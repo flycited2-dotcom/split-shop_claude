@@ -12,7 +12,24 @@ from apps.leads.quiz_logic import _balance_by_source
 
 
 def home(request):
-    brands = Brand.objects.all().order_by('order', 'title')[:16]
+    # Бренд-тикер на главной: топ-8 по числу активных AC-товаров в Крыму.
+    # Без алфавитной выборки [:8] — она цепляла мусорные бренды («Al», «AKAI»
+    # и т.п.) и не пускала туда Daichi/Hisense. Также exclude:
+    # - title 1-2 символа (мусор в БД)
+    # - ALFACOOL (правило владельца 28 мая)
+    brands = (
+        Brand.objects
+        .annotate(n=Count('products', filter=Q(
+            products__is_active=True,
+            products__category__sync_enabled=True,
+            products__stock__warehouse='Симферополь',
+            products__stock__quantity__gt=0,
+        )))
+        .filter(n__gt=0)
+        .exclude(title__iregex=r'^.{1,2}$')
+        .exclude(title__iexact='ALFACOOL')
+        .order_by('-n', 'title')[:8]
+    )
     # Only show AC categories that have products
     categories = (
         Category.objects
@@ -191,6 +208,10 @@ def product_detail(request, slug):
         .exclude(pk=product.pk)
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .exclude(NON_RETAIL_Q)
+        # SHUFT — это вентиляция (HRV/приточно-вытяжные), не AC. У поставщика
+        # они попадают в категорию «Бытовые сплит-системы», но юзеру на
+        # карточке кондиционера показывать рекуператор бессмысленно.
+        .exclude(brand__title__iexact='SHUFT')
     )
     if btu:
         similar_base = similar_base.filter(btu_calc=btu)
