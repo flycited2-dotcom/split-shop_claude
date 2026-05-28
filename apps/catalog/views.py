@@ -28,6 +28,8 @@ def home(request):
     # Только сплит-системы — без аксессуаров, осушителей, мобильных и пр.
     # ТОЛЬКО товары, физически лежащие на крымском складе (Симферополь) —
     # главная не должна продавать «под заказ из Москвы», правило владельца.
+    # Brand ALFACOOL — exclude по решению владельца (2026-05-28): в каталоге
+    # видны, на главной не нужны.
     base_qs = (
         Product.objects
         .filter(is_active=True, category__sync_enabled=True,
@@ -35,6 +37,7 @@ def home(request):
         .filter(category__title__iregex=r'сплит.?систем')
         .exclude(MULTI_SPLIT_BLOCK_Q)
         .exclude(NON_RETAIL_Q)
+        .exclude(brand__title__iexact='ALFACOOL')
         .select_related('brand', 'stock')
         .prefetch_related('images', 'tech_values__spec')
         .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')
