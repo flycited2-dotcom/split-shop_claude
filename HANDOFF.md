@@ -1,11 +1,27 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-24 (поздний вечер: s-итерация — UI/UX правки поверх r-итерации)
+**Дата обновления:** 2026-05-28 (t-итерация — точечные правки: AI-подбор на главной → /quiz/, ALFACOOL exclude из featured)
 **Прогресс:** B2C-pivot + Quiz v2 (7 шагов, Wi-Fi, бренд с лого, «Назад») + Rusklimat JWT auto-refresh (cron 23:50 МСК) + brand logos из публичного Rusklimat API + TechSpec + per-warehouse + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge + scroll-top + Tailwind compiled + 5 уровней релаксации + реальная скидка 15% + ЛК физлица + /availability/ + покрытие тестами
 **Ветка:** `develop` (синхронизирована с прод-VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `8ca7d05` (fix(home): все названные города — «в день заказа») — **синхронизировано с develop**
+**Production HEAD на VPS:** `b6003a4` (fix(home): AI-подбор → /quiz/ + exclude ALFACOOL) — **синхронизировано с develop**
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-28 (t-итерация) — точечные правки
+
+**t1. «AI-подбор» на главной → /quiz/.**
+Три ссылки на главной — кнопка-карточка «Премьера 2026» (большая правая плитка), плитка «SplitHome AI · бесплатно» и кнопка «К подбору» в калькуляторе мощности — все вели на `/selection/` (форма для менеджера). Пользователь жаловался: жмёт «AI-подбор» — получает обычную форму, а не интерактивный квиз. Все три теперь ведут на `/quiz/`. Сама страница `/selection/` остаётся доступной по своему URL для тех, кому нужно явно оставить заявку менеджеру.
+
+**t2. ALFACOOL exclude из home() featured.**
+В `apps/catalog/views.home()` к `base_qs` добавлен `.exclude(brand__title__iexact='ALFACOOL')`. В каталоге бренд продолжает быть доступен (фильтрация, прямые ссылки), но в premium-блок «Премьера 2026» справа и в секцию «Хиты сезона» (8 карточек) не попадает.
+
+### Свежие коммиты (28 мая t-итерация)
+
+```
+b6003a4 fix(home): «AI-подбор» → /quiz/ + exclude ALFACOOL из featured
+```
 
 ---
 
