@@ -1,11 +1,98 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-28 (t-итерация — точечные правки: AI-подбор на главной → /quiz/, ALFACOOL exclude из featured)
+**Дата обновления:** 2026-05-29 (u-итерация — QA-фиксы + Telegram кодировка + OG превью)
 **Прогресс:** B2C-pivot + Quiz v2 (7 шагов, Wi-Fi, бренд с лого, «Назад») + Rusklimat JWT auto-refresh (cron 23:50 МСК) + brand logos из публичного Rusklimat API + TechSpec + per-warehouse + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge + scroll-top + Tailwind compiled + 5 уровней релаксации + реальная скидка 15% + ЛК физлица + /availability/ + покрытие тестами
 **Ветка:** `develop` (синхронизирована с прод-VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
-**Production HEAD на VPS:** `b6003a4` (fix(home): AI-подбор → /quiz/ + exclude ALFACOOL) — **синхронизировано с develop**
+**Production HEAD на VPS:** `8ab653b` (fix: Telegram UTF-8 + OG превью) — **синхронизировано с develop**
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Update 2026-05-29 (u-итерация) — QA-фиксы + Telegram кодировка + OG-превью
+
+После полного smoke-теста сайта 5 параллельными QA-агентами и анализа скриншотов от владельца — две сессии правок.
+
+### u1-5. Фиксы по результатам QA (коммит `73a6468`)
+
+**u1. Footer ссылка «Подбор по площади»** в `templates/partials/footer.html` вела на `/selection/` (форма для менеджера). Единственный остаток старого URL после t-итерации. Заменена на `/quiz/`.
+
+**u2. Бренд-тикер на главной — топ-N по числу активных AC в Крыму.** Раньше `Brand.objects.all().order_by('order', 'title')[:16]` → шаблон `slice :8` давал алфавитную выборку: AC Electric, AKAI, Alteco, Al (id=63, мусорный односимвольный!), Aurum, Axioma, Ballu Machine, Bosch. Daichi/Hisense/Mitsubishi не попадали. Теперь:
+```python
+brands = (
+    Brand.objects
+    .annotate(n=Count('products', filter=Q(
+        products__is_active=True,
+        products__category__sync_enabled=True,
+        products__stock__warehouse='Симферополь',
+        products__stock__quantity__gt=0,
+    )))
+    .filter(n__gt=0)
+    .exclude(title__iregex=r'^.{1,2}$')   # мусорные 1-2 символа
+    .exclude(title__iexact='ALFACOOL')    # правило владельца
+    .order_by('-n', 'title')[:8]
+)
+```
+Результат на проде: ROYAL CLIMA, Ballu, FUNAI, Hisense, ULTIMA COMFORT, Midea, XIGMA, Kentatsu.
+
+**u3. SHUFT exclude из similar_products** в `product_detail()`. У поставщика SHUFT (вентиляция/HRV) попадает в категорию «Бытовые сплит-системы» из-за data quality. На карточке кондиционера юзеру не нужен «вентилятор SHUFT Berg» в «Похожих».
+
+**u4. `prefillPhoneInputs` → `window.prefillPhoneInputs`** в `base.html` — переименовано из локальной функции, чтобы быть доступной из консоли и для consistency с другими global helpers (`window.shareProduct`, `window.toggleCatalogOrder`).
+
+**u5. `mobile-menu` class cleanup** в `header.html`. Раньше `class="hidden md:hidden ..."` — оба класса делали одно и то же. Оставлен только `hidden` (тогглится через JS).
+
+### u6-7. Telegram UTF-8 + OG превью (коммит `8ab653b`)
+
+**u6. Telegram-уведомления с «??? ???» — критичный.** Заявки приходили в чат «Заказы_сайт_сплиты» с битой кириллицей: «QA-Test» (латиница) показывалось нормально, а «Алексей», «Севастополь», «склад-магазин» — как «????». Причина: `requests.post(json=...)` ставит `Content-Type: application/json` БЕЗ `charset=utf-8`, а socat-proxy (`TELEGRAM_API_URL=https://api.telegram.org:9443`) при passthrough портил кодировку.
+
+Фикс в `apps/notifications/telegram.py`:
+```python
+payload = json.dumps(
+    {'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
+    ensure_ascii=False,
+).encode('utf-8')
+resp = requests.post(
+    f'{base_url}/bot{token}/sendMessage',
+    data=payload,
+    headers={'Content-Type': 'application/json; charset=utf-8'},
+    timeout=5,
+)
+```
+Проверено: `send_telegram(текст с кириллицей+эмодзи)` → `True`.
+
+**u7. OG-превью обрезается** в SMS-app (Android Samsung Messages) и других мессенджерах. На скриншоте превью splithome.ru показывало swirl-логотип квадратом, обрезанный сверху/снизу. Сам `og-image.jpg` правильный (1200×630, 1.91:1), но в HTML не указаны размеры → SMS-app не знает aspect ratio.
+
+Фикс в `base.html`:
+```html
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SplitHome — кондиционеры по Крыму">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="...">
+<meta name="twitter:description" content="...">
+<meta name="twitter:image" content="...">
+```
+
+### Полная QA-сводка после u-итерации
+
+Smoke-тест 5 параллельных агентов (главная, каталог, квиз, лиды/карточка, мобильная) дал:
+- ✅ Все 12 страниц HTTP 200
+- ✅ Default «только Крым» работает (300 / 2519), категории сходятся (282+8+10=300)
+- ✅ Сортировка по `ric` корректная: 22490→25490→26990→27990 ↑
+- ✅ Подкатегории: инвертор/он-офф/кассетный/канальный/напольно-потолочный
+- ✅ Квиз 7 шагов + кнопка «Назад» + 4 разные комбинации — все 200, все с товарами
+- ✅ Карточка товара: 4 share-чипа, 3 CTA, quick-order модалка, JSON-LD Product
+- ✅ Лид-формы: overlay-модалка success, 0 CSRF 403
+- ✅ Mobile: identical content, viewport, performance home 0.85s / catalog 1.2s / product 0.5s
+- ✅ Префилл `+7 ` на всех формах
+
+### Свежие коммиты (29 мая u-итерация)
+
+```
+8ab653b fix: Telegram-уведомления с кракозябрами + SMS-превью обрезается
+73a6468 fix: 5 находок QA — footer-ссылка, бренд-тикер топ-N, SHUFT в similar, window.prefillPhoneInputs
+```
 
 ---
 
