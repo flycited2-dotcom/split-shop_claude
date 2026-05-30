@@ -1,11 +1,40 @@
 # HANDOFF: SplitHome — Передача проекта
 
-**Дата обновления:** 2026-05-29 (u-итерация — QA-фиксы + Telegram кодировка + OG превью)
+**Дата обновления:** 2026-05-30 (smoke-snapshot — прод полностью здоров после u-итерации)
 **Прогресс:** B2C-pivot + Quiz v2 (7 шагов, Wi-Fi, бренд с лого, «Назад») + Rusklimat JWT auto-refresh (cron 23:50 МСК) + brand logos из публичного Rusklimat API + TechSpec + per-warehouse + регистрация + welcome/pending email + cookie + LLM-SEO + mobile + правильный BTU + Бриз Крым + сортировка Крым-first + 4×4 grid + унифицированный badge + scroll-top + Tailwind compiled + 5 уровней релаксации + реальная скидка 15% + ЛК физлица + /availability/ + покрытие тестами
 **Ветка:** `develop` (синхронизирована с прод-VPS)
 **Репозиторий:** https://github.com/flycited2-dotcom/split-shop_claude
 **Production HEAD на VPS:** `8ab653b` (fix: Telegram UTF-8 + OG превью) — **синхронизировано с develop**
 **Production URL:** https://splithome.ru/ (Let's Encrypt SSL, expire 2026-08-14, авто-renewal через `certbot.timer`)
+
+---
+
+## Snapshot 2026-05-30 — smoke-проверка прода
+
+Полный smoke-тест после u-итерации, никаких регрессий не обнаружено.
+
+| Проверка | Результат |
+|---|---|
+| HTTP 200 на 17 URL | ✓ (главная / каталог × 10 / квиз / selection / installation / availability / contacts / delivery / product/...) |
+| CSS / static | splithub.css 13.4KB, tailwind.css 26KB, og-image.jpg 109KB — все 200 |
+| Footer «Подбор по площади» → /quiz/ | ✓ |
+| Бренд-тикер (топ-8 по AC в Крыму) | ROYAL CLIMA, Ballu, Hisense, FUNAI, ULTIMA COMFORT, Midea, XIGMA, Kentatsu |
+| ALFACOOL в HTML | 0 (exclude работает) |
+| OG meta-tags | width=1200, height=630, alt, locale=ru_RU, twitter:card, twitter:image |
+| Share-чипы | все 4 (max/tg/email/link) |
+| SHUFT в similar_products | 0 (u3 exclude работает) |
+| Каталог: default Крым | 317 товаров |
+| Каталог: with_order=1 | 2519 товаров |
+| Сортировка по цене ↑ | 22490 → 25490 → 26990 → 27990 |
+| Сортировка по цене ↓ | 55990 → 41990 → 37990 → 36990 → 31990 |
+| Аксессуары в default | **0 подозрительных слов** |
+| Квиз: полный flow (25м/квартира/инвертор/wifi/50k) | 6 товаров, релаксации не сработали |
+| Telegram UTF-8 (u6) | `send_telegram(текст с кириллицей+эмодзи) → True` |
+| Rusklimat JWT | refresh успешный (длина 232) |
+| Celery Beat задачи | все 5 enabled: refresh-rusklimat-jwt (23:50), sync-catalog-4h, sync-daichi-hourly, sync-stock-hourly, backend_cleanup |
+| Mobile (iPhone UA) | /=0.59s, /catalog/=1.82s, /quiz/=0.03s — все 200 |
+
+**Production HEAD на VPS:** `8ab653b` (последний код-коммит) — синхронизирован с `origin/develop`.
 
 ---
 
