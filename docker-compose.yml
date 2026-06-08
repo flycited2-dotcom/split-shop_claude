@@ -3,6 +3,7 @@ version: "3.9"
 services:
   db:
     image: postgres:16-alpine
+    restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data
     env_file: .env
@@ -18,11 +19,13 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: always
     volumes:
       - redis_data:/data
 
   web:
     build: .
+    restart: always
     command: gunicorn splithome.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60
     volumes:
       - static_files:/app/staticfiles
@@ -43,6 +46,7 @@ services:
 
   celery:
     build: .
+    restart: always
     command: celery -A splithome worker -l info -c 2
     env_file: .env
     depends_on:
@@ -53,6 +57,7 @@ services:
 
   beat:
     build: .
+    restart: always
     command: celery -A splithome beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
     depends_on:
@@ -65,7 +70,7 @@ services:
     image: alpine/socat:latest
     command: TCP4-LISTEN:9443,bind=172.30.0.1,fork,reuseaddr TCP6:api.telegram.org:443
     network_mode: host
-    restart: unless-stopped
+    restart: always
 
 volumes:
   postgres_data:

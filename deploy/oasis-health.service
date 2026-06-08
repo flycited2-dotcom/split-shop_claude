@@ -1,0 +1,8 @@
+[Unit]
+Description=SplitHome health watchdog (check + auto-recover + alert)
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/oasis/deploy/oasis-health.sh

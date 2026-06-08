@@ -1,0 +1,11 @@
+[Unit]
+Description=Run SplitHome health watchdog every 2 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=15s
+Unit=oasis-health.service
+
+[Install]
+WantedBy=timers.target

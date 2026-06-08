@@ -1,0 +1,5 @@
+# Shell-скрипты и systemd-юниты исполняются на Linux-сервере —
+# принудительно LF, иначе CRLF из Windows ломает shebang/парсинг.
+*.sh text eol=lf
+*.service text eol=lf
+*.timer text eol=lf
