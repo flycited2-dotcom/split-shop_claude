@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from django import forms
@@ -15,12 +16,41 @@ _CONSENT_TEXT = (
 
 
 class _BaseRegForm(UserCreationForm):
-    """Общая часть: согласие на обработку ПД (обязательно по 152-ФЗ)."""
+    """Общая часть: согласие на ПД + защита от спам-ботов.
+
+    Защита (добавлено 2026-06-09 после волны бот-регистраций):
+    - honeypot-поле `website` — невидимо для людей, боты-автозаполнители его
+      заполняют → регистрацию отклоняем;
+    - `clean_phone` — принимаем только российские номера (+7 / 8). Все боты в
+      волне использовали номера `+1-...` — отсекаются полностью.
+    """
 
     data_consent = forms.BooleanField(
         required=True, label=_CONSENT_TEXT,
         error_messages={'required': 'Без согласия зарегистрировать нельзя'},
     )
+
+    # Honeypot: скрыто стилем в шаблоне, человек его не видит и не заполняет.
+    website = forms.CharField(
+        required=False, label='Сайт',
+        widget=forms.TextInput(attrs={'autocomplete': 'off', 'tabindex': '-1'}),
+    )
+
+    def clean_website(self):
+        if (self.cleaned_data.get('website') or '').strip():
+            raise ValidationError('Регистрация отклонена.')
+        return ''
+
+    def clean_phone(self):
+        raw = (self.cleaned_data.get('phone') or '').strip()
+        digits = re.sub(r'\D', '', raw)
+        if len(digits) == 11 and digits[0] == '8':
+            digits = '7' + digits[1:]
+        if len(digits) != 11 or digits[0] != '7':
+            raise ValidationError(
+                'Введите российский номер телефона в формате +7 XXX XXX-XX-XX.'
+            )
+        return '+' + digits
 
 
 class IndividualRegistrationForm(_BaseRegForm):

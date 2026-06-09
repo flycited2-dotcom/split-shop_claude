@@ -33,8 +33,14 @@
       {% csrf_token %}
       <input type="hidden" name="account_type" value="individual">
 
+      {# honeypot — скрыто от людей, ловит ботов-автозаполнителей #}
+      <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;height:0;width:0;overflow:hidden">
+        <label>Сайт</label>
+        <input type="text" name="website" value="" tabindex="-1" autocomplete="off">
+      </div>
+
       {% for field in individual_form %}
-        {% if field.name != 'data_consent' %}
+        {% if field.name != 'data_consent' and field.name != 'website' %}
           <div>
             <label class="block text-sm font-semibold mb-1">
               {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
@@ -81,6 +87,12 @@
     <form method="post" class="space-y-6">
       {% csrf_token %}
       <input type="hidden" name="account_type" value="company">
+
+      {# honeypot — скрыто от людей, ловит ботов-автозаполнителей #}
+      <div aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;height:0;width:0;overflow:hidden">
+        <label>Сайт</label>
+        <input type="text" name="website" value="" tabindex="-1" autocomplete="off">
+      </div>
 
       {# Контакт ответственного лица #}
       <fieldset class="space-y-4">

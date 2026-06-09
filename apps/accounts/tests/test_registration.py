@@ -88,6 +88,26 @@ class IndividualRegistrationTest(TestCase):
         form = IndividualRegistrationForm(data=_individual_payload())
         self.assertFalse(form.is_valid())
 
+    # --- Защита от спам-ботов (2026-06-09) ---
+
+    def test_honeypot_filled_rejected(self):
+        # Бот заполнил скрытое поле website → регистрация невалидна.
+        form = IndividualRegistrationForm(data=_individual_payload(website='http://spam'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('website', form.errors)
+
+    def test_foreign_phone_rejected(self):
+        # Все боты в волне использовали номера +1 — должны отсекаться.
+        form = IndividualRegistrationForm(data=_individual_payload(phone='+1-826-851-7512'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('phone', form.errors)
+
+    def test_phone_with_leading_8_normalized(self):
+        form = IndividualRegistrationForm(data=_individual_payload(phone='8 (978) 000-00-00'))
+        self.assertTrue(form.is_valid(), msg=form.errors)
+        user = form.save()
+        self.assertEqual(user.phone, '+79780000000')
+
 
 class CompanyRegistrationTest(TestCase):
 
