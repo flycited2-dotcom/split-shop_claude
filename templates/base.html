@@ -5,15 +5,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  {# Верификация прав в панелях вебмастеров. Токены задаются через .env —
-     мета-тег появляется только если соответствующая переменная заполнена. #}
+  {# Верификация прав в вебмастерах: токены из .env, мета-тег только если переменная заполнена. #}
   {% if GOOGLE_SITE_VERIFICATION %}<meta name="google-site-verification" content="{{ GOOGLE_SITE_VERIFICATION }}">{% endif %}
   {% if YANDEX_VERIFICATION %}<meta name="yandex-verification" content="{{ YANDEX_VERIFICATION }}">{% endif %}
   {% if BING_SITE_VERIFICATION %}<meta name="msvalidate.01" content="{{ BING_SITE_VERIFICATION }}">{% endif %}
   <title>{% block title %}SplitHome — кондиционеры и сплит-системы в Крыму{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}SplitHome — продажа, доставка и монтаж кондиционеров по всему Крыму. Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.{% endblock %}">
-  {# Canonical без query-строки: для /catalog/?... все фильтры схлопываются в
-     один канонический URL страницы. Переопределяется блоком при необходимости. #}
+  {# Canonical без query-строки: фильтры /catalog/?... схлопываются в один URL. Переопределяется блоком. #}
   <link rel="canonical" href="{% block canonical %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}">
   <link rel="icon" type="image/x-icon" href="{% static 'img/favicon/favicon.ico' %}">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon/favicon-32.png' %}">
@@ -40,8 +38,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
   <link rel="stylesheet" href="{% static 'css/splithub.css' %}">
-  {# Site-wide Schema.org: профиль компании для поисковиков и LLM.
-     HVACBusiness — подтип LocalBusiness (продажа/монтаж климатехники). #}
+  {# Site-wide Schema.org: профиль компании для поисковиков и LLM. HVACBusiness — подтип LocalBusiness. #}
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
