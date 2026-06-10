@@ -60,6 +60,7 @@ TEMPLATES = [{
             'django.contrib.messages.context_processors.messages',
             'apps.orders.context_processors.cart_count',
             'apps.catalog.context_processors.yandex_metrika',
+            'apps.catalog.context_processors.seo_verification',
         ],
     },
 }]
@@ -162,6 +163,12 @@ TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID = config('TELEGRAM_CHAT_ID', default='')
 TELEGRAM_API_URL = config('TELEGRAM_API_URL', default='https://api.telegram.org')
 YANDEX_METRIKA_ID = config('YANDEX_METRIKA_ID', default='')
+
+# Верификация прав в панелях вебмастеров (мета-тег в <head>). Токен выдаётся
+# при добавлении сайта; пустое значение = мета-тег не выводится.
+GOOGLE_SITE_VERIFICATION = config('GOOGLE_SITE_VERIFICATION', default='')
+YANDEX_VERIFICATION = config('YANDEX_VERIFICATION', default='')
+BING_SITE_VERIFICATION = config('BING_SITE_VERIFICATION', default='')
 
 # Скидка физлицу при регистрации (%). Реализует обещание «Скидка до 15% при
 # регистрации» из шаблонов home.html / product_card.html / product_detail.html.

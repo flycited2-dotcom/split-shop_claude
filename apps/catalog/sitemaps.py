@@ -1,5 +1,5 @@
 from django.contrib.sitemaps import Sitemap
-from django.urls import reverse
+from django.urls import reverse, NoReverseMatch
 from .models import Product, Category, Brand
 from .filters import MULTI_SPLIT_BLOCK_Q
 
@@ -33,9 +33,22 @@ class StaticViewSitemap(Sitemap):
     changefreq = 'monthly'
     priority = 0.5
 
+    # Имена URL статических страниц. items() отфильтровывает имена, которые
+    # не резолвятся, чтобы один отсутствующий маршрут (как было с 'brands' —
+    # такого url нет, reverse() бросал NoReverseMatch и ронял весь sitemap в
+    # HTTP 500) больше не ломал карту сайта целиком.
+    NAMES = ['home', 'catalog', 'selection', 'installation',
+             'delivery', 'payment', 'contacts', 'warranty', 'about', 'privacy']
+
     def items(self):
-        return ['home', 'catalog', 'brands', 'selection', 'installation',
-                'delivery', 'payment', 'contacts', 'warranty', 'about']
+        resolvable = []
+        for name in self.NAMES:
+            try:
+                reverse(name)
+            except NoReverseMatch:
+                continue
+            resolvable.append(name)
+        return resolvable
 
     def location(self, item):
         return reverse(item)
