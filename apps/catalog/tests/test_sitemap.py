@@ -30,11 +30,13 @@ class SitemapTest(TestCase):
         self.client = Client()
 
     def test_sitemap_returns_200(self):
-        r = self.client.get('/sitemap.xml')
+        # secure=True — обойти SECURE_SSL_REDIRECT (в prod-настройках http→https
+        # отдаёт 301), чтобы дойти до самого view карты.
+        r = self.client.get('/sitemap.xml', secure=True)
         self.assertEqual(r.status_code, 200)
 
     def test_sitemap_contains_urls(self):
-        r = self.client.get('/sitemap.xml')
+        r = self.client.get('/sitemap.xml', secure=True)
         self.assertIn(b'<url>', r.content)
         # товар попал в карту
         self.assertIn(b'/product/', r.content)
