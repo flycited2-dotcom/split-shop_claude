@@ -267,6 +267,61 @@ def _build_description(pp_data, series, brand_title):
     return '\n\n'.join(sections)
 
 
+def _recover_kit_wholesale(client, store_id, xml_id, articul, name_to_base):
+    """Опт (BASE) комплекта Daichi: массовый /products/get отдаёт его пустым, а
+    точечный запрос по XML_ID — заполненным. Сначала до-запрашиваем цену комплекта
+    точечно; если пусто — берём сумму оптов внутреннего+наружного блоков
+    (articul = 'ВНУТР/НАРУЖ'; блоки есть в массовом дампе с ценой)."""
+    try:
+        resp = client.get_products(store_id=store_id, filter_xml_id=xml_id) or {}
+        for e in resp.values():
+            if isinstance(e, dict) and e.get('XML_ID') == xml_id:
+                w, _, _ = _extract_prices(e.get('PRICES') or e.get('PRICES:') or {})
+                if w is not None:
+                    return w
+    except Exception as exc:
+        logger.warning('Daichi kit %s targeted price fetch failed: %s', xml_id, exc)
+    parts = [p.strip() for p in (articul or '').split('/') if p.strip()]
+    if len(parts) == 2:
+        a, b = name_to_base.get(parts[0]), name_to_base.get(parts[1])
+        if a is not None and b is not None:
+            return a + b
+    return None
+
+
+def _prefetch_kit_wholesales(client, store_id, products):
+    """Собирает {xml_id: опт} для комплектов с пустым BASE ДО транзакции — сетевые
+    до-запросы не должны держать БД-транзакцию открытой."""
+    name_to_base = {}
+    for e in products.values():
+        if not isinstance(e, dict):
+            continue
+        name = e.get('NAME')
+        if not name:
+            continue
+        w, _, _ = _extract_prices(e.get('PRICES') or e.get('PRICES:') or {})
+        if w is not None:
+            name_to_base[name] = w
+    recovered = {}
+    for e in products.values():
+        if not isinstance(e, dict):
+            continue
+        xml_id = e.get('XML_ID')
+        if not xml_id:
+            continue
+        params = e.get('PARAMS') or e.get('PARAMS:') or {}
+        if not _is_kit(params):
+            continue
+        w, _, _ = _extract_prices(e.get('PRICES') or e.get('PRICES:') or {})
+        if w is not None:
+            continue
+        rec = _recover_kit_wholesale(client, store_id, xml_id, e.get('NAME') or '', name_to_base)
+        if rec is not None:
+            recovered[xml_id] = rec
+    logger.info('Daichi: restored kit wholesale prices: %d of empty kits', len(recovered))
+    return recovered
+
+
 def sync_catalog():
     """Pull /products/get for the configured store, upsert Products + Stock."""
     from django.conf import settings as dj_settings
@@ -285,6 +340,9 @@ def sync_catalog():
     # /products/get/ не отдаёт PHOTOES — они приходят только через /productparams/get/.
     # Тянем все productparams заранее (10 страниц по 500) и матчим по XML_ID.
     pp_map = _fetch_all_productparams(client)
+    # Опт (BASE) комплектов Daichi отсутствует в массовом /products/get —
+    # восстанавливаем точечно по XML_ID (откат: сумма оптов блоков). До транзакции.
+    kit_wholesale = _prefetch_kit_wholesales(client, store_id, products)
 
     seen_xml_ids = set()
     created = updated = skipped_no_category = skipped_not_kit = 0
@@ -330,6 +388,8 @@ def sync_catalog():
 
             prices_obj = entry.get('PRICES') or entry.get('PRICES:') or {}
             wholesale, ric, currency = _extract_prices(prices_obj)
+            if wholesale is None:
+                wholesale = kit_wholesale.get(xml_id)
 
             slug = _build_slug(brand, articul, xml_id)
             # уникальность slug по таблице (на случай коллизии с Breeze/Rusklimat)
