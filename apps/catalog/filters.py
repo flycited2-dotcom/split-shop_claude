@@ -61,13 +61,16 @@ AREA_CHOICES = [
 ]
 _AREA_TO_BTU = {'20': 7, '25': 9, '35': 12, '45': 18, '65': 24, '999': 30}
 
-# Wi-Fi-управление: гибрид TechSpec-фильтра и regex по тексту. Поставщики
-# могут отдавать характеристику с разными названиями («Wi-Fi», «Wi Fi»,
-# «Беспроводное управление», «Удалённое управление»). Значение варьируется
-# («Да», «Есть», «опция», «возможность подключения»). Считаем как «есть
-# Wi-Fi» всё, что НЕ выглядит явным отрицанием. Если у товара tech-
-# характеристики отсутствуют — пробуем найти упоминание в title/description.
-# Общий для каталога (ProductFilter) и квиза (apps.leads.quiz_logic).
+# Wi-Fi-управление: гибрид TechSpec-фильтра и regex по тексту. Используется
+# только в квизе (apps.leads.quiz_logic) — в каталоге вместо неё показывается
+# динамическая фасета «Управление c мобильного приложения по Wi-Fi»
+# (dynamic_filters.py), которая точнее (различает встроенное/опцию/нет) и не
+# дублирует эту же информацию отдельным чекбоксом (было до 2026-07-02).
+# Поставщики могут отдавать характеристику с разными названиями («Wi-Fi»,
+# «Wi Fi», «Беспроводное управление», «Удалённое управление»). Значение
+# варьируется («Да», «Есть», «опция», «возможность подключения»). Считаем
+# как «есть Wi-Fi» всё, что НЕ выглядит явным отрицанием. Если у товара
+# tech-характеристики отсутствуют — пробуем найти упоминание в title/description.
 _WIFI_TECH_Q = (
     Q(tech_values__spec__title__iregex=r'wi[\s\-]?fi|вай[\s\-]?фай|беспровод|удал.{0,5}управлен')
     & ~Q(tech_values__value__iregex=r'^\s*(нет|no|−|—|-|отсутств)\s*$')
@@ -205,18 +208,20 @@ class ProductFilter(django_filters.FilterSet):
         choices=TYPE_CHOICES,
         method='filter_type', label='Тип блока',
     )
-    wifi = django_filters.BooleanFilter(
-        method='filter_wifi', label='Wi-Fi управление',
-        widget=forms.CheckboxInput(),
-    )
 
     class Meta:
         model = Product
         fields = ['q', 'brand', 'category', 'price_min', 'price_max',
-                  'btu', 'area', 'inverter', 'color', 'type', 'wifi']
+                  'btu', 'area', 'inverter', 'color', 'type']
 
     def filter_search(self, queryset, name, value):
-        return queryset.filter(Q(title__icontains=value) | Q(articul__icontains=value))
+        # series включён в поиск — «Серия» не выведена отдельной фасетой
+        # (слишком высокая кардинальность для чекбокс-панели, 498 уникальных
+        # значений на прод-данных), но найти товар по названию серии
+        # (V-series, CAMOMIRU и т.п.) через поиск можно.
+        return queryset.filter(
+            Q(title__icontains=value) | Q(articul__icontains=value) | Q(series__icontains=value)
+        )
 
     def filter_btu(self, queryset, name, value):
         q = _btu_q(value or [])
@@ -228,12 +233,6 @@ class ProductFilter(django_filters.FilterSet):
 
     def filter_inverter(self, queryset, name, value):
         return _inverter_filter(queryset, value or [])
-
-    def filter_wifi(self, queryset, name, value):
-        if not value:
-            return queryset
-        # join через tech_values может дублировать строки — distinct() обязателен.
-        return queryset.filter(WIFI_Q).distinct()
 
     def filter_color(self, queryset, name, value):
         q = _color_q(value or [])

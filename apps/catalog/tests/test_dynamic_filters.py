@@ -88,6 +88,16 @@ class DynamicFiltersDbTest(TestCase):
         self.assertEqual(set(qs), {p1})
         self.assertNotIn(p2, qs)
 
+    def test_apply_tech_filters_case_insensitive(self):
+        # Регрессия с прода: «SMART Ion»/«Smart Ion» — один и тот же вариант,
+        # только разный регистр от разных поставщиков.
+        p1 = self._make('NC-1')
+        ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='SMART Ion (4 шт.)')
+        qs = apply_tech_filters(
+            _qd(tech=[f'{self.wifi_spec.id}:smart ion (4 шт.)']), Product.objects.all(),
+        )
+        self.assertEqual(set(qs), {p1})
+
     def test_apply_tech_filters_and_between_specs(self):
         p1 = self._make('NC-both')
         p2 = self._make('NC-wifi-only')
@@ -98,11 +108,22 @@ class DynamicFiltersDbTest(TestCase):
         qs = apply_tech_filters(qd, Product.objects.all())
         self.assertEqual(set(qs), {p1})
 
-    def test_exclude_spec_id_drops_own_selection(self):
+    def test_apply_tech_filters_matches_across_duplicate_spec_ids(self):
+        # Регрессия с прода: одинаковый title («Тип хладагента») существует
+        # как несколько разных spec_id (разные источники синка). Фильтр по
+        # одному из них должен находить товары, привязанные к ЛЮБОМУ spec_id
+        # с этим же title.
+        dup_spec = TechSpec.objects.create(title='Wi-Fi', category=None, is_filter=True)
+        p1 = self._make('NC-1')
+        ProductTech.objects.create(product=p1, spec=dup_spec, value='Да')
+        qs = apply_tech_filters(_qd(tech=[f'{self.wifi_spec.id}:Да']), Product.objects.all())
+        self.assertIn(p1, qs)
+
+    def test_exclude_group_key_drops_own_selection(self):
         p1 = self._make('NC-1')
         ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='Да')
         qd = _qd(tech=[f'{self.wifi_spec.id}:Нет'])  # selection that wouldn't match p1
-        qs = apply_tech_filters(qd, Product.objects.all(), exclude_spec_id=self.wifi_spec.id)
+        qs = apply_tech_filters(qd, Product.objects.all(), exclude_group_key=self.wifi_spec.id)
         self.assertIn(p1, qs)
 
     def test_compute_tech_facets_empty_without_category(self):
@@ -155,6 +176,26 @@ class DynamicFiltersDbTest(TestCase):
         titles = {g['title'] for g in result}
         self.assertNotIn('Бренд', titles)
 
+    def test_series_not_specially_excluded_but_capped_by_cardinality(self):
+        # «Серия» не в _EXCLUDED_TITLES (в отличие от «Бренд») — если
+        # значений мало, группа честно показывается...
+        series_spec = TechSpec.objects.create(title='Серия', category=None, is_filter=True)
+        p1 = self._make('NC-1')
+        ProductTech.objects.create(product=p1, spec=series_spec, value='V-series')
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        titles = {g['title'] for g in result}
+        self.assertIn('Серия', titles)
+
+        # ...но на реальных данных (проверено на проде: 498 уникальных
+        # значений даже после объединения дублей) кардинальность выше
+        # порога — группа скрывается общим механизмом, не спецкейсом.
+        for i in range(_MAX_FACET_OPTIONS + 5):
+            p = self._make(f'NC-series-{i}')
+            ProductTech.objects.create(product=p, spec=series_spec, value=f'Series-{i}')
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        titles = {g['title'] for g in result}
+        self.assertNotIn('Серия', titles)
+
     def test_compute_tech_facets_scoped_to_category(self):
         p1 = self._make('NC-other', category=self.other_category)
         ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='Да')
@@ -162,14 +203,44 @@ class DynamicFiltersDbTest(TestCase):
         self.assertEqual(result, [])
 
     def test_compute_tech_facets_counts_and_selected(self):
+        # ASCII-значения намеренно (не «Да»/«Нет») — SQLite's LOWER()/NOCASE
+        # не приводит кириллицу к нижнему регистру (в отличие от Postgres на
+        # проде), из-за чего Python-side .lower() и SQL-side Lower() дают
+        # разный результат для кириллицы только в тестовом sqlite-окружении.
         p1 = self._make('NC-1')
         p2 = self._make('NC-2')
-        ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='Да')
-        ProductTech.objects.create(product=p2, spec=self.wifi_spec, value='Нет')
-        qd = _qd(tech=[f'{self.wifi_spec.id}:Да'])
+        ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='Yes')
+        ProductTech.objects.create(product=p2, spec=self.wifi_spec, value='No')
+        qd = _qd(tech=[f'{self.wifi_spec.id}:Yes'])
         result = compute_tech_facets(qd, self.category, Product.objects.all())
         wifi_group = next(g for g in result if g['spec_id'] == self.wifi_spec.id)
         options_by_value = {o['value']: o for o in wifi_group['options']}
-        self.assertTrue(options_by_value['Да']['selected'])
-        self.assertFalse(options_by_value['Нет']['selected'])
-        self.assertEqual(options_by_value['Да']['count'], 1)
+        self.assertTrue(options_by_value['Yes']['selected'])
+        self.assertFalse(options_by_value['No']['selected'])
+        self.assertEqual(options_by_value['Yes']['count'], 1)
+
+    def test_compute_tech_facets_merges_duplicate_titled_specs(self):
+        # Регрессия с прода: «Тип хладагента» существовал как 3 разных
+        # spec_id (разные источники синка) — должны схлопнуться в одну группу
+        # с суммарным счётчиком.
+        dup_spec = TechSpec.objects.create(title='Wi-Fi', category=None, is_filter=True)
+        p1 = self._make('NC-1')
+        p2 = self._make('NC-2')
+        ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='Да')
+        ProductTech.objects.create(product=p2, spec=dup_spec, value='Да')
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        wifi_groups = [g for g in result if g['title'] == 'Wi-Fi']
+        self.assertEqual(len(wifi_groups), 1)
+        options_by_value = {o['value'].lower(): o for o in wifi_groups[0]['options']}
+        self.assertEqual(options_by_value['да']['count'], 2)
+
+    def test_compute_tech_facets_case_insensitive_value_grouping(self):
+        # Регрессия с прода: «SMART Ion»/«Smart Ion» — считаем одним значением.
+        p1 = self._make('NC-1')
+        p2 = self._make('NC-2')
+        ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='SMART Ion (4 шт.)')
+        ProductTech.objects.create(product=p2, spec=self.wifi_spec, value='Smart Ion (4 шт.)')
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        wifi_group = next(g for g in result if g['spec_id'] == self.wifi_spec.id)
+        self.assertEqual(len(wifi_group['options']), 1)
+        self.assertEqual(wifi_group['options'][0]['count'], 2)

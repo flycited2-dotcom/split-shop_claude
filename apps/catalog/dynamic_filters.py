@@ -7,11 +7,20 @@ apps/sync/breeze_tech.py). Позволяет добавлять новые фи
 энергоэффективности и т.п.) без правки кода — просто пометив характеристику
 в админке.
 
-URL: ?tech=<spec_id>:<value> (повторяется для нескольких значений/спеков).
-Внутри одного spec_id — OR (любое из выбранных значений), между разными
-spec_id — AND.
+Разные источники синка (Breez/Rusklimat/Daichi) создают СВОЙ TechSpec с
+одинаковым title вместо переиспользования одной записи — например «Серия»
+существует как 3+ разных spec_id (обнаружено 2026-07-02: 3 разных spec для
+«Серия» вместе покрывали меньше товаров, чем одно нормальное поле
+Product.series). Поэтому специфики группируются по title, а не по spec_id.
+
+URL: ?tech=<group_key>:<value> (повторяется для нескольких значений/групп).
+group_key — id любого spec'а группы (используется min() для стабильности).
+Внутри одной группы — OR (любое из выбранных значений), между группами —
+AND. Значения сравниваются регистронезависимо (iexact) — «Wi-Fi ready» и
+«Wi-Fi Ready» считаются одним и тем же значением.
 """
-from django.db.models import Count, Q
+from django.db.models import Count, Min, Q
+from django.db.models.functions import Lower
 
 from .models import ProductTech, TechSpec
 
@@ -23,36 +32,88 @@ from .models import ProductTech, TechSpec
 # специфики просто не показываем как фасету.
 _MAX_FACET_OPTIONS = 15
 
-# Специфики-дубли уже существующих захардкоженных фасет (filters.py) — живой
-# пример: TechSpec «Бренд» дублирует ProductFilter.brand (тот же смысл, но
-# по сырым текстовым значениям вместо Brand FK) — две панели «Бренд» в
-# сайдбаре только путают. Сверяется по title без учёта регистра.
-_DUPLICATE_TITLES = {'бренд'}
+# Специфика-дубль уже существующей захардкоженной фасеты (filters.py) — живой
+# пример: TechSpec «Бренд» дублирует ProductFilter.brand (тот же смысл, но по
+# сырым текстовым значениям вместо Brand FK). Две панели «Бренд» только
+# путают. Сверяется по title без учёта регистра.
+#
+# «Серия» намеренно НЕ в списке исключений: несмотря на схожесть с «Бренд»,
+# у неё нет отдельной нормальной фасеты — оказалось, что после объединения
+# дублей (см. _spec_groups) в ней 498 уникальных значений (проверено на
+# проде 2026-07-02), т.е. это свободный текст модельного ряда, а не
+# категориальный признак. _MAX_FACET_OPTIONS сам скроет её как непригодную
+# для чекбокс-панели — see filter_search в filters.py, где title/series
+# ищутся текстом.
+_EXCLUDED_TITLES = {'бренд'}
 
 
 def parse_tech_params(get_data):
-    """{spec_id: {value, ...}} из повторяющихся ?tech=<spec_id>:<value>."""
+    """{group_key: {value, ...}} из повторяющихся ?tech=<group_key>:<value>."""
     grouped = {}
     for raw in get_data.getlist('tech'):
-        spec_id_str, _, value = raw.partition(':')
+        key_str, _, value = raw.partition(':')
         if not value:
             continue
         try:
-            spec_id = int(spec_id_str)
+            group_key = int(key_str)
         except ValueError:
             continue
-        grouped.setdefault(spec_id, set()).add(value)
+        grouped.setdefault(group_key, set()).add(value)
     return grouped
 
 
-def apply_tech_filters(get_data, qs, exclude_spec_id=None):
-    """Накладывает выбранные tech-фильтры на qs. AND между spec_id, OR внутри."""
+def _spec_groups(category):
+    """[(group_key, title, [spec_id, ...])] — специфики сгруппированы по title.
+
+    Показываем: глобальные (category=None) всегда + специфичные для выбранной
+    категории, если она выбрана (см. compute_tech_facets). group_key —
+    минимальный spec_id в группе, стабильный при неизменных данных.
+    """
+    spec_filter = Q(category__isnull=True)
+    if category:
+        spec_filter |= Q(category=category)
+    specs = TechSpec.objects.filter(spec_filter, is_filter=True).order_by('order', 'id')
+
+    by_title = {}
+    order = []
+    for spec in specs:
+        key = spec.title.strip().lower()
+        if key in _EXCLUDED_TITLES:
+            continue
+        if key not in by_title:
+            by_title[key] = {'title': spec.title.strip(), 'spec_ids': []}
+            order.append(key)
+        by_title[key]['spec_ids'].append(spec.id)
+
+    return [
+        (min(by_title[k]['spec_ids']), by_title[k]['title'], by_title[k]['spec_ids'])
+        for k in order
+    ]
+
+
+def _resolve_group_spec_ids(group_key):
+    """group_key (spec_id) -> все spec_id с тем же title (может быть только он сам)."""
+    anchor = TechSpec.objects.filter(pk=group_key).values_list('title', flat=True).first()
+    if not anchor:
+        return [group_key]
+    return list(TechSpec.objects.filter(title__iexact=anchor).values_list('id', flat=True))
+
+
+def apply_tech_filters(get_data, qs, exclude_group_key=None):
+    """Накладывает выбранные tech-фильтры на qs. AND между группами, OR внутри.
+
+    Значения сравниваются регистронезависимо (iexact).
+    """
     grouped = parse_tech_params(get_data)
     applied = False
-    for spec_id, values in grouped.items():
-        if spec_id == exclude_spec_id:
+    for group_key, values in grouped.items():
+        if group_key == exclude_group_key:
             continue
-        qs = qs.filter(tech_values__spec_id=spec_id, tech_values__value__in=values)
+        spec_ids = _resolve_group_spec_ids(group_key)
+        value_q = Q()
+        for v in values:
+            value_q |= Q(tech_values__value__iexact=v)
+        qs = qs.filter(value_q, tech_values__spec_id__in=spec_ids)
         applied = True
     return qs.distinct() if applied else qs
 
@@ -60,45 +121,33 @@ def apply_tech_filters(get_data, qs, exclude_spec_id=None):
 def compute_tech_facets(get_data, category, qs):
     """qs — уже отфильтрован по всем статическим ProductFilter-полям (включая
     category), но ДО tech-фильтров.
-
-    TechSpec.category сейчас у всех is_filter=True записей пуст (специфика
-    данных из Breez API — специфики глобальные, не привязаны к категории),
-    поэтому показываем: глобальные (category=None) всегда + специфичные для
-    выбранной категории, если она выбрана. Нерелевантные для текущей выдачи
-    специфики сами отсеются ниже (rows будет пустым, если ни у одного товара
-    в qs нет значения по этой характеристике).
     """
-    spec_filter = Q(category__isnull=True)
-    if category:
-        spec_filter |= Q(category=category)
     grouped_selected = parse_tech_params(get_data)
-    specs = TechSpec.objects.filter(spec_filter, is_filter=True).order_by('order')
+    groups = _spec_groups(category)
 
     result = []
-    for spec in specs:
-        if spec.title.strip().lower() in _DUPLICATE_TITLES:
-            continue
-        qs_excl = apply_tech_filters(get_data, qs, exclude_spec_id=spec.id)
-        # Значения НЕ нормализуются по регистру/пробелам — разные поставщики
-        # пишут «Да»/«да» как отдельные варианты. Известное ограничение
-        # качества данных, не блокирует базовую работу фильтра.
+    for group_key, title, spec_ids in groups:
+        qs_excl = apply_tech_filters(get_data, qs, exclude_group_key=group_key)
         rows = list(
             ProductTech.objects
-            .filter(product__in=qs_excl, spec=spec)
-            .values('value')
-            .annotate(n=Count('product', distinct=True))
+            .filter(product__in=qs_excl, spec_id__in=spec_ids)
+            .annotate(norm_value=Lower('value'))
+            .values('norm_value')
+            .annotate(n=Count('product', distinct=True), sample=Min('value'))
             .order_by('-n')
         )
         if len(rows) > _MAX_FACET_OPTIONS:
             continue
-        selected_values = grouped_selected.get(spec.id, set())
+        selected_values = grouped_selected.get(group_key, set())
+        selected_norm = {v.lower() for v in selected_values}
         options = []
         for row in rows:
-            val = row['value']
+            val = row['sample']
             n = row['n']
-            if n == 0 and val not in selected_values:
+            is_selected = row['norm_value'] in selected_norm
+            if n == 0 and not is_selected:
                 continue
-            options.append({'value': val, 'count': n, 'selected': val in selected_values})
+            options.append({'value': val, 'count': n, 'selected': is_selected})
         if options:
-            result.append({'spec_id': spec.id, 'title': spec.title, 'options': options})
+            result.append({'spec_id': group_key, 'title': title, 'options': options})
     return result

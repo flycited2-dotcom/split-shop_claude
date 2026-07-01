@@ -175,19 +175,6 @@ when parsing a response.
       </div>
     </div>
 
-    <!-- Wi-Fi управление -->
-    {% if facets.wifi.count or facets.wifi.selected %}
-    <label class="mb-2 flex items-center justify-between gap-2 cursor-pointer select-none">
-      <span class="flex items-center gap-2">
-        <input type="checkbox" name="wifi" value="1"
-               {% if facets.wifi.selected %}checked{% endif %}
-               class="w-4 h-4 accent-orange-500">
-        <span class="text-sm text-gray-700">Wi-Fi управление</span>
-      </span>
-      <span class="text-xs text-gray-400">{{ facets.wifi.count }}</span>
-    </label>
-    {% endif %}
-
     <!-- Включить под заказ -->
     <label class="mb-2 flex items-center gap-2 cursor-pointer select-none"
            title="По умолчанию показываем только то, что физически на складе в Крыму.">

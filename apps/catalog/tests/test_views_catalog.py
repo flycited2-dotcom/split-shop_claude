@@ -20,12 +20,12 @@ class CatalogViewTest(TestCase):
         )
         cls.brand = Brand.objects.create(title='Midea', slug='midea')
 
-    def _make(self, nc, btu_calc=9, qty=5, warehouse='Симферополь', is_active=True):
+    def _make(self, nc, btu_calc=9, qty=5, warehouse='Симферополь', is_active=True, series=''):
         p = Product.objects.create(
             nc_code=nc, articul=nc,
             category=self.category, brand=self.brand,
             title=f'AC {nc}', ric=Decimal('30000'),
-            btu_calc=btu_calc, is_active=is_active,
+            btu_calc=btu_calc, is_active=is_active, series=series,
         )
         Stock.objects.create(product=p, quantity=qty, warehouse=warehouse)
         return p
@@ -98,6 +98,16 @@ class CatalogViewTest(TestCase):
         r = self.client.get(reverse('product_detail', args=[p.slug]))
         self.assertEqual(r.status_code, 404)
 
+    def test_catalog_search_matches_series(self):
+        # «Серия» не выведена отдельной фасетой (слишком высокая
+        # кардинальность), но должна находиться через поиск.
+        self._make('NC-vseries', series='V-series')
+        self._make('NC-other', series='C-series')
+        r = self.client.get(reverse('catalog'), {'q': 'V-series'})
+        self.assertEqual(r.status_code, 200)
+        ncs = {p.nc_code for p in r.context['page_obj'].object_list}
+        self.assertEqual(ncs, {'NC-vseries'})
+
     def test_catalog_filter_by_area(self):
         # area=25 -> btu_calc=9 (см. apps.catalog.filters._AREA_TO_BTU).
         self._make('NC-area25', btu_calc=9)
@@ -106,16 +116,6 @@ class CatalogViewTest(TestCase):
         self.assertEqual(r.status_code, 200)
         ncs = {p.nc_code for p in r.context['page_obj'].object_list}
         self.assertEqual(ncs, {'NC-area25'})
-
-    def test_catalog_filter_by_wifi(self):
-        wifi_spec = TechSpec.objects.create(title='Wi-Fi управление', category=self.category)
-        p_wifi = self._make('NC-has-wifi')
-        ProductTech.objects.create(product=p_wifi, spec=wifi_spec, value='Да')
-        self._make('NC-plain')
-        r = self.client.get(reverse('catalog'), {'wifi': '1'})
-        self.assertEqual(r.status_code, 200)
-        ncs = {p.nc_code for p in r.context['page_obj'].object_list}
-        self.assertEqual(ncs, {'NC-has-wifi'})
 
     def test_catalog_filter_by_tech_spec(self):
         spec = TechSpec.objects.create(title='Класс энергоэффективности', category=self.category,
