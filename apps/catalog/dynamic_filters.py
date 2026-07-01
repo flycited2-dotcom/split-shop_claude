@@ -15,6 +15,14 @@ from django.db.models import Count, Q
 
 from .models import ProductTech, TechSpec
 
+# Специфики с числом уникальных значений выше этого порога почти наверняка
+# непрерывные/числовые (площадь, длина трассы и т.п.), а не категориальные —
+# живой пример: «Эффективен для помещений площадью до» отдаёт 20, 20.5, 21,
+# 21.4... — десятки почти одинаковых значений. Чекбокс-панель для них
+# бесполезна (нужен range-slider — отдельная задача), поэтому такие
+# специфики просто не показываем как фасету.
+_MAX_FACET_OPTIONS = 15
+
 
 def parse_tech_params(get_data):
     """{spec_id: {value, ...}} из повторяющихся ?tech=<spec_id>:<value>."""
@@ -66,13 +74,15 @@ def compute_tech_facets(get_data, category, qs):
         # Значения НЕ нормализуются по регистру/пробелам — разные поставщики
         # пишут «Да»/«да» как отдельные варианты. Известное ограничение
         # качества данных, не блокирует базовую работу фильтра.
-        rows = (
+        rows = list(
             ProductTech.objects
             .filter(product__in=qs_excl, spec=spec)
             .values('value')
             .annotate(n=Count('product', distinct=True))
             .order_by('-n')
         )
+        if len(rows) > _MAX_FACET_OPTIONS:
+            continue
         selected_values = grouped_selected.get(spec.id, set())
         options = []
         for row in rows:

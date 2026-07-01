@@ -4,7 +4,7 @@ from django.http import QueryDict
 from django.test import TestCase
 
 from apps.catalog.dynamic_filters import (
-    apply_tech_filters, compute_tech_facets, parse_tech_params,
+    _MAX_FACET_OPTIONS, apply_tech_filters, compute_tech_facets, parse_tech_params,
 )
 from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
 
@@ -130,6 +130,20 @@ class DynamicFiltersDbTest(TestCase):
         result = compute_tech_facets(_qd(), None, Product.objects.all())
         titles = {g['title'] for g in result}
         self.assertIn('Тепловой насос', titles)
+
+    def test_compute_tech_facets_skips_high_cardinality_numeric_spec(self):
+        # Регрессия с прода: «Эффективен для помещений площадью до» отдаёт
+        # десятки почти уникальных числовых значений (20, 20.5, 21, 21.4...) —
+        # такую специфику как чекбокс-фасету показывать нельзя.
+        area_spec = TechSpec.objects.create(
+            title='Эффективен для помещений площадью до', category=None, is_filter=True,
+        )
+        for i in range(_MAX_FACET_OPTIONS + 5):
+            p = self._make(f'NC-area-{i}')
+            ProductTech.objects.create(product=p, spec=area_spec, value=str(20 + i * 0.5))
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        titles = {g['title'] for g in result}
+        self.assertNotIn('Эффективен для помещений площадью до', titles)
 
     def test_compute_tech_facets_scoped_to_category(self):
         p1 = self._make('NC-other', category=self.other_category)
