@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 
+from apps.catalog.classify import classify_title
 from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
 from apps.stock.models import Stock, WarehouseStock
 
@@ -150,12 +151,14 @@ class AvailabilityViewTest(TestCase):
         cls.brand = Brand.objects.create(title='Midea', slug='midea')
 
     def _make(self, nc, title=None, is_active=True, category=None):
+        title = title or f'AC {nc}'
         return Product.objects.create(
             nc_code=nc, articul=nc,
-            title=title or f'AC {nc}',
+            title=title,
             category=category or self.category,
             brand=self.brand,
             is_active=is_active,
+            kind=classify_title(title),
         )
 
     def setUp(self):

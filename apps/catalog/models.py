@@ -59,6 +59,15 @@ class Brand(models.Model):
 
 
 class Product(models.Model):
+    KIND_SPLIT_SYSTEM = 'split_system'
+    KIND_ACCESSORY = 'accessory'
+    KIND_MULTI_SPLIT_BLOCK = 'multi_split_block'
+    KIND_CHOICES = [
+        (KIND_SPLIT_SYSTEM, 'Сплит-система'),
+        (KIND_ACCESSORY, 'Аксессуар / не для розницы'),
+        (KIND_MULTI_SPLIT_BLOCK, 'Компонент мульти-сплит'),
+    ]
+
     nc_code = models.CharField(max_length=50, unique=True)
     articul = models.CharField(max_length=200, blank=True)
     category = models.ForeignKey(Category, null=True, blank=True,
@@ -83,6 +92,13 @@ class Product(models.Model):
     btu_calc = models.IntegerField(null=True, blank=True, db_index=True,
                                    help_text='kBTU — пересчитывается командой compute_btu '
                                              'из tech_values (мощность охлаждения + площадь).')
+    kind = models.CharField(
+        max_length=20, choices=KIND_CHOICES, default=KIND_SPLIT_SYSTEM, db_index=True,
+        help_text='Считается один раз при синке по title через '
+                  'apps.catalog.classify.classify_title — вместо regex-фильтра '
+                  '(NON_RETAIL_Q/MULTI_SPLIT_BLOCK_Q), пересчитываемого на каждый '
+                  'catalog-запрос.',
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils.text import slugify
 
 from apps.sync.client import BreezClient
+from apps.catalog.classify import classify_title
 from apps.catalog.models import Category, Brand, Product, ProductImage
 from apps.stock.models import Stock
 
@@ -167,6 +168,7 @@ def sync_products(category_ids=None):
                     'video_youtube': item.get('video_youtube', ''),
                     'video_rutube': item.get('video_rutube', ''),
                     'is_active': True,
+                    'kind': classify_title(title),
                 }
             )
             if is_new:

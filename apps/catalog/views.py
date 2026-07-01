@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q, F, Sum, Value, Case, When, IntegerField
 from django.db.models.functions import Coalesce
 from .models import Product, Category, Brand
-from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q
+from .filters import ProductFilter
 from .facets import compute_facets
 from .dynamic_filters import apply_tech_filters, compute_tech_facets
 from .btu import extract_btu, resolve_btu
@@ -53,8 +53,7 @@ def home(request):
         .filter(is_active=True, category__sync_enabled=True,
                 stock__warehouse='Симферополь', stock__quantity__gt=0)
         .filter(category__title__iregex=r'сплит.?систем')
-        .exclude(MULTI_SPLIT_BLOCK_Q)
-        .exclude(NON_RETAIL_Q)
+        .filter(kind=Product.KIND_SPLIT_SYSTEM)
         .exclude(brand__title__iexact='ALFACOOL')
         .select_related('brand', 'stock')
         .prefetch_related('images', 'tech_values__spec')
@@ -79,9 +78,8 @@ def catalog(request):
     # из Шерризон/Ростов/Краснодар (fallback «под заказ»). Поэтому первый
     # ключ — наличие Крыма, а не сам Stock.quantity.
     base_qs = (
-        Product.objects.filter(is_active=True, category__sync_enabled=True)
-        .exclude(MULTI_SPLIT_BLOCK_Q)
-        .exclude(NON_RETAIL_Q)
+        Product.objects.filter(is_active=True, category__sync_enabled=True,
+                               kind=Product.KIND_SPLIT_SYSTEM)
         .annotate(
             is_crimea=Case(
                 When(stock__warehouse='Симферополь', then=Value(1)),
@@ -178,9 +176,8 @@ def availability(request):
             quantity__gt=0,
             product__is_active=True,
             product__category__sync_enabled=True,
+            product__kind=Product.KIND_SPLIT_SYSTEM,
         )
-        .exclude(product__title__iregex=r'мульти|multi')
-        .exclude(product__title__iregex=r'блок\s+(внутренний|наружный)')
         .select_related('product__brand', 'product__category')
         .order_by('-quantity', 'product__title')
     )
@@ -210,10 +207,9 @@ def product_detail(request, slug):
     # рекомендуем «здесь и сейчас». Если в Крыму ничего нет — fallback на
     # любые наличия (чтобы блок «Похожие» не был пустым).
     similar_base = (
-        Product.objects.filter(is_active=True, category__sync_enabled=True)
+        Product.objects.filter(is_active=True, category__sync_enabled=True,
+                               kind=Product.KIND_SPLIT_SYSTEM)
         .exclude(pk=product.pk)
-        .exclude(MULTI_SPLIT_BLOCK_Q)
-        .exclude(NON_RETAIL_Q)
         # SHUFT — это вентиляция (HRV/приточно-вытяжные), не AC. У поставщика
         # они попадают в категорию «Бытовые сплит-системы», но юзеру на
         # карточке кондиционера показывать рекуператор бессмысленно.

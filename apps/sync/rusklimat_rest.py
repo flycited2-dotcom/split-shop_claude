@@ -27,6 +27,7 @@ import requests
 from django.conf import settings
 from django.db import transaction
 
+from apps.catalog.classify import classify_title
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 from apps.sync import rusklimat_auth
@@ -420,6 +421,7 @@ def sync_rusklimat_rest(*, max_pages=None):
                     existing.ric = ric
                     existing.source = RUSKLIMAT_SOURCE
                     existing.is_active = True
+                    existing.kind = classify_title(existing.title)
                     existing.save()
                     product = existing
                     updated += 1
@@ -439,6 +441,7 @@ def sync_rusklimat_rest(*, max_pages=None):
                         rusklimat_guid=p.get('id') or '',
                         source=RUSKLIMAT_SOURCE,
                         is_active=True,
+                        kind=classify_title(name),
                     )
                     created += 1
 

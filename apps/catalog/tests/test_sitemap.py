@@ -29,7 +29,7 @@ class SitemapTest(TestCase):
             nc_code='NC-ACC', articul='NC-ACC',
             category=cls.category, brand=cls.brand,
             title='Экран для вентиляционной решётки Ballu Квадра 600',
-            ric=Decimal('1500'), is_active=True,
+            ric=Decimal('1500'), is_active=True, kind=Product.KIND_ACCESSORY,
         )
 
     def setUp(self):

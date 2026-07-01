@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from django.db.models import Q
 from django.test import SimpleTestCase, TestCase
 
+from apps.catalog.classify import classify_title
 from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
 from apps.leads import quiz_logic
 from apps.stock.models import Stock
@@ -179,6 +180,7 @@ class _RecommendBase(TestCase):
             source=source,
             btu_calc=btu_calc,
             is_active=is_active,
+            kind=classify_title(title),
         )
         Stock.objects.create(product=p, quantity=stock_qty, warehouse='Симферополь')
         return p

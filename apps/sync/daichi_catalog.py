@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.utils.text import slugify
 
+from apps.catalog.classify import classify_title
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 from apps.sync.daichi_client import DaichiClient
@@ -435,6 +436,7 @@ def sync_catalog():
                     'description': description,
                     'source': DAICHI_SOURCE,
                     'is_active': True,
+                    'kind': classify_title(title),
                 },
             )
             seen_xml_ids.add(xml_id)
