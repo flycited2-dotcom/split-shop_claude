@@ -1,7 +1,7 @@
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse, NoReverseMatch
 from .models import Product, Category, Brand
-from .filters import MULTI_SPLIT_BLOCK_Q
+from .filters import MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q
 
 
 class ProductSitemap(Sitemap):
@@ -9,7 +9,11 @@ class ProductSitemap(Sitemap):
     priority = 0.8
 
     def items(self):
-        return Product.objects.filter(is_active=True).exclude(MULTI_SPLIT_BLOCK_Q)
+        return (
+            Product.objects.filter(is_active=True)
+            .exclude(MULTI_SPLIT_BLOCK_Q)
+            .exclude(NON_RETAIL_Q)
+        )
 
     def location(self, obj):
         return f'/product/{obj.slug}/'
@@ -26,7 +30,7 @@ class CategorySitemap(Sitemap):
         return Category.objects.all()
 
     def location(self, obj):
-        return f'/catalog/?category={obj.pk}'
+        return f'{reverse("catalog")}?category={obj.pk}'
 
 
 class StaticViewSitemap(Sitemap):

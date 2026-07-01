@@ -101,8 +101,10 @@ def write_warehouse_stocks(product, warehouses):
         main_warehouse = 'Симферополь'
     elif total > 0:
         main_qty = total
-        # warehouse = название склада с наибольшим qty (для UI badge)
-        main_warehouse = max(rows, key=lambda x: x[1])[0]
+        # warehouse = название склада с наибольшим qty (для UI badge). При
+        # равенстве qty вторичный ключ — имя склада, чтобы выбор не менялся
+        # от запуска к запуску synca (нестабильность порядка ответа API).
+        main_warehouse = max(rows, key=lambda x: (x[1], x[0]))[0]
     else:
         main_qty = 0
         main_warehouse = ''

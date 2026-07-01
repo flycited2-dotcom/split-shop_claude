@@ -9,7 +9,7 @@ from django.test import TestCase, Client
 from django.urls import reverse, NoReverseMatch
 
 from apps.catalog.models import Brand, Category, Product
-from apps.catalog.sitemaps import StaticViewSitemap
+from apps.catalog.sitemaps import CategorySitemap, ProductSitemap, StaticViewSitemap
 from apps.stock.models import Stock
 
 
@@ -25,6 +25,12 @@ class SitemapTest(TestCase):
             title='AC NC-SM', ric=Decimal('30000'), is_active=True,
         )
         Stock.objects.create(product=p, quantity=5, warehouse='Симферополь')
+        cls.accessory = Product.objects.create(
+            nc_code='NC-ACC', articul='NC-ACC',
+            category=cls.category, brand=cls.brand,
+            title='Экран для вентиляционной решётки Ballu Квадра 600',
+            ric=Decimal('1500'), is_active=True,
+        )
 
     def setUp(self):
         self.client = Client()
@@ -50,3 +56,13 @@ class SitemapTest(TestCase):
                 reverse(name)
             except NoReverseMatch:  # pragma: no cover
                 self.fail(f"sitemap содержит нерезолвящееся имя url: {name!r}")
+
+    def test_product_sitemap_excludes_accessories(self):
+        # Аксессуары (не NON_RETAIL по regex) не должны попадать в sitemap —
+        # раньше исключался только MULTI_SPLIT_BLOCK_Q, аксессуары индексировались.
+        items = list(ProductSitemap().items())
+        self.assertNotIn(self.accessory, items)
+
+    def test_category_sitemap_location_uses_reverse(self):
+        location = CategorySitemap().location(self.category)
+        self.assertEqual(location, f'/catalog/?category={self.category.pk}')

@@ -114,7 +114,11 @@ def _build_slug(brand, articul, xml_id):
 
 
 def _fetch_all_productparams(client, page_size=500):
-    """Собирает все productparams Daichi постранично. Возвращает dict XML_ID → pp_dict."""
+    """Собирает все productparams Daichi постранично. Возвращает dict XML_ID → pp_dict.
+
+    Останов по факту неполной страницы (len(data) < page_size), а не по
+    resp['total_count'] — если API вернёт это поле пустым/некорректным,
+    останов по total_count оборвал бы забор данных уже после первой страницы."""
     pp_map = {}
     page = 1
     while True:
@@ -126,8 +130,7 @@ def _fetch_all_productparams(client, page_size=500):
             xml = pp.get('XML_ID')
             if xml:
                 pp_map[xml] = pp
-        total = resp.get('total_count') or 0
-        if page * page_size >= total:
+        if len(data) < page_size:
             break
         page += 1
     logger.info('Daichi productparams: fetched %d items across %d pages', len(pp_map), page)

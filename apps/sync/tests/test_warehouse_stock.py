@@ -140,6 +140,22 @@ class WriteWarehouseStocksTest(TestCase):
         self.assertEqual(stock.quantity, 40)
         self.assertEqual(stock.warehouse, 'Ростов')
 
+    def test_tie_breaks_deterministically(self):
+        # При равном qty выбор главного склада не должен зависеть от порядка
+        # ответа API — раньше max() брал первый попавшийся при равенстве.
+        p = self._make_product('NC-2B')
+        ws.write_warehouse_stocks(p, [
+            ('Москва', 10),
+            ('Ростов', 10),
+        ])
+        first = Stock.objects.get(product=p).warehouse
+        ws.write_warehouse_stocks(p, [
+            ('Ростов', 10),
+            ('Москва', 10),
+        ])
+        second = Stock.objects.get(product=p).warehouse
+        self.assertEqual(first, second)
+
     def test_all_zero_creates_empty_stock(self):
         p = self._make_product('NC-3')
         ws.write_warehouse_stocks(p, [('Москва', 0)])
