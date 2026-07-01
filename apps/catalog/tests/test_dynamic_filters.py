@@ -145,6 +145,16 @@ class DynamicFiltersDbTest(TestCase):
         titles = {g['title'] for g in result}
         self.assertNotIn('Эффективен для помещений площадью до', titles)
 
+    def test_compute_tech_facets_excludes_brand_duplicate(self):
+        # «Бренд» как TechSpec дублирует ProductFilter.brand — не должен
+        # рендериться второй раз в динамической панели.
+        brand_spec = TechSpec.objects.create(title='Бренд', category=None, is_filter=True)
+        p1 = self._make('NC-1')
+        ProductTech.objects.create(product=p1, spec=brand_spec, value='Midea')
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        titles = {g['title'] for g in result}
+        self.assertNotIn('Бренд', titles)
+
     def test_compute_tech_facets_scoped_to_category(self):
         p1 = self._make('NC-other', category=self.other_category)
         ProductTech.objects.create(product=p1, spec=self.wifi_spec, value='Да')

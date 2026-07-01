@@ -23,6 +23,12 @@ from .models import ProductTech, TechSpec
 # специфики просто не показываем как фасету.
 _MAX_FACET_OPTIONS = 15
 
+# Специфики-дубли уже существующих захардкоженных фасет (filters.py) — живой
+# пример: TechSpec «Бренд» дублирует ProductFilter.brand (тот же смысл, но
+# по сырым текстовым значениям вместо Brand FK) — две панели «Бренд» в
+# сайдбаре только путают. Сверяется по title без учёта регистра.
+_DUPLICATE_TITLES = {'бренд'}
+
 
 def parse_tech_params(get_data):
     """{spec_id: {value, ...}} из повторяющихся ?tech=<spec_id>:<value>."""
@@ -70,6 +76,8 @@ def compute_tech_facets(get_data, category, qs):
 
     result = []
     for spec in specs:
+        if spec.title.strip().lower() in _DUPLICATE_TITLES:
+            continue
         qs_excl = apply_tech_filters(get_data, qs, exclude_spec_id=spec.id)
         # Значения НЕ нормализуются по регистру/пробелам — разные поставщики
         # пишут «Да»/«да» как отдельные варианты. Известное ограничение
