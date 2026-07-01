@@ -1,7 +1,7 @@
 from django.db.models import F, Q
 
 from apps.catalog.models import Product
-from apps.catalog.filters import MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q
+from apps.catalog.filters import MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q, WIFI_Q
 
 BTU_VALUES = [7, 9, 12, 18, 24, 30]
 
@@ -70,22 +70,6 @@ def _btu_q(btus):
 
 _MOBILE_Q = Q(title__icontains='мобильн')
 
-# Wi-Fi-управление: гибрид TechSpec-фильтра и regex по тексту.
-# Поставщики могут отдавать характеристику с разными названиями («Wi-Fi», «Wi Fi»,
-# «Беспроводное управление», «Удалённое управление»). Значение варьируется
-# («Да», «Есть», «опция», «возможность подключения»). Считаем как «есть Wi-Fi»
-# всё, что НЕ выглядит явным отрицанием. Если у товара tech-характеристики
-# отсутствуют — пробуем найти упоминание в title/description.
-_WIFI_TECH_Q = (
-    Q(tech_values__spec__title__iregex=r'wi[\s\-]?fi|вай[\s\-]?фай|беспровод|удал.{0,5}управлен')
-    & ~Q(tech_values__value__iregex=r'^\s*(нет|no|−|—|-|отсутств)\s*$')
-)
-_WIFI_TEXT_Q = (
-    Q(description__iregex=r'wi[\s\-]?fi|wifi|вай[\s\-]?фай')
-    | Q(title__iregex=r'wi[\s\-]?fi|wifi|вай[\s\-]?фай')
-)
-_WIFI_Q = _WIFI_TECH_Q | _WIFI_TEXT_Q
-
 # Сколько брать товаров на pre-filter (буфер для балансировки по поставщикам).
 _BUFFER = 30
 
@@ -105,7 +89,7 @@ def _base_qs(btus, *, needs_inverter, budget_max, needs_wifi, brand_id,
         qs = qs.filter(ric__lte=budget_max)
     if needs_wifi:
         # join через tech_values может дублировать строки — distinct() обязателен.
-        qs = qs.filter(_WIFI_Q).distinct()
+        qs = qs.filter(WIFI_Q).distinct()
     if brand_id:
         qs = qs.filter(brand_id=brand_id)
     return qs.select_related('brand').prefetch_related('images').order_by(

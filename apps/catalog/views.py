@@ -7,6 +7,7 @@ from django.db.models.functions import Coalesce
 from .models import Product, Category, Brand
 from .filters import ProductFilter, MULTI_SPLIT_BLOCK_Q, NON_RETAIL_Q
 from .facets import compute_facets
+from .dynamic_filters import apply_tech_filters, compute_tech_facets
 from .btu import extract_btu, resolve_btu
 from apps.leads.quiz_logic import _balance_by_source
 
@@ -102,6 +103,8 @@ def catalog(request):
                                  stock__quantity__gt=0)
 
     f = ProductFilter(request.GET, queryset=base_qs)
+    filtered_qs = f.qs  # triggers form validation — f.form.cleaned_data ниже уже доступен
+    tech_qs = apply_tech_filters(request.GET, filtered_qs)
 
     ordering_key = request.GET.get('ordering', '')
     # Сортировка по ric (РРЦ — цена, которую видит покупатель), не по
@@ -114,12 +117,12 @@ def catalog(request):
         'title': F('title').asc(),
     }
     if ordering_key in ordering_map:
-        ordered_qs = f.qs.order_by(ordering_map[ordering_key])
+        ordered_qs = tech_qs.order_by(ordering_map[ordering_key])
     else:
         # 1) товары в Крыму (Stock.warehouse='Симферополь') первыми
         # 2) среди них — по qty в Крыму, далее под заказ — по сумме fallback
         # 3) title как тайбрейкер
-        ordered_qs = f.qs.order_by(
+        ordered_qs = tech_qs.order_by(
             F('is_crimea').desc(),
             F('stock__quantity').desc(nulls_last=True),
             'title',
@@ -137,6 +140,8 @@ def catalog(request):
     )
 
     facets = compute_facets(request.GET, base_qs)
+    selected_category = f.form.cleaned_data.get('category') if f.form.is_valid() else None
+    tech_facets = compute_tech_facets(request.GET, selected_category, filtered_qs)
 
     context = {
         'filter': f,
@@ -145,6 +150,7 @@ def catalog(request):
         'show_price': request.user.is_authenticated and request.user.is_approved,
         'current_ordering': ordering_key,
         'facets': facets,
+        'tech_facets': tech_facets,
     }
 
     template = (

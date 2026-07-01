@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from apps.catalog.models import Brand, Category, Product
+from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
 from apps.stock.models import Stock, WarehouseStock
 
 
@@ -96,6 +96,40 @@ class CatalogViewTest(TestCase):
         p = self._make('NC-1', is_active=False)
         r = self.client.get(reverse('product_detail', args=[p.slug]))
         self.assertEqual(r.status_code, 404)
+
+    def test_catalog_filter_by_area(self):
+        # area=25 -> btu_calc=9 (см. apps.catalog.filters._AREA_TO_BTU).
+        self._make('NC-area25', btu_calc=9)
+        self._make('NC-area35', btu_calc=12)
+        r = self.client.get(reverse('catalog'), {'area': '25'})
+        self.assertEqual(r.status_code, 200)
+        ncs = {p.nc_code for p in r.context['page_obj'].object_list}
+        self.assertEqual(ncs, {'NC-area25'})
+
+    def test_catalog_filter_by_wifi(self):
+        wifi_spec = TechSpec.objects.create(title='Wi-Fi управление', category=self.category)
+        p_wifi = self._make('NC-has-wifi')
+        ProductTech.objects.create(product=p_wifi, spec=wifi_spec, value='Да')
+        self._make('NC-plain')
+        r = self.client.get(reverse('catalog'), {'wifi': '1'})
+        self.assertEqual(r.status_code, 200)
+        ncs = {p.nc_code for p in r.context['page_obj'].object_list}
+        self.assertEqual(ncs, {'NC-has-wifi'})
+
+    def test_catalog_filter_by_tech_spec(self):
+        spec = TechSpec.objects.create(title='Класс энергоэффективности', category=self.category,
+                                        is_filter=True)
+        p_a = self._make('NC-a-class')
+        ProductTech.objects.create(product=p_a, spec=spec, value='A+++')
+        self._make('NC-no-spec')
+        r = self.client.get(reverse('catalog'), {
+            'category': self.category.pk, 'tech': f'{spec.id}:A+++',
+        })
+        self.assertEqual(r.status_code, 200)
+        ncs = {p.nc_code for p in r.context['page_obj'].object_list}
+        self.assertEqual(ncs, {'NC-a-class'})
+        titles = {g['title'] for g in r.context['tech_facets']}
+        self.assertIn('Класс энергоэффективности', titles)
 
     def test_catalog_pagination_works(self):
         for i in range(20):

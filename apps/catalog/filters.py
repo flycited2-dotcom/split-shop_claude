@@ -47,6 +47,37 @@ _COLOR_NEEDLES = {
     'green':  ['green'],
 }
 
+# Площадь помещения → мощность BTU. Тот же маппинг, что в квизе
+# (apps.leads.quiz_logic.AREA_TO_BTU) — держать в синхроне при изменении;
+# для каталога квизовая логика «соседнего BTU у границы» не нужна, тут
+# просто прямой выбор одного диапазона.
+AREA_CHOICES = [
+    ('20',  'до 20 м²'),
+    ('25',  'до 25 м²'),
+    ('35',  'до 35 м²'),
+    ('45',  'до 45 м²'),
+    ('65',  'до 65 м²'),
+    ('999', 'более 65 м²'),
+]
+_AREA_TO_BTU = {'20': 7, '25': 9, '35': 12, '45': 18, '65': 24, '999': 30}
+
+# Wi-Fi-управление: гибрид TechSpec-фильтра и regex по тексту. Поставщики
+# могут отдавать характеристику с разными названиями («Wi-Fi», «Wi Fi»,
+# «Беспроводное управление», «Удалённое управление»). Значение варьируется
+# («Да», «Есть», «опция», «возможность подключения»). Считаем как «есть
+# Wi-Fi» всё, что НЕ выглядит явным отрицанием. Если у товара tech-
+# характеристики отсутствуют — пробуем найти упоминание в title/description.
+# Общий для каталога (ProductFilter) и квиза (apps.leads.quiz_logic).
+_WIFI_TECH_Q = (
+    Q(tech_values__spec__title__iregex=r'wi[\s\-]?fi|вай[\s\-]?фай|беспровод|удал.{0,5}управлен')
+    & ~Q(tech_values__value__iregex=r'^\s*(нет|no|−|—|-|отсутств)\s*$')
+)
+_WIFI_TEXT_Q = (
+    Q(description__iregex=r'wi[\s\-]?fi|wifi|вай[\s\-]?фай')
+    | Q(title__iregex=r'wi[\s\-]?fi|wifi|вай[\s\-]?фай')
+)
+WIFI_Q = _WIFI_TECH_Q | _WIFI_TEXT_Q
+
 # Компоненты мульти-сплит-систем (внутренний/наружный блок) — не самостоятельные
 # кондиционеры. Их артикул содержит BTU-код, поэтому без явного исключения
 # розничный каталог и квиз засоряются ими (≈40% активных AC). Исключаются из:
@@ -123,6 +154,12 @@ def _color_q(color_keys):
     return q
 
 
+def _area_q(area_keys):
+    """Фильтр по Product.btu_calc через выбор диапазона площади (см. AREA_CHOICES)."""
+    values = {_AREA_TO_BTU[k] for k in area_keys if k in _AREA_TO_BTU}
+    return Q(btu_calc__in=values) if values else Q()
+
+
 class ProductFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(
         method='filter_search', label='Поиск',
@@ -150,6 +187,10 @@ class ProductFilter(django_filters.FilterSet):
         choices=[(v, v) for v in BTU_VALUES],
         method='filter_btu', label='Мощность BTU', conjoined=False,
     )
+    area = django_filters.MultipleChoiceFilter(
+        choices=AREA_CHOICES,
+        method='filter_area', label='Площадь помещения', conjoined=False,
+    )
     inverter = django_filters.MultipleChoiceFilter(
         choices=INVERTER_CHOICES,
         method='filter_inverter', label='Тип управления', conjoined=False,
@@ -162,11 +203,15 @@ class ProductFilter(django_filters.FilterSet):
         choices=TYPE_CHOICES,
         method='filter_type', label='Тип блока',
     )
+    wifi = django_filters.BooleanFilter(
+        method='filter_wifi', label='Wi-Fi управление',
+        widget=forms.CheckboxInput(),
+    )
 
     class Meta:
         model = Product
         fields = ['q', 'brand', 'category', 'price_min', 'price_max',
-                  'btu', 'inverter', 'color', 'type']
+                  'btu', 'area', 'inverter', 'color', 'type', 'wifi']
 
     def filter_search(self, queryset, name, value):
         return queryset.filter(Q(title__icontains=value) | Q(articul__icontains=value))
@@ -175,8 +220,18 @@ class ProductFilter(django_filters.FilterSet):
         q = _btu_q(value or [])
         return queryset.filter(q) if q else queryset
 
+    def filter_area(self, queryset, name, value):
+        q = _area_q(value or [])
+        return queryset.filter(q) if q else queryset
+
     def filter_inverter(self, queryset, name, value):
         return _inverter_filter(queryset, value or [])
+
+    def filter_wifi(self, queryset, name, value):
+        if not value:
+            return queryset
+        # join через tech_values может дублировать строки — distinct() обязателен.
+        return queryset.filter(WIFI_Q).distinct()
 
     def filter_color(self, queryset, name, value):
         q = _color_q(value or [])

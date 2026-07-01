@@ -76,6 +76,28 @@ when parsing a response.
     </div>
     {% endif %}
 
+    <!-- Площадь помещения -->
+    {% if facets.area %}
+    <div class="mb-4">
+      <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Площадь помещения</p>
+      <div class="space-y-1">
+        {% for item in facets.area %}
+          <label class="flex items-center justify-between text-sm cursor-pointer
+                        {% if item.count == 0 and not item.selected %}opacity-40{% endif %}">
+            <span class="flex items-center gap-2">
+              <input type="checkbox" name="area" value="{{ item.value }}"
+                     {% if item.selected %}checked{% endif %}
+                     {% if item.count == 0 and not item.selected %}disabled{% endif %}
+                     class="w-4 h-4 accent-orange-500">
+              <span>{{ item.label }}</span>
+            </span>
+            <span class="text-xs text-gray-400">{{ item.count }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Тип управления -->
     <div class="mb-4">
       <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Тип управления</p>
@@ -118,6 +140,28 @@ when parsing a response.
     </div>
     {% endif %}
 
+    <!-- Доп. характеристики (динамически, по TechSpec.is_filter=True выбранной категории) -->
+    {% for group in tech_facets %}
+    <div class="mb-4">
+      <p class="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{{ group.title }}</p>
+      <div class="space-y-1">
+        {% for opt in group.options %}
+          <label class="flex items-center justify-between text-sm cursor-pointer
+                        {% if opt.count == 0 and not opt.selected %}opacity-40{% endif %}">
+            <span class="flex items-center gap-2 min-w-0">
+              <input type="checkbox" name="tech" value="{{ group.spec_id }}:{{ opt.value }}"
+                     {% if opt.selected %}checked{% endif %}
+                     {% if opt.count == 0 and not opt.selected %}disabled{% endif %}
+                     class="w-4 h-4 accent-orange-500 shrink-0">
+              <span class="truncate">{{ opt.value }}</span>
+            </span>
+            <span class="text-xs text-gray-400 shrink-0">{{ opt.count }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
     <!-- Цена -->
     <div class="mb-4">
       <label class="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">Цена, ₽</label>
@@ -130,6 +174,19 @@ when parsing a response.
                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400">
       </div>
     </div>
+
+    <!-- Wi-Fi управление -->
+    {% if facets.wifi.count or facets.wifi.selected %}
+    <label class="mb-2 flex items-center justify-between gap-2 cursor-pointer select-none">
+      <span class="flex items-center gap-2">
+        <input type="checkbox" name="wifi" value="1"
+               {% if facets.wifi.selected %}checked{% endif %}
+               class="w-4 h-4 accent-orange-500">
+        <span class="text-sm text-gray-700">Wi-Fi управление</span>
+      </span>
+      <span class="text-xs text-gray-400">{{ facets.wifi.count }}</span>
+    </label>
+    {% endif %}
 
     <!-- Включить под заказ -->
     <label class="mb-2 flex items-center gap-2 cursor-pointer select-none"
