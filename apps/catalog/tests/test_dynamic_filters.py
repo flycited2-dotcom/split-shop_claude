@@ -60,6 +60,12 @@ class DynamicFiltersDbTest(TestCase):
         cls.hidden_spec = TechSpec.objects.create(
             title='Внутренний код', category=cls.category, is_filter=False, order=3,
         )
+        # Регрессия: реальные is_filter=True TechSpec в проде почти все имеют
+        # category=None (глобальные, не привязаны к категории поставщиком) —
+        # такие тоже должны показываться, а не отфильтровываться по category.
+        cls.global_spec = TechSpec.objects.create(
+            title='Тепловой насос', category=None, is_filter=True, order=4,
+        )
 
     def _make(self, nc, category=None):
         return Product.objects.create(
@@ -110,6 +116,20 @@ class DynamicFiltersDbTest(TestCase):
         titles = {g['title'] for g in result}
         self.assertIn('Wi-Fi', titles)
         self.assertNotIn('Внутренний код', titles)
+
+    def test_compute_tech_facets_includes_global_specs_regardless_of_category(self):
+        p1 = self._make('NC-1')
+        ProductTech.objects.create(product=p1, spec=self.global_spec, value='Есть')
+        result = compute_tech_facets(_qd(), self.category, Product.objects.all())
+        titles = {g['title'] for g in result}
+        self.assertIn('Тепловой насос', titles)
+
+    def test_compute_tech_facets_global_specs_shown_even_without_category(self):
+        p1 = self._make('NC-1')
+        ProductTech.objects.create(product=p1, spec=self.global_spec, value='Есть')
+        result = compute_tech_facets(_qd(), None, Product.objects.all())
+        titles = {g['title'] for g in result}
+        self.assertIn('Тепловой насос', titles)
 
     def test_compute_tech_facets_scoped_to_category(self):
         p1 = self._make('NC-other', category=self.other_category)

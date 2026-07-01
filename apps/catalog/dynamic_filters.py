@@ -11,7 +11,7 @@ URL: ?tech=<spec_id>:<value> (повторяется для нескольких
 Внутри одного spec_id — OR (любое из выбранных значений), между разными
 spec_id — AND.
 """
-from django.db.models import Count
+from django.db.models import Count, Q
 
 from .models import ProductTech, TechSpec
 
@@ -45,14 +45,20 @@ def apply_tech_filters(get_data, qs, exclude_spec_id=None):
 
 def compute_tech_facets(get_data, category, qs):
     """qs — уже отфильтрован по всем статическим ProductFilter-полям (включая
-    category), но ДО tech-фильтров. Возвращает [] если категория не выбрана —
-    фасеты по характеристикам осмысленны только внутри одной категории.
-    """
-    if not category:
-        return []
+    category), но ДО tech-фильтров.
 
+    TechSpec.category сейчас у всех is_filter=True записей пуст (специфика
+    данных из Breez API — специфики глобальные, не привязаны к категории),
+    поэтому показываем: глобальные (category=None) всегда + специфичные для
+    выбранной категории, если она выбрана. Нерелевантные для текущей выдачи
+    специфики сами отсеются ниже (rows будет пустым, если ни у одного товара
+    в qs нет значения по этой характеристике).
+    """
+    spec_filter = Q(category__isnull=True)
+    if category:
+        spec_filter |= Q(category=category)
     grouped_selected = parse_tech_params(get_data)
-    specs = TechSpec.objects.filter(category=category, is_filter=True).order_by('order')
+    specs = TechSpec.objects.filter(spec_filter, is_filter=True).order_by('order')
 
     result = []
     for spec in specs:
