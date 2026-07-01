@@ -29,6 +29,12 @@ class NonRetailQTest(SimpleTestCase):
     def test_water_tank_spare_part(self):
         self.assertTrue(self._regex_matches('Бак для воды BCOOL-05L (DF-AF1301D-47)'))
 
+    def test_evaporative_air_cooler(self):
+        # Испарительный охладитель воздуха (BCOOL) — не сплит-система, решение
+        # владельца сайта: не показывать в каталоге кондиционеров.
+        self.assertTrue(self._regex_matches('Охладитель воздуха Ballu Prime BCOOL-05L PM'))
+        self.assertTrue(self._regex_matches('Охладитель воздуха Ballu Cyclone BCOOL-30L CL'))
+
     def test_bare_grille_word(self):
         self.assertTrue(self._regex_matches('Защитная решётка для наружного блока'))
 
