@@ -26,6 +26,9 @@ class NonRetailQTest(SimpleTestCase):
     def test_portable_washer(self):
         self.assertTrue(self._regex_matches('Мойка портативная Ballu для кондиционера Aquamaster'))
 
+    def test_water_tank_spare_part(self):
+        self.assertTrue(self._regex_matches('Бак для воды BCOOL-05L (DF-AF1301D-47)'))
+
     def test_bare_grille_word(self):
         self.assertTrue(self._regex_matches('Защитная решётка для наружного блока'))
 

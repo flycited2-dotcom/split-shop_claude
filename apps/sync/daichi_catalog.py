@@ -306,6 +306,7 @@ def _prefetch_kit_wholesales(client, store_id, products):
         if w is not None:
             name_to_base[name] = w
     recovered = {}
+    failed = []
     for e in products.values():
         if not isinstance(e, dict):
             continue
@@ -321,7 +322,17 @@ def _prefetch_kit_wholesales(client, store_id, products):
         rec = _recover_kit_wholesale(client, store_id, xml_id, e.get('NAME') or '', name_to_base)
         if rec is not None:
             recovered[xml_id] = rec
+        else:
+            failed.append(xml_id)
     logger.info('Daichi: restored kit wholesale prices: %d of empty kits', len(recovered))
+    if failed:
+        # Оба пути восстановления (точечный запрос и сумма блоков) не сработали —
+        # товар уедет в БД с price_wholesale=None. Раньше это тонуло в INFO-логе
+        # как разница между «найдено пустых» и «восстановлено», без явного счётчика.
+        logger.error(
+            'Daichi: %d kits still have no wholesale price after recovery: %s',
+            len(failed), ', '.join(failed[:20]),
+        )
     return recovered
 
 
