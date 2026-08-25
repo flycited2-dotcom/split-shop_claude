@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Сервисное обслуживание климатической и бытовой техники{% endblock %}
+{% block meta_description %}Заявка на диагностику, профилактику, ремонт и настройку климатической и бытовой техники в Крыму.{% endblock %}
+{% block content %}
+<section class="max-w-5xl mx-auto py-10 px-4">
+  <div class="grid lg:grid-cols-[0.9fr_1.1fr] gap-8 items-start">
+    <div class="lg:sticky lg:top-24">
+      <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-3">Сервис и обслуживание</p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
+        Поможем технике работать исправно
+      </h1>
+      <p class="text-gray-600 text-lg mb-6">
+        Принимаем заявки на диагностику, профилактику, ремонт и настройку оборудования.
+        Сначала уточним задачу и модель, затем подтвердим возможность и условия работ.
+      </p>
+      <ul class="space-y-3 text-gray-700">
+        <li class="flex gap-3"><span class="text-green-600">✓</span><span>Кондиционеры, сплит-системы и тепловые насосы</span></li>
+        <li class="flex gap-3"><span class="text-green-600">✓</span><span>Вентиляция и рекуператоры</span></li>
+        <li class="flex gap-3"><span class="text-green-600">✓</span><span>Стабилизаторы, ИБП и бытовая техника</span></li>
+        <li class="flex gap-3"><span class="text-green-600">✓</span><span>Работы выполняются после согласования</span></li>
+      </ul>
+      <p class="mt-6 text-sm text-gray-500">
+        Отправка заявки не является подтверждением заказа или публичной офертой.
+      </p>
+    </div>
+
+    {% include "leads/partials/service_form.html" %}
+  </div>
+</section>
+{% endblock %}

@@ -36,7 +36,7 @@ class StaticViewSitemap(Sitemap):
     # не резолвятся, чтобы один отсутствующий маршрут (как было с 'brands' —
     # такого url нет, reverse() бросал NoReverseMatch и ронял весь sitemap в
     # HTTP 500) больше не ломал карту сайта целиком.
-    NAMES = ['home', 'catalog', 'selection', 'installation',
+    NAMES = ['home', 'catalog', 'selection', 'installation', 'service',
              'delivery', 'payment', 'contacts', 'warranty', 'about', 'privacy']
 
     def items(self):

@@ -86,6 +86,7 @@ def llms_txt(request):
         f'- [AI-подбор за 2 минуты]({base}/quiz/) — 6 вопросов и предложим 6 моделей',
         f'- [Доставка]({base}/delivery/) — условия и сроки',
         f'- [Монтаж]({base}/installation/) — заявка на установку',
+        f'- [Сервис]({base}/service/) — диагностика, профилактика и ремонт оборудования',
         f'- [Гарантия]({base}/warranty/) — условия гарантийного обслуживания',
         f'- [Контакты]({base}/contacts/) — телефоны, адрес',
         f'- [Политика конфиденциальности]({base}/privacy/)',
@@ -118,6 +119,7 @@ urlpatterns = [
     path('leads/', include('apps.leads.urls')),
     path('selection/', views_leads.selection_page, name='selection'),
     path('installation/', views_leads.installation_page, name='installation'),
+    path('service/', views_leads.service_page, name='service'),
     path('quiz/', views_leads.quiz_page, name='quiz'),
     # Static pages
     path('delivery/', TemplateView.as_view(template_name='pages/delivery.html'), name='delivery'),

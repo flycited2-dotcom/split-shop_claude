@@ -1,5 +1,6 @@
 import logging
 import os
+from html import escape
 
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
@@ -9,8 +10,14 @@ from django.conf import settings
 
 from apps.catalog.models import Brand, Product
 from apps.notifications.telegram import send_telegram
-from .forms import QuickOrderForm, SelectionRequestForm, InstallationRequestForm
-from .models import QuickOrder, SelectionRequest, InstallationRequest, QuizResult
+from .forms import (
+    InstallationRequestForm, QuickOrderForm, SelectionRequestForm,
+    ServiceRequestForm,
+)
+from .models import (
+    InstallationRequest, QuickOrder, QuizResult, SelectionRequest,
+    ServiceRequest,
+)
 from . import quiz_logic
 
 logger = logging.getLogger(__name__)
@@ -191,6 +198,76 @@ def selection_page(request):
 def installation_page(request):
     form = InstallationRequestForm()
     return render(request, 'leads/installation.html', {'form': form})
+
+
+def service_page(request):
+    initial = {
+        key: request.GET.get(key, '')[:limit]
+        for key, limit in (
+            ('utm_source', 100), ('utm_medium', 100),
+            ('utm_campaign', 150), ('utm_content', 150),
+        )
+    }
+    return render(request, 'leads/service.html', {
+        'form': ServiceRequestForm(initial=initial),
+    })
+
+
+@require_POST
+def service_submit(request):
+    form = ServiceRequestForm(request.POST)
+    if not form.is_valid():
+        return render(request, 'leads/partials/service_form.html', {'form': form})
+
+    d = form.cleaned_data
+    obj = ServiceRequest.objects.create(
+        name=d['name'],
+        phone=d['phone'],
+        locality=d.get('locality', ''),
+        equipment_type=d['equipment_type'],
+        service_type=d['service_type'],
+        equipment_model=d.get('equipment_model', ''),
+        comment=d.get('comment', ''),
+        preferred_time=d.get('preferred_time', ''),
+        privacy_accepted=d['privacy_accepted'],
+        utm_source=d.get('utm_source', ''),
+        utm_medium=d.get('utm_medium', ''),
+        utm_campaign=d.get('utm_campaign', ''),
+        utm_content=d.get('utm_content', ''),
+    )
+
+    attribution = ' / '.join(filter(None, (
+        obj.utm_source, obj.utm_campaign, obj.utm_content,
+    ))) or 'прямой переход'
+    send_telegram(
+        f'🛠 <b>Заявка на сервисное обслуживание</b>\n'
+        f'👤 {escape(obj.name)} | 📞 {escape(obj.phone)}\n'
+        f'📍 {escape(obj.locality or "—")}\n'
+        f'⚙️ {escape(obj.get_equipment_type_display())}\n'
+        f'🔧 {escape(obj.get_service_type_display())}\n'
+        f'🏷 {escape(obj.equipment_model or "марка и модель не указаны")}\n'
+        f'🕐 {escape(obj.preferred_time or "любое время")}\n'
+        f'💬 {escape(obj.comment or "—")}\n'
+        f'📊 Источник: {escape(attribution)}'
+    )
+
+    if settings.MANAGER_EMAIL:
+        send_mail(
+            subject=f'Заявка на сервис — {obj.name}',
+            message=(
+                f'Имя: {obj.name}\nТелефон: {obj.phone}\nНаселённый пункт: {obj.locality}\n'
+                f'Оборудование: {obj.get_equipment_type_display()}\n'
+                f'Вид обращения: {obj.get_service_type_display()}\n'
+                f'Марка и модель: {obj.equipment_model or "—"}\n'
+                f'Удобное время: {obj.preferred_time or "—"}\n'
+                f'Описание: {obj.comment or "—"}\nИсточник: {attribution}'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.MANAGER_EMAIL],
+            fail_silently=True,
+        )
+
+    return HttpResponse(SUCCESS_MODAL_HTML)
 
 
 ROOM_OPTIONS = [

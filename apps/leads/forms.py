@@ -1,5 +1,7 @@
 from django import forms
 
+from .models import ServiceRequest
+
 
 class QuickOrderForm(forms.Form):
     name = forms.CharField(label='Ваше имя', max_length=150,
@@ -47,3 +49,31 @@ class InstallationRequestForm(forms.Form):
     needs_channel = forms.BooleanField(label='Нужна закладка трассы', required=False)
     comment = forms.CharField(label='Комментарий', required=False,
                               widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Дополнительная информация...'}))
+
+
+class ServiceRequestForm(forms.Form):
+    name = forms.CharField(label='Ваше имя', max_length=150)
+    phone = forms.CharField(label='Телефон', max_length=30)
+    locality = forms.CharField(label='Населённый пункт', max_length=150, required=False)
+    equipment_type = forms.ChoiceField(
+        label='Оборудование',
+        choices=(('', 'Выберите оборудование'),) + tuple(ServiceRequest.EQUIPMENT_CHOICES),
+    )
+    service_type = forms.ChoiceField(
+        label='Что требуется',
+        choices=(('', 'Выберите вид работ'),) + tuple(ServiceRequest.SERVICE_CHOICES),
+    )
+    equipment_model = forms.CharField(label='Марка и модель', max_length=200, required=False)
+    comment = forms.CharField(
+        label='Опишите задачу или неисправность', required=False,
+        widget=forms.Textarea(attrs={'rows': 4}),
+    )
+    preferred_time = forms.CharField(label='Удобное время для звонка', max_length=100, required=False)
+    privacy_accepted = forms.BooleanField(
+        label='Согласен на обработку персональных данных',
+        error_messages={'required': 'Подтвердите согласие на обработку персональных данных'},
+    )
+    utm_source = forms.CharField(required=False, widget=forms.HiddenInput())
+    utm_medium = forms.CharField(required=False, widget=forms.HiddenInput())
+    utm_campaign = forms.CharField(required=False, widget=forms.HiddenInput())
+    utm_content = forms.CharField(required=False, widget=forms.HiddenInput())

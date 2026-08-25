@@ -98,3 +98,48 @@ class InstallationRequest(models.Model):
 
     def __str__(self):
         return f'{self.name} {self.phone} ({self.created_at:%d.%m.%Y})'
+
+
+class ServiceRequest(models.Model):
+    EQUIPMENT_CHOICES = [
+        ('air_conditioner', 'Кондиционер или сплит-система'),
+        ('heat_pump', 'Тепловой насос'),
+        ('ventilation', 'Вентиляция или рекуператор'),
+        ('power', 'Стабилизатор или ИБП'),
+        ('appliance', 'Бытовая техника'),
+        ('other', 'Другое оборудование'),
+    ]
+    SERVICE_CHOICES = [
+        ('diagnostics', 'Диагностика'),
+        ('maintenance', 'Профилактика и обслуживание'),
+        ('repair', 'Ремонт'),
+        ('commissioning', 'Пусконаладка и настройка'),
+        ('consultation', 'Консультация специалиста'),
+    ]
+
+    name = models.CharField('Имя', max_length=150)
+    phone = models.CharField('Телефон', max_length=30)
+    locality = models.CharField('Населённый пункт', max_length=150, blank=True)
+    equipment_type = models.CharField(
+        'Тип оборудования', max_length=30, choices=EQUIPMENT_CHOICES,
+    )
+    service_type = models.CharField(
+        'Вид обращения', max_length=30, choices=SERVICE_CHOICES,
+    )
+    equipment_model = models.CharField('Марка и модель', max_length=200, blank=True)
+    comment = models.TextField('Описание задачи или неисправности', blank=True)
+    preferred_time = models.CharField('Удобное время для звонка', max_length=100, blank=True)
+    privacy_accepted = models.BooleanField('Согласие на обработку данных', default=False)
+    utm_source = models.CharField(max_length=100, blank=True)
+    utm_medium = models.CharField(max_length=100, blank=True)
+    utm_campaign = models.CharField(max_length=150, blank=True)
+    utm_content = models.CharField(max_length=150, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Заявка на сервис'
+        verbose_name_plural = 'Заявки на сервис'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name} {self.phone} ({self.created_at:%d.%m.%Y})'

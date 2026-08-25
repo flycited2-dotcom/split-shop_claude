@@ -1,0 +1,98 @@
+<div id="service-form-container">
+<form hx-post="{% url 'service_submit' %}"
+      hx-target="#service-form-container"
+      hx-swap="outerHTML"
+      class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 sm:p-7 space-y-5">
+  {% csrf_token %}
+  {{ form.utm_source }}{{ form.utm_medium }}{{ form.utm_campaign }}{{ form.utm_content }}
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Оставить заявку</h2>
+    <p class="text-sm text-gray-500 mt-1">Поля со звёздочкой обязательны.</p>
+  </div>
+
+  {% if form.non_field_errors %}
+    <div class="rounded-lg bg-red-50 text-red-700 text-sm p-3">{{ form.non_field_errors|join:", " }}</div>
+  {% endif %}
+
+  <div class="grid sm:grid-cols-2 gap-4">
+    <div>
+      <label for="id_name" class="block text-sm font-medium text-gray-700 mb-1">Имя *</label>
+      <input id="id_name" name="name" value="{{ form.name.value|default_if_none:'' }}" required autocomplete="name"
+             class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      {% if form.name.errors %}<p class="text-red-600 text-xs mt-1">{{ form.name.errors|join:", " }}</p>{% endif %}
+    </div>
+    <div>
+      <label for="id_phone" class="block text-sm font-medium text-gray-700 mb-1">Телефон *</label>
+      <input id="id_phone" type="tel" name="phone" value="{{ form.phone.value|default_if_none:'' }}" required autocomplete="tel" placeholder="+7 (___) ___-__-__"
+             class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      {% if form.phone.errors %}<p class="text-red-600 text-xs mt-1">{{ form.phone.errors|join:", " }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div>
+    <label for="id_locality" class="block text-sm font-medium text-gray-700 mb-1">Населённый пункт</label>
+    <input id="id_locality" name="locality" value="{{ form.locality.value|default_if_none:'' }}" autocomplete="address-level2" placeholder="Например, Симферополь"
+           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    {% if form.locality.errors %}<p class="text-red-600 text-xs mt-1">{{ form.locality.errors|join:", " }}</p>{% endif %}
+  </div>
+
+  <div class="grid sm:grid-cols-2 gap-4">
+    <div>
+      <label for="id_equipment_type" class="block text-sm font-medium text-gray-700 mb-1">Оборудование *</label>
+      <select id="id_equipment_type" name="equipment_type" required
+              class="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        {% for value, label in form.fields.equipment_type.choices %}
+          <option value="{{ value }}" {% if form.equipment_type.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% if form.equipment_type.errors %}<p class="text-red-600 text-xs mt-1">{{ form.equipment_type.errors|join:", " }}</p>{% endif %}
+    </div>
+    <div>
+      <label for="id_service_type" class="block text-sm font-medium text-gray-700 mb-1">Что требуется *</label>
+      <select id="id_service_type" name="service_type" required
+              class="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+        {% for value, label in form.fields.service_type.choices %}
+          <option value="{{ value }}" {% if form.service_type.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {% if form.service_type.errors %}<p class="text-red-600 text-xs mt-1">{{ form.service_type.errors|join:", " }}</p>{% endif %}
+    </div>
+  </div>
+
+  <div>
+    <label for="id_equipment_model" class="block text-sm font-medium text-gray-700 mb-1">Марка и модель</label>
+    <input id="id_equipment_model" name="equipment_model" value="{{ form.equipment_model.value|default_if_none:'' }}" placeholder="Укажите с шильдика, если известно"
+           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    {% if form.equipment_model.errors %}<p class="text-red-600 text-xs mt-1">{{ form.equipment_model.errors|join:", " }}</p>{% endif %}
+  </div>
+
+  <div>
+    <label for="id_comment" class="block text-sm font-medium text-gray-700 mb-1">Задача или неисправность</label>
+    <textarea id="id_comment" name="comment" rows="4" placeholder="Что происходит, когда началось, есть ли код ошибки"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ form.comment.value|default_if_none:'' }}</textarea>
+    {% if form.comment.errors %}<p class="text-red-600 text-xs mt-1">{{ form.comment.errors|join:", " }}</p>{% endif %}
+  </div>
+
+  <div>
+    <label for="id_preferred_time" class="block text-sm font-medium text-gray-700 mb-1">Когда удобно позвонить</label>
+    <input id="id_preferred_time" name="preferred_time" value="{{ form.preferred_time.value|default_if_none:'' }}" placeholder="Например, сегодня после 16:00"
+           class="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+  </div>
+
+  <div>
+    <label class="flex items-start gap-3 text-sm text-gray-600">
+      <input type="checkbox" name="privacy_accepted" required {% if form.privacy_accepted.value %}checked{% endif %}
+             class="mt-1 rounded border-gray-300">
+      <span>Я согласен на обработку персональных данных в соответствии с
+        <a href="{% url 'privacy' %}" target="_blank" class="text-blue-600 hover:underline">политикой конфиденциальности</a>.
+      </span>
+    </label>
+    {% if form.privacy_accepted.errors %}<p class="text-red-600 text-xs mt-1">{{ form.privacy_accepted.errors|join:", " }}</p>{% endif %}
+  </div>
+
+  <button type="submit" class="w-full bg-blue-600 text-white rounded-lg px-6 py-3 font-semibold hover:bg-blue-700 transition-colors">
+    Отправить заявку на сервис
+  </button>
+  <p class="text-xs text-center text-gray-500">Проверим возможность обслуживания и свяжемся для уточнения деталей.</p>
+</form>
+</div>

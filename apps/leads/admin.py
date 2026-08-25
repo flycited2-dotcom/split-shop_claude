@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import QuickOrder, SelectionRequest, InstallationRequest, QuizResult
+from .models import (
+    InstallationRequest, QuickOrder, QuizResult, SelectionRequest, ServiceRequest,
+)
 
 
 @admin.register(QuickOrder)
@@ -24,6 +26,17 @@ class InstallationRequestAdmin(admin.ModelAdmin):
     list_filter = ('has_equipment', 'needs_channel', 'created_at')
     search_fields = ('name', 'phone', 'address')
     readonly_fields = ('created_at',)
+
+
+@admin.register(ServiceRequest)
+class ServiceRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 'phone', 'locality', 'equipment_type', 'service_type', 'created_at',
+    )
+    list_filter = ('equipment_type', 'service_type', 'created_at')
+    search_fields = ('name', 'phone', 'locality', 'equipment_model', 'comment')
+    readonly_fields = ('created_at', 'privacy_accepted', 'utm_source', 'utm_medium',
+                       'utm_campaign', 'utm_content')
 
 
 @admin.register(QuizResult)
