@@ -24,7 +24,15 @@
       </p>
     </div>
 
-    {% include "leads/partials/service_form.html" %}
+    <div>
+      {% if service_sent %}
+        <div role="status" class="mb-4 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
+          <p class="font-semibold">✅ Заявка принята</p>
+          <p class="mt-1 text-sm">Мы получили обращение и свяжемся с вами для уточнения деталей.</p>
+        </div>
+      {% endif %}
+      {% include "leads/partials/service_form.html" %}
+    </div>
   </div>
 </section>
 {% endblock %}

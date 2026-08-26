@@ -2,7 +2,8 @@ import logging
 import os
 from html import escape
 
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.core.mail import send_mail
 from django.http import HttpResponse
@@ -210,6 +211,7 @@ def service_page(request):
     }
     return render(request, 'leads/service.html', {
         'form': ServiceRequestForm(initial=initial),
+        'service_sent': request.GET.get('sent') == '1',
     })
 
 
@@ -217,7 +219,10 @@ def service_page(request):
 def service_submit(request):
     form = ServiceRequestForm(request.POST)
     if not form.is_valid():
-        return render(request, 'leads/partials/service_form.html', {'form': form})
+        template = ('leads/partials/service_form.html'
+                    if request.headers.get('HX-Request') == 'true'
+                    else 'leads/service.html')
+        return render(request, template, {'form': form})
 
     d = form.cleaned_data
     obj = ServiceRequest.objects.create(
@@ -267,7 +272,9 @@ def service_submit(request):
             fail_silently=True,
         )
 
-    return HttpResponse(SUCCESS_MODAL_HTML)
+    if request.headers.get('HX-Request') == 'true':
+        return HttpResponse(SUCCESS_MODAL_HTML)
+    return redirect(f"{reverse('service')}?sent=1")
 
 
 ROOM_OPTIONS = [

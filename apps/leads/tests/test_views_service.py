@@ -34,7 +34,7 @@ class ServiceRequestViewTest(TestCase):
                 'utm_content': 'svc_vkp_14',
             })
 
-        self.assertEqual(response.status_code, 200)
+        self.assertRedirects(response, f"{reverse('service')}?sent=1")
         lead = ServiceRequest.objects.get()
         self.assertTrue(lead.privacy_accepted)
         self.assertEqual(lead.utm_content, 'svc_vkp_14')
@@ -42,6 +42,32 @@ class ServiceRequestViewTest(TestCase):
         message = telegram.call_args.args[0]
         self.assertIn('Заявка на сервисное обслуживание', message)
         self.assertIn('svc_vkp_14', message)
+
+    def test_form_works_without_htmx(self):
+        response = self.client.get(reverse('service'))
+        self.assertContains(response, 'method="post"')
+        self.assertContains(response, f'action="{reverse("service_submit")}"')
+
+    def test_htmx_submit_keeps_modal_response(self):
+        with patch('apps.leads.views.send_telegram'):
+            response = self.client.post(reverse('service_submit'), {
+                'name': 'Алексей',
+                'phone': '+79780000000',
+                'equipment_type': 'air_conditioner',
+                'service_type': 'maintenance',
+                'privacy_accepted': 'on',
+            }, HTTP_HX_REQUEST='true')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Заявка принята!')
+        self.assertNotContains(response, '<html')
+
+    def test_non_htmx_invalid_submit_renders_full_page(self):
+        response = self.client.post(reverse('service_submit'), {
+            'name': 'Алексей',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Поможем технике работать исправно')
+        self.assertContains(response, 'Это поле обязательно')
 
     def test_consent_is_required(self):
         with patch('apps.leads.views.send_telegram') as telegram:
