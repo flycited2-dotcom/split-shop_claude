@@ -1,12 +1,25 @@
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.leads.models import ServiceRequest
 
 
+@override_settings(SECURE_SSL_REDIRECT=False)
 class ServiceRequestViewTest(TestCase):
+    def test_short_vk_service_link_redirects_with_attribution(self):
+        response = self.client.get('/go/svc14')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response['Location'],
+            '/service/?utm_source=vk&utm_medium=organic_social&'
+            'utm_campaign=content_factory&utm_content=vkp_14',
+        )
+
+    def test_unknown_short_link_is_not_an_open_redirect(self):
+        self.assertEqual(self.client.get('/go/https://evil.example').status_code, 404)
+
     def test_page_keeps_utm_in_form(self):
         response = self.client.get(reverse('service'), {
             'utm_source': 'vk',
@@ -67,7 +80,7 @@ class ServiceRequestViewTest(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Поможем технике работать исправно')
-        self.assertContains(response, 'Это поле обязательно')
+        self.assertContains(response, 'Обязательное поле.')
 
     def test_consent_is_required(self):
         with patch('apps.leads.views.send_telegram') as telegram:

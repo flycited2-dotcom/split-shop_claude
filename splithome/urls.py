@@ -3,7 +3,9 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+import re
+from urllib.parse import urlencode
 from django.contrib.sitemaps.views import sitemap
 from apps.leads import views as views_leads
 from apps.catalog.sitemaps import ProductSitemap, CategorySitemap, StaticViewSitemap
@@ -109,7 +111,23 @@ def llms_txt(request):
     return HttpResponse('\n'.join(lines), content_type='text/plain; charset=utf-8')
 
 
+def vk_service_campaign_redirect(request, code):
+    """Развернуть короткую публичную ссылку VK в сервисную форму с UTM."""
+    match = re.fullmatch(r'(?:svc|svc_vkp_?)(\d+)', code or '')
+    if not match:
+        return HttpResponse('Not found', status=404, content_type='text/plain')
+    plan_id = match.group(1)
+    query = urlencode({
+        'utm_source': 'vk',
+        'utm_medium': 'organic_social',
+        'utm_campaign': 'content_factory',
+        'utm_content': f'vkp_{plan_id}',
+    })
+    return HttpResponseRedirect(f'/service/?{query}')
+
+
 urlpatterns = [
+    path('go/<str:code>', vk_service_campaign_redirect, name='vk_service_campaign'),
     path('admin/', admin.site.urls),
     path('', include('apps.catalog.urls')),
     path('auth/', include('apps.accounts.urls')),
