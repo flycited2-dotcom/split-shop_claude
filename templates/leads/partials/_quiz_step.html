@@ -92,7 +92,7 @@
 
 {% else %}
   {# === Шаги 1-7 wizard === #}
-  <form hx-post="{% url 'quiz_step' %}" hx-target="#quiz-content" hx-swap="innerHTML" class="flex flex-col flex-1 space-y-3 sm:space-y-6">
+  <form hx-post="{% url 'quiz_step' %}" hx-target="#quiz-content" hx-swap="innerHTML" class="flex flex-col flex-1 gap-3 sm:gap-6">
     {% csrf_token %}
     <input type="hidden" name="step" value="{{ step }}">
     {% if step != 1 %}<input type="hidden" name="area_sqm" value="{{ area_sqm }}">{% endif %}
@@ -254,14 +254,14 @@
     {% elif step == 7 %}
       <div>
         <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Предпочтения по бренду?</h2>
-        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Если есть бренд, к которому привыкли — выбирайте. Иначе «Не важно» — покажем подходящие из всех.</p>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5 hidden sm:block">Если есть бренд, к которому привыкли — выбирайте. Иначе «Не важно» — покажем подходящие из всех.</p>
         <div class="grid grid-cols-3 gap-2 sm:gap-3">
           {% for b in brand_options %}
             <label class="relative cursor-pointer block">
               <input type="radio" name="brand" value="{{ b.id }}" required class="peer sr-only" {% if brand == b.id|stringformat:"s" %}checked{% endif %}>
-              <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex flex-col items-center justify-center gap-2 min-h-[56px] sm:min-h-[88px]">
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex flex-col items-center justify-center gap-2 min-h-[48px] sm:min-h-[88px]">
                 {% if b.logo_static %}
-                  <img src="{% static b.logo_static %}" alt="{{ b.title }}" class="h-6 sm:h-8 max-w-full object-contain">
+                  <img src="{% static b.logo_static %}" alt="{{ b.title }}" class="h-5 sm:h-8 max-w-full object-contain">
                 {% endif %}
                 <div class="font-semibold text-xs sm:text-sm text-center">{{ b.title }}</div>
               </div>
@@ -269,13 +269,13 @@
           {% endfor %}
           <label class="relative cursor-pointer block">
             <input type="radio" name="brand" value="any" required class="peer sr-only" {% if brand == 'any' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[56px] sm:min-h-[88px]">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[48px] sm:min-h-[88px]">
               <div class="font-semibold text-xs sm:text-sm text-center">Не важно</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="brand" value="dontknow" required class="peer sr-only" {% if brand == 'dontknow' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[56px] sm:min-h-[88px]">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[48px] sm:min-h-[88px]">
               <div class="font-semibold text-xs sm:text-sm text-center">Не знаю</div>
             </div>
           </label>
