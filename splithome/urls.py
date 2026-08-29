@@ -8,11 +8,14 @@ import re
 from urllib.parse import urlencode
 from django.contrib.sitemaps.views import sitemap
 from apps.leads import views as views_leads
-from apps.catalog.sitemaps import ProductSitemap, CategorySitemap, StaticViewSitemap
+from apps.catalog.sitemaps import (
+    CategorySitemap, CollectionSitemap, ProductSitemap, StaticViewSitemap,
+)
 
 sitemaps = {
     'products': ProductSitemap,
     'categories': CategorySitemap,
+    'collections': CollectionSitemap,
     'static': StaticViewSitemap,
 }
 

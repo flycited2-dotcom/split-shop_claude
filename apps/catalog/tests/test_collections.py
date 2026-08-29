@@ -3,10 +3,12 @@
 Товар остаётся в своей категории — подборка это срез поверх каталога,
 поэтому проверяем именно queryset-правило, а не принадлежность категории.
 """
-from django.test import TestCase
+from django.test import Client, TestCase
+from django.urls import reverse
 
 from apps.catalog.collections import COLLECTIONS, get_collection
 from apps.catalog.models import Brand, Category, Product
+from apps.stock.models import Stock
 
 
 class HeatPumpCollectionRuleTest(TestCase):
@@ -62,3 +64,56 @@ class HeatPumpCollectionRuleTest(TestCase):
 
     def test_get_collection_known_slug(self):
         self.assertEqual(get_collection('heat-pumps').slug, 'heat-pumps')
+
+
+class CollectionViewTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            title='Бытовые сплит-системы', slug='split-view', sync_enabled=True,
+        )
+        cls.brand = Brand.objects.create(title='Hisense', slug='hisense-view')
+
+    def _product(self, nc, temp, qty=3, warehouse='Симферополь'):
+        p = Product.objects.create(
+            nc_code=nc, articul=nc, category=self.category, brand=self.brand,
+            title=f'Инверторная сплит-система {nc}', slug=f'ac-{nc}',
+            heating_min_temp=temp,
+        )
+        Stock.objects.create(product=p, quantity=qty, warehouse=warehouse)
+        return p
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_page_returns_200(self):
+        self._product('NC-V20', -20)
+        r = self.client.get(reverse('collection', args=['heat-pumps']))
+        self.assertEqual(r.status_code, 200)
+
+    def test_unknown_slug_404(self):
+        r = self.client.get('/catalog/no-such-collection/')
+        self.assertEqual(r.status_code, 404)
+
+    def test_only_matching_products_listed(self):
+        self._product('NC-V20', -20)
+        self._product('NC-V15', -15)
+        r = self.client.get(reverse('collection', args=['heat-pumps']))
+        self.assertContains(r, 'NC-V20')
+        self.assertNotContains(r, 'NC-V15')
+
+    def test_h1_and_seo_text_rendered(self):
+        self._product('NC-V25', -25)
+        r = self.client.get(reverse('collection', args=['heat-pumps']))
+        self.assertContains(r, 'Тепловые насосы воздух-воздух в Крыму')
+        self.assertContains(r, 'воздух-воздух — это инверторная сплит-система')
+
+    def test_under_order_hidden_by_default(self):
+        # Товар без крымского остатка виден только по ?with_order=1 —
+        # то же правило, что в каталоге
+        self._product('NC-ORDER', -25, qty=4, warehouse='Шерризон')
+        r = self.client.get(reverse('collection', args=['heat-pumps']))
+        self.assertNotContains(r, 'NC-ORDER')
+        r2 = self.client.get(reverse('collection', args=['heat-pumps']), {'with_order': '1'})
+        self.assertContains(r2, 'NC-ORDER')

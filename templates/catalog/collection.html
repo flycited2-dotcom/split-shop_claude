@@ -1,0 +1,13 @@
+{% extends 'catalog/index.html' %}
+
+{% block title %}{{ collection.h1 }} — SplitHome{% endblock %}
+
+{% block catalog_heading %}
+  <h1 class="text-2xl lg:text-3xl font-bold text-gray-900 mb-4">{{ collection.h1 }}</h1>
+{% endblock %}
+
+{% block catalog_seo_text %}
+  <section class="card p-5 mt-6 text-sm leading-relaxed text-gray-600">
+    {{ collection.seo_text }}
+  </section>
+{% endblock %}

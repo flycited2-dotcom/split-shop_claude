@@ -4,7 +4,9 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F, Sum, Value, Case, When, IntegerField
 from django.db.models.functions import Coalesce
+from django.http import Http404
 from .models import Product, Category, Brand
+from .collections import COLLECTIONS, get_collection
 from .filters import ProductFilter
 from .facets import compute_facets
 from .dynamic_filters import apply_tech_filters, compute_tech_facets
@@ -72,11 +74,18 @@ def home(request):
     })
 
 
-def catalog(request):
-    # Stock.warehouse='Симферополь' выставляется в write_warehouse_stocks
-    # ТОЛЬКО когда qty в Крыму > 0. Если в Крыму 0 — там warehouse=крупнейший
-    # из Шерризон/Ростов/Краснодар (fallback «под заказ»). Поэтому первый
-    # ключ — наличие Крыма, а не сам Stock.quantity.
+def _catalog_base_qs(request):
+    """Базовая выборка каталога: активные розничные товары включённых категорий.
+
+    Вынесена из catalog(), чтобы страница подборки (collection) использовала ровно
+    ту же выборку — Крым-first, ?with_order, prefetch — и не разъезжалась с каталогом
+    при будущих правках.
+
+    Stock.warehouse='Симферополь' выставляется в write_warehouse_stocks ТОЛЬКО когда
+    qty в Крыму > 0. Если в Крыму 0 — там warehouse=крупнейший из Шерризон/Ростов/
+    Краснодар (fallback «под заказ»). Поэтому первый ключ — наличие Крыма, а не сам
+    Stock.quantity.
+    """
     base_qs = (
         Product.objects.filter(is_active=True, category__sync_enabled=True,
                                kind=Product.KIND_SPLIT_SYSTEM)
@@ -99,6 +108,11 @@ def catalog(request):
     if not request.GET.get('with_order'):
         base_qs = base_qs.filter(stock__warehouse='Симферополь',
                                  stock__quantity__gt=0)
+    return base_qs
+
+
+def catalog(request):
+    base_qs = _catalog_base_qs(request)
 
     f = ProductFilter(request.GET, queryset=base_qs)
     filtered_qs = f.qs  # triggers form validation — f.form.cleaned_data ниже уже доступен
@@ -145,6 +159,7 @@ def catalog(request):
         'filter': f,
         'page_obj': page,
         'categories': categories,
+        'collections': list(COLLECTIONS.values()),
         'show_price': request.user.is_authenticated and request.user.is_approved,
         'current_ordering': ordering_key,
         'facets': facets,
@@ -155,6 +170,71 @@ def catalog(request):
         'catalog/partials/_catalog_content.html'
         if request.headers.get('HX-Request') == 'true'
         else 'catalog/index.html'
+    )
+    return render(request, template, context)
+
+
+def collection(request, slug):
+    """Страница подборки — срез каталога со своим h1 и SEO-текстом.
+
+    Использует тот же base_qs, фильтры и шаблон листинга, что каталог: подборка
+    отличается только правилом отбора и текстами. См. apps/catalog/collections.py.
+    """
+    coll = get_collection(slug)
+    if coll is None:
+        raise Http404('Подборка не найдена')
+
+    base_qs = _catalog_base_qs(request).filter(coll.rule)
+
+    f = ProductFilter(request.GET, queryset=base_qs)
+    filtered_qs = f.qs
+    tech_qs = apply_tech_filters(request.GET, filtered_qs)
+
+    ordering_key = request.GET.get('ordering', '')
+    ordering_map = {
+        'price': F('ric').asc(nulls_last=True),
+        '-price': F('ric').desc(nulls_last=True),
+        '-created': F('created_at').desc(),
+        'title': F('title').asc(),
+    }
+    if ordering_key in ordering_map:
+        ordered_qs = tech_qs.order_by(ordering_map[ordering_key])
+    else:
+        ordered_qs = tech_qs.order_by(
+            F('is_crimea').desc(),
+            F('stock__quantity').desc(nulls_last=True),
+            'title',
+        )
+
+    paginator = Paginator(ordered_qs, 16)
+    page = paginator.get_page(request.GET.get('page'))
+
+    categories = (
+        Category.objects
+        .filter(sync_enabled=True)
+        .annotate(product_count=Count('products', filter=Q(products__is_active=True)))
+        .filter(product_count__gt=0)
+        .order_by('order', 'title')
+    )
+
+    context = {
+        'filter': f,
+        'page_obj': page,
+        'categories': categories,
+        'collections': list(COLLECTIONS.values()),
+        'collection': coll,
+        'show_price': request.user.is_authenticated and request.user.is_approved,
+        'current_ordering': ordering_key,
+        'facets': compute_facets(request.GET, base_qs),
+        # Категория внутри подборки не выбрана — показываем глобальные фасеты
+        # характеристик (см. compute_tech_facets).
+        'tech_facets': compute_tech_facets(request.GET, None, filtered_qs),
+    }
+
+    template = (
+        'catalog/partials/_catalog_content.html'
+        if request.headers.get('HX-Request') == 'true'
+        else 'catalog/collection.html'
     )
     return render(request, template, context)
 

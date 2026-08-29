@@ -28,6 +28,19 @@ class CategorySitemap(Sitemap):
         return f'{reverse("catalog")}?category={obj.pk}'
 
 
+class CollectionSitemap(Sitemap):
+    """Подборки — срезы каталога со своими SEO-страницами (collections.py)."""
+    changefreq = 'weekly'
+    priority = 0.7
+
+    def items(self):
+        from .collections import COLLECTIONS
+        return list(COLLECTIONS.values())
+
+    def location(self, obj):
+        return reverse('collection', args=[obj.slug])
+
+
 class StaticViewSitemap(Sitemap):
     changefreq = 'monthly'
     priority = 0.5
