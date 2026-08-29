@@ -45,7 +45,10 @@ services:
         condition: service_started
 
   celery:
-    build: .
+    # Тот же образ, что и web: код и зависимости одни и те же,
+    # различаются только команды. Отдельная сборка давала три
+    # почти одинаковых образа по ~3.5GB и забивала диск.
+    image: oasis-web:latest
     restart: always
     command: celery -A splithome worker -l info -c 2
     env_file: .env
@@ -59,7 +62,10 @@ services:
         condition: service_started
 
   beat:
-    build: .
+    # Тот же образ, что и web: код и зависимости одни и те же,
+    # различаются только команды. Отдельная сборка давала три
+    # почти одинаковых образа по ~3.5GB и забивала диск.
+    image: oasis-web:latest
     restart: always
     command: celery -A splithome beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     env_file: .env
