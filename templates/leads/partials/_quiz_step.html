@@ -283,7 +283,12 @@
       </div>
     {% endif %}
 
-    <div class="flex items-center justify-between gap-3 pt-2">
+    {% comment %}
+    mt-auto прижимает панель к низу карточки: без него кнопки висят там, где
+    кончился вопрос, и «Далее» скачет по вертикали от шага к шагу (замер на
+    проде: 438..550px при одинаковой карточке 157..621).
+    {% endcomment %}
+    <div class="mt-auto flex items-center justify-between gap-3 pt-2">
       <span class="text-sm text-ink-3 hidden sm:inline">{{ step }} из 7</span>
       <div class="flex items-center gap-2 ml-auto">
         {% if step != 1 %}
