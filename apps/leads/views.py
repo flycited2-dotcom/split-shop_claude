@@ -75,13 +75,15 @@ def quick_order_submit(request):
     product_info = ''
     if obj.product:
         sku = obj.product.articul or obj.product.nc_code
-        product_info = f'\n📦 {sku} — {obj.product.title}'
+        product_info = (
+            f'\n📦 {escape(str(sku or "—"))} — {escape(obj.product.title)}'
+        )
 
     telegram_text = (
         f'⚡ <b>Заказ в 1 клик</b>\n'
-        f'👤 {obj.name} | 📞 {obj.phone}'
+        f'👤 {escape(obj.name)} | 📞 {escape(obj.phone)}'
         f'{product_info}\n'
-        f'💬 {obj.comment or "—"}'
+        f'💬 {escape(obj.comment or "—")}'
     )
     enqueue_manager_notifications(
         subject=f'Заказ в 1 клик — {obj.name}',
@@ -113,12 +115,12 @@ def selection_submit(request):
 
     telegram_text = (
         f'🔍 <b>Заявка на подбор</b>\n'
-        f'👤 {obj.name} | 📞 {obj.phone}\n'
-        f'📍 {obj.city or "—"} | 📐 {obj.area_sqm or "—"} м²\n'
-        f'🏠 {obj.room_type or "—"} | 💰 {obj.budget or "—"}\n'
+        f'👤 {escape(obj.name)} | 📞 {escape(obj.phone)}\n'
+        f'📍 {escape(obj.city or "—")} | 📐 {obj.area_sqm or "—"} м²\n'
+        f'🏠 {escape(obj.room_type or "—")} | 💰 {escape(obj.budget or "—")}\n'
         f'🔧 Монтаж: {"Да" if obj.needs_installation else "Нет"}\n'
-        f'📅 {obj.timeline or "—"}\n'
-        f'💬 {obj.comment or "—"}'
+        f'📅 {escape(obj.timeline or "—")}\n'
+        f'💬 {escape(obj.comment or "—")}'
     )
     enqueue_manager_notifications(
         subject=f'Заявка на подбор — {obj.name}',
@@ -155,13 +157,13 @@ def installation_submit(request):
 
     telegram_text = (
         f'🔧 <b>Заявка на монтаж</b>\n'
-        f'👤 {obj.name} | 📞 {obj.phone}\n'
-        f'📍 {obj.address}\n'
-        f'🏗️ {obj.equipment_type or "—"} | Этаж: {obj.floor or "—"}\n'
-        f'🧱 Стена: {obj.wall_type or "—"}\n'
+        f'👤 {escape(obj.name)} | 📞 {escape(obj.phone)}\n'
+        f'📍 {escape(obj.address)}\n'
+        f'🏗️ {escape(obj.equipment_type or "—")} | Этаж: {obj.floor or "—"}\n'
+        f'🧱 Стена: {escape(obj.wall_type or "—")}\n'
         f'✅ Уже куплен: {"Да" if obj.has_equipment else "Нет"}\n'
         f'🔩 Закладка трассы: {"Да" if obj.needs_channel else "Нет"}\n'
-        f'💬 {obj.comment or "—"}'
+        f'💬 {escape(obj.comment or "—")}'
     )
     enqueue_manager_notifications(
         subject=f'Заявка на монтаж — {obj.name}',
@@ -442,13 +444,13 @@ def quiz_lead(request, quiz_id):
 
     enqueue_manager_notifications(telegram_text=(
         f'🎯 <b>Quiz: подбор</b>\n'
-        f'👤 {name} | 📞 {phone}\n'
-        f'📐 {quiz.area_sqm} м² | {quiz.get_room_type_display()}\n'
-        f'💰 Бюджет: {budget_str}\n'
+        f'👤 {escape(name)} | 📞 {escape(phone)}\n'
+        f'📐 {quiz.area_sqm} м² | {escape(quiz.get_room_type_display())}\n'
+        f'💰 Бюджет: {escape(budget_str)}\n'
         f'⚙️ BTU: {quiz.recommended_btu}k · Инвертор: {"да" if quiz.needs_inverter else "нет"} · '
         f'Wi-Fi: {"да" if quiz.needs_wifi else "нет"} · '
         f'Обогрев: {"да" if quiz.needs_heating else "нет"}\n'
-        f'🏷 Бренд: {brand_str}\n'
+        f'🏷 Бренд: {escape(brand_str)}\n'
         f'🔗 /admin/leads/quizresult/{quiz.id}/'
     ))
 

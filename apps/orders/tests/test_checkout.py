@@ -35,3 +35,23 @@ class CheckoutNotificationTest(TestCase):
         enqueue.assert_called_once()
         self.assertIn('telegram_text', enqueue.call_args.kwargs)
         self.assertIn('email_body', enqueue.call_args.kwargs)
+
+    @patch('apps.orders.views.enqueue_manager_notifications')
+    def test_checkout_escapes_telegram_values_but_not_plain_email(self, enqueue):
+        self.product.articul = 'SKU&A'
+        self.product.save(update_fields=['articul'])
+        self.user.company_name = 'Buyer <Pro>'
+        self.user.phone = '+7 & 900'
+        self.user.save(update_fields=['company_name', 'phone'])
+
+        self.client.post(reverse('checkout'), {
+            'delivery_address': 'Address',
+            'comment': 'Leave at <door> & call',
+        })
+
+        telegram = enqueue.call_args.kwargs['telegram_text']
+        email = enqueue.call_args.kwargs['email_body']
+        self.assertIn('Buyer &lt;Pro&gt;', telegram)
+        self.assertIn('SKU&amp;A', telegram)
+        self.assertIn('&lt;door&gt; &amp; call', telegram)
+        self.assertIn('SKU&A', email)

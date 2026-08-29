@@ -1,3 +1,5 @@
+from html import escape
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
@@ -94,11 +96,17 @@ def checkout(request):
             cart.items.all().delete()
             # Формируем состав заказа для уведомлений
             order_items = order.items.select_related('product')
-            lines = []
+            email_lines = []
+            telegram_lines = []
             for item in order_items:
                 sku = item.product.articul or item.product.nc_code
-                lines.append(f'• {sku} × {item.quantity} = {item.subtotal:,.0f} ₽')
-            items_text = '\n'.join(lines)
+                line_suffix = f' × {item.quantity} = {item.subtotal:,.0f} ₽'
+                email_lines.append(f'• {sku}{line_suffix}')
+                telegram_lines.append(
+                    f'• {escape(str(sku or "—"))}{line_suffix}'
+                )
+            email_items_text = '\n'.join(email_lines)
+            telegram_items_text = '\n'.join(telegram_lines)
 
             discount_line = (
                 f'Скидка покупателя: {request.user.discount_percent:.0f}%\n'
@@ -112,7 +120,7 @@ def checkout(request):
                 f'Телефон: {request.user.phone}\n'
                 f'Email: {request.user.email}\n'
                 f'Адрес доставки: {order.delivery_address}\n\n'
-                f'Состав заказа:\n{items_text}\n\n'
+                f'Состав заказа:\n{email_items_text}\n\n'
                 f'{discount_line}'
                 f'Итого: {order.total:,.0f} ₽\n'
                 f'Комментарий: {order.comment or "—"}\n'
@@ -120,7 +128,10 @@ def checkout(request):
             created_str = order.created_at.strftime('%d.%m.%Y %H:%M')
             company = request.user.company_name or request.user.email
             phone = request.user.phone or '—'
-            comment_line = f'\n💬 Комментарий: {order.comment}' if order.comment else ''
+            comment_line = (
+                f'\n💬 Комментарий: {escape(order.comment)}'
+                if order.comment else ''
+            )
             discount_tg = (
                 f'\n🏷 Скидка: {request.user.discount_percent:.0f}%'
                 if request.user.discount_percent and request.user.discount_percent > 0
@@ -129,10 +140,10 @@ def checkout(request):
             tg_text = (
                 f'🛒 Новый заказ #{order.pk}\n'
                 f'📅 {created_str}\n'
-                f'👤 {company}\n'
-                f'📞 {phone}\n'
-                f'📧 {request.user.email}\n\n'
-                f'Состав:\n{items_text}'
+                f'👤 {escape(company)}\n'
+                f'📞 {escape(phone)}\n'
+                f'📧 {escape(request.user.email)}\n\n'
+                f'Состав:\n{telegram_items_text}'
                 f'{discount_tg}'
                 f'\n\n💰 Итого: {order.total:,.0f} ₽'
                 f'{comment_line}\n\n'

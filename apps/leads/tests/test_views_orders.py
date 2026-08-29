@@ -45,6 +45,24 @@ class QuickOrderSubmitTest(TestCase):
         self.assertEqual(order.product, self.product)
         self.assertEqual(order.comment, 'Привезите завтра')
 
+    def test_telegram_dynamic_values_are_html_escaped(self):
+        self.product.title = 'AC <Pro> & Home'
+        self.product.articul = 'A&B'
+        self.product.save(update_fields=['title', 'articul'])
+        with patch('apps.leads.views.enqueue_manager_notifications') as enqueue:
+            self.client.post(reverse('quick_order_submit'), {
+                'name': 'Иван <И>',
+                'phone': '+7 & 900',
+                'product_id': str(self.product.pk),
+                'comment': 'Дом < 50 & офис',
+            })
+
+        text = enqueue.call_args.kwargs['telegram_text']
+        self.assertIn('Иван &lt;И&gt;', text)
+        self.assertIn('A&amp;B', text)
+        self.assertIn('AC &lt;Pro&gt; &amp; Home', text)
+        self.assertIn('Дом &lt; 50 &amp; офис', text)
+
     def test_success_without_product(self):
         with patch('apps.leads.views.enqueue_manager_notifications') as m:
             r = self.client.post(reverse('quick_order_submit'), {

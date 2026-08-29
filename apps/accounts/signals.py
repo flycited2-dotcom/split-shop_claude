@@ -1,4 +1,5 @@
 import logging
+from html import escape
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -80,11 +81,13 @@ def _notify_manager(user):
     try:
         tg_text = (
             f'🔔 Новая регистрация\n'
-            f'👤 {user.company_name or user.username}\n'
-            f'📞 {user.phone or "—"}\n'
-            f'🆔 ИНН: {user.inn or "—"}\n'
+            f'👤 {escape(user.company_name or user.username)}\n'
+            f'📞 {escape(user.phone or "—")}\n'
+            f'🆔 ИНН: {escape(user.inn or "—")}\n'
             f'✉️ /admin/accounts/customuser/{user.pk}/change/'
         )
         send_telegram(tg_text)
     except Exception as exc:
-        logger.warning('Telegram registration notification failed: %s', exc)
+        logger.warning(
+            'Telegram registration notification failed (%s)', type(exc).__name__,
+        )

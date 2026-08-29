@@ -41,6 +41,7 @@ def enqueue_manager_notifications(*, subject='', email_body='', telegram_text=''
         )
         return True
     except Exception as exc:
-        logger.error('Could not enqueue manager notification: %s', exc)
+        logger.error(
+            'Could not enqueue manager notification (%s)', type(exc).__name__,
+        )
         return False
-
