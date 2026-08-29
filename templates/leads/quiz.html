@@ -14,8 +14,10 @@
     <p class="text-ink-3 hidden sm:block">Ответьте на несколько вопросов — покажем сплит-системы под вашу комнату и бюджет.</p>
   </div>
   <div id="quiz-card" class="glass p-4 sm:p-8">
-    {# min-h держит одинаковую высоту на всех шагах; flex + mt-auto в шаге
-       прижимает кнопки к низу карточки, чтобы они не перескакивали. #}
+    {% comment %}
+    min-h держит одинаковую высоту на всех шагах; flex + mt-auto в шаге
+    прижимает кнопки к низу карточки, чтобы они не перескакивали.
+    {% endcomment %}
     <div id="quiz-content" class="min-h-[430px] sm:min-h-[380px] flex flex-col">
       {% include "leads/partials/_quiz_step.html" %}
     </div>
