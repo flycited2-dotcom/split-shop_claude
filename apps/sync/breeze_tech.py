@@ -121,7 +121,11 @@ def _sync_product_tech(product, breez_id, cache):
         ProductTech.objects.filter(product=product).delete()
         ProductTech.objects.bulk_create(to_create)
     from apps.catalog.btu import refresh_btu_calc
+    from apps.catalog.heating import apply_heating_fields
     refresh_btu_calc(product)
+    # Характеристики Бриза приезжают отдельной командой sync_breez_tech, поэтому
+    # поля обогрева считаем здесь же — раньше данных для расчёта просто нет.
+    apply_heating_fields(product)
     return len(to_create)
 
 
