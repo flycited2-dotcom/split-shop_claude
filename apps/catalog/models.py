@@ -99,6 +99,23 @@ class Product(models.Model):
                   '(NON_RETAIL_Q/MULTI_SPLIT_BLOCK_Q), пересчитываемого на каждый '
                   'catalog-запрос.',
     )
+    heating_min_temp = models.SmallIntegerField(
+        null=True, blank=True, db_index=True,
+        verbose_name='Мин. температура обогрева, °C',
+        help_text='Нижняя граница работы на обогрев. Считается при синке из '
+                  'tech_values (у трёх поставщиков три разных названия '
+                  'характеристики) — см. apps.catalog.heating. Не парсится '
+                  'строкой на каждый запрос, иначе full scan на каждый '
+                  'заход в каталог.',
+    )
+    is_heat_pump = models.BooleanField(
+        default=False, db_index=True,
+        verbose_name='Тепловой насос (по данным поставщика)',
+        help_text='Поставщик сам назвал товар тепловым насосом: категория '
+                  'Rusklimat «Тепловые насосы...» или характеристика Бриза '
+                  '«Тепловой насос: да». Товары с этим флагом попадают в '
+                  'подборку независимо от heating_min_temp.',
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

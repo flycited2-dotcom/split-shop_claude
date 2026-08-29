@@ -4,9 +4,12 @@ SimpleTestCase — БД не нужна: parse_min_heating_temp чистая ф�
 Кейсы взяты из реальных значений прода (разведка 2026-08-28): Бриз отдаёт
 диапазон «-20 ~ +24», Daichi «-25~30» без пробелов, Rusklimat одно число.
 """
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
-from apps.catalog.heating import parse_min_heating_temp
+from apps.catalog.heating import (
+    apply_heating_fields, min_heating_temp_for, parse_min_heating_temp,
+)
+from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
 
 
 class ParseMinHeatingTempTest(SimpleTestCase):
@@ -42,3 +45,87 @@ class ParseMinHeatingTempTest(SimpleTestCase):
 
     def test_degree_suffix(self):
         self.assertEqual(parse_min_heating_temp('-22 °C'), -22)
+
+
+class ApplyHeatingFieldsTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            title='Сплит-системы', slug='split-heating', sync_enabled=True,
+        )
+        cls.brand = Brand.objects.create(title='FUNAI', slug='funai-heating')
+
+    def _product(self, nc):
+        return Product.objects.create(
+            nc_code=nc, articul=nc, category=self.category, brand=self.brand,
+            title=f'AC {nc}', slug=f'ac-{nc}',
+        )
+
+    def _tech(self, product, spec_title, value):
+        spec, _ = TechSpec.objects.get_or_create(title=spec_title)
+        ProductTech.objects.create(product=product, spec=spec, value=value)
+
+    def test_breez_spec_fills_field(self):
+        p = self._product('NC-B1')
+        self._tech(p, 'Рабочие температурные границы наружного воздуха (нагрев)', '-20 ~ +24')
+        self.assertTrue(apply_heating_fields(p))
+        p.refresh_from_db()
+        self.assertEqual(p.heating_min_temp, -20)
+
+    def test_daichi_spec_fills_field(self):
+        p = self._product('NC-D1')
+        self._tech(p, 'Диапазон рабочих температур, нагрев, °C', '-25~30')
+        apply_heating_fields(p)
+        p.refresh_from_db()
+        self.assertEqual(p.heating_min_temp, -25)
+
+    def test_rusklimat_spec_fills_field(self):
+        p = self._product('NC-R1')
+        self._tech(p, 'Мин. рабочая температура воздуха для внешнего блока', '-15')
+        apply_heating_fields(p)
+        p.refresh_from_db()
+        self.assertEqual(p.heating_min_temp, -15)
+
+    def test_two_specs_take_the_coldest(self):
+        # У товара могут оказаться характеристики от двух источников —
+        # берём минимальную (более холодную) границу.
+        p = self._product('NC-M1')
+        self._tech(p, 'Рабочие температурные границы наружного воздуха (нагрев)', '-15 ~ +24')
+        self._tech(p, 'Диапазон рабочих температур, нагрев, °C', '-25~30')
+        self.assertEqual(min_heating_temp_for(p), -25)
+
+    def test_no_specs_leaves_none(self):
+        p = self._product('NC-N1')
+        apply_heating_fields(p)
+        p.refresh_from_db()
+        self.assertIsNone(p.heating_min_temp)
+        self.assertFalse(p.is_heat_pump)
+
+    def test_breez_declared_flag(self):
+        p = self._product('NC-F1')
+        self._tech(p, 'Тепловой насос', 'да')
+        apply_heating_fields(p)
+        p.refresh_from_db()
+        self.assertTrue(p.is_heat_pump)
+
+    def test_breez_declared_no_does_not_set_flag(self):
+        p = self._product('NC-F2')
+        self._tech(p, 'Тепловой насос', 'нет')
+        apply_heating_fields(p)
+        p.refresh_from_db()
+        self.assertFalse(p.is_heat_pump)
+
+    def test_declared_argument_sets_flag(self):
+        # Rusklimat объявляет теплонасос названием категории, не характеристикой
+        p = self._product('NC-F3')
+        apply_heating_fields(p, declared=True)
+        p.refresh_from_db()
+        self.assertTrue(p.is_heat_pump)
+
+    def test_returns_false_when_nothing_changed(self):
+        p = self._product('NC-S1')
+        self._tech(p, 'Мин. рабочая температура воздуха для внешнего блока', '-15')
+        apply_heating_fields(p)
+        # второй вызов ничего не меняет — лишнего UPDATE быть не должно
+        self.assertFalse(apply_heating_fields(p))
