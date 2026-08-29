@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% block title %}Каталог кондиционеров — SplitHome{% endblock %}
 {% block content %}
+{# Заголовок и SEO-текст — пустые в каталоге, наполняются на странице подборки
+   (catalog/collection.html). Вне flex-контейнера и вне _results.html: последний —
+   цель htmx-подмены, его содержимое перезатирается при каждом фильтре. #}
+{% block catalog_heading %}{% endblock %}
 <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
 
   {# Mobile filter toggle — заметная primary-кнопка над товарами на узких экранах #}
@@ -71,6 +75,8 @@
   {% include 'catalog/partials/_results.html' %}
 
 </div>
+
+{% block catalog_seo_text %}{% endblock %}
 
 <script>
 window.toggleCatalogSidebar = function() {
