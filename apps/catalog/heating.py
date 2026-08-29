@@ -52,3 +52,46 @@ def parse_min_heating_temp(value):
         return -int(match.group(1))
     except (TypeError, ValueError):
         return None
+
+
+def min_heating_temp_for(product):
+    """Минимальная (самая холодная) граница обогрева среди характеристик товара.
+
+    У товара может быть две записи от разных источников — берём наименьшую.
+    None, если ни одна характеристика не распозналась.
+    """
+    values = (
+        product.tech_values
+        .filter(spec__title__in=HEATING_SPEC_TITLES)
+        .values_list('value', flat=True)
+    )
+    temps = [t for t in (parse_min_heating_temp(v) for v in values) if t is not None]
+    return min(temps) if temps else None
+
+
+def _declared_by_spec(product):
+    """True, если у товара характеристика «Тепловой насос» со значением «да»."""
+    values = (
+        product.tech_values
+        .filter(spec__title=HEAT_PUMP_SPEC_TITLE)
+        .values_list('value', flat=True)
+    )
+    return any(str(v).strip().lower() in ('да', 'yes', 'true') for v in values)
+
+
+def apply_heating_fields(product, declared=False):
+    """Проставляет heating_min_temp и is_heat_pump товару. True, если что-то изменилось.
+
+    `declared` — поставщик объявил товар тепловым насосом вне характеристик
+    (у Rusklimat это название категории). Вызывается синками ПОСЛЕ записи
+    ProductTech: характеристики пишутся отдельным шагом после создания товара.
+    """
+    temp = min_heating_temp_for(product)
+    is_pump = bool(declared) or _declared_by_spec(product)
+
+    changed = (product.heating_min_temp != temp) or (product.is_heat_pump != is_pump)
+    if changed:
+        product.heating_min_temp = temp
+        product.is_heat_pump = is_pump
+        product.save(update_fields=['heating_min_temp', 'is_heat_pump'])
+    return changed
