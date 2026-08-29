@@ -4,6 +4,9 @@ SimpleTestCase — БД не нужна: parse_min_heating_temp чистая ф�
 Кейсы взяты из реальных значений прода (разведка 2026-08-28): Бриз отдаёт
 диапазон «-20 ~ +24», Daichi «-25~30» без пробелов, Rusklimat одно число.
 """
+from io import StringIO
+
+from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 
 from apps.catalog.heating import (
@@ -129,3 +132,48 @@ class ApplyHeatingFieldsTest(TestCase):
         apply_heating_fields(p)
         # второй вызов ничего не меняет — лишнего UPDATE быть не должно
         self.assertFalse(apply_heating_fields(p))
+
+
+class BackfillHeatingCommandTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            title='Сплит-системы', slug='split-backfill', sync_enabled=True,
+        )
+
+    def _product_with_temp(self, nc, value):
+        p = Product.objects.create(
+            nc_code=nc, articul=nc, category=self.category,
+            title=f'AC {nc}', slug=f'ac-{nc}',
+        )
+        spec, _ = TechSpec.objects.get_or_create(
+            title='Рабочие температурные границы наружного воздуха (нагрев)',
+        )
+        ProductTech.objects.create(product=p, spec=spec, value=value)
+        return p
+
+    def test_dry_run_does_not_write(self):
+        p = self._product_with_temp('NC-DR', '-25 ~ +24')
+        out = StringIO()
+        call_command('backfill_heating', stdout=out)
+        p.refresh_from_db()
+        self.assertIsNone(p.heating_min_temp)
+        self.assertIn('Dry-run', out.getvalue())
+
+    def test_apply_writes_fields(self):
+        p = self._product_with_temp('NC-AP', '-25 ~ +24')
+        out = StringIO()
+        call_command('backfill_heating', '--apply', stdout=out)
+        p.refresh_from_db()
+        self.assertEqual(p.heating_min_temp, -25)
+
+    def test_summary_counts_by_threshold(self):
+        self._product_with_temp('NC-T20', '-20 ~ +24')
+        self._product_with_temp('NC-T25', '-25 ~ +24')
+        self._product_with_temp('NC-T15', '-15 ~ +24')
+        out = StringIO()
+        call_command('backfill_heating', '--apply', stdout=out)
+        text = out.getvalue()
+        self.assertIn('до -20', text)
+        self.assertIn('до -25', text)
