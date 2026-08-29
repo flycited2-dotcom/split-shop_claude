@@ -7,7 +7,7 @@
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-sm font-semibold mb-3">
         <span>✓</span> Подбор готов
       </div>
-      <h2 class="text-2xl sm:text-3xl font-bold mb-2">
+      <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">
         Рекомендуем кондиционер на <span class="text-accent">{{ btu }} 000 BTU</span>
       </h2>
       <p class="text-ink-3 text-sm sm:text-base">
@@ -59,7 +59,7 @@
             {% if p.ric %}
               <div class="text-lg font-bold text-accent">{{ p.ric|floatformat:0 }} ₽</div>
             {% else %}
-              <div class="text-sm text-ink-3">Цена по запросу</div>
+              <div class="text-xs sm:text-sm text-ink-3">Цена по запросу</div>
             {% endif %}
           </a>
         {% endfor %}
@@ -73,7 +73,7 @@
     <div class="rounded-2xl border border-accent/30 bg-gradient-to-br from-accent/5 to-teal/5 p-5 sm:p-6">
       <div class="font-semibold text-lg mb-1">Хотите консультацию?</div>
       <p class="text-ink-3 text-sm mb-4">Перезвоним за 15 минут, расскажем про модели, доставку и монтаж.</p>
-      <form hx-post="{% url 'quiz_lead' quiz_id %}" hx-target="#quiz-content" hx-swap="innerHTML" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <form hx-post="{% url 'quiz_lead' quiz_id %}" hx-target="#quiz-content" hx-swap="innerHTML" class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         {% csrf_token %}
         <input type="text" name="name" required placeholder="Имя"
                class="px-4 py-3 rounded-xl bg-white border border-ink/10 focus:border-accent focus:outline-none text-sm">
@@ -92,7 +92,7 @@
 
 {% else %}
   {# === Шаги 1-7 wizard === #}
-  <form hx-post="{% url 'quiz_step' %}" hx-target="#quiz-content" hx-swap="innerHTML" class="space-y-6">
+  <form hx-post="{% url 'quiz_step' %}" hx-target="#quiz-content" hx-swap="innerHTML" class="space-y-3 sm:space-y-6">
     {% csrf_token %}
     <input type="hidden" name="step" value="{{ step }}">
     {% if step != 1 %}<input type="hidden" name="area_sqm" value="{{ area_sqm }}">{% endif %}
@@ -119,13 +119,13 @@
 
     {% if step == 1 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какая площадь помещения?</h2>
-        <p class="text-ink-3 mb-5">Подберём мощность под ваш объём — BTU в скобках.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Какая площадь помещения?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Подберём мощность под ваш объём — BTU в скобках.</p>
+        <div class="grid grid-cols-2 gap-2 sm:gap-3">
           {% for v, label in area_options %}
             <label class="relative cursor-pointer block">
               <input type="radio" name="area_sqm" value="{{ v }}" required class="peer sr-only" {% if area_sqm == v %}checked{% endif %}>
-              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold">
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold text-sm sm:text-base">
                 {{ label }}
               </div>
             </label>
@@ -135,14 +135,14 @@
 
     {% elif step == 2 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Где будет работать?</h2>
-        <p class="text-ink-3 mb-5">Поможет менеджеру при подборе подходящей серии.</p>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Где будет работать?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Поможет менеджеру при подборе подходящей серии.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {% for v, label, emoji in room_options %}
             <label class="relative cursor-pointer block">
               <input type="radio" name="room_type" value="{{ v }}" required class="peer sr-only" {% if room_type == v %}checked{% endif %}>
-              <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center">
-                <div class="text-4xl mb-2">{{ emoji }}</div>
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center">
+                <div class="text-2xl sm:text-4xl mb-0.5 sm:mb-2">{{ emoji }}</div>
                 <div class="font-semibold">{{ label }}</div>
               </div>
             </label>
@@ -152,28 +152,28 @@
 
     {% elif step == 3 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Тихий и экономичный?</h2>
-        <p class="text-ink-3 mb-5">Инверторный компрессор работает тише обычного и тратит на 30–40% меньше электричества — но стоит дороже.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Тихий и экономичный?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Инверторный компрессор работает тише обычного и тратит на 30–40% меньше электричества — но стоит дороже.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
           <label class="relative cursor-pointer block">
             <input type="radio" name="inverter" value="yes" required class="peer sr-only" {% if inverter == 'yes' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold mb-1">Инвертор / тихий</div>
-              <div class="text-sm text-ink-3">Тихий, экономный, точная температура</div>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold text-sm sm:text-base mb-0.5 sm:mb-1">Инвертор / тихий</div>
+              <div class="text-xs sm:text-sm text-ink-3">Тихий, экономный, точная температура</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="inverter" value="no" required class="peer sr-only" {% if inverter == 'no' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold mb-1">Не важно, дешевле</div>
-              <div class="text-sm text-ink-3">Обычный он-офф компрессор</div>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold text-sm sm:text-base mb-0.5 sm:mb-1">Не важно, дешевле</div>
+              <div class="text-xs sm:text-sm text-ink-3">Обычный он-офф компрессор</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="inverter" value="dontknow" required class="peer sr-only" {% if inverter == 'dontknow' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold mb-1">Не знаю</div>
-              <div class="text-sm text-ink-3">Менеджер подскажет</div>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold text-sm sm:text-base mb-0.5 sm:mb-1">Не знаю</div>
+              <div class="text-xs sm:text-sm text-ink-3">Менеджер подскажет</div>
             </div>
           </label>
         </div>
@@ -181,28 +181,28 @@
 
     {% elif step == 4 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Wi-Fi управление со смартфона?</h2>
-        <p class="text-ink-3 mb-5">Включать кондиционер из дороги — через приложение. У части моделей модуль встроен, у других подключается опцией.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Wi-Fi управление со смартфона?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Включать кондиционер из дороги — через приложение. У части моделей модуль встроен, у других подключается опцией.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
           <label class="relative cursor-pointer block">
             <input type="radio" name="wifi" value="yes" required class="peer sr-only" {% if wifi == 'yes' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold mb-1">Да, нужно</div>
-              <div class="text-sm text-ink-3">Управление со смартфона</div>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold text-sm sm:text-base mb-0.5 sm:mb-1">Да, нужно</div>
+              <div class="text-xs sm:text-sm text-ink-3">Управление со смартфона</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="wifi" value="any" required class="peer sr-only" {% if wifi == 'any' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold mb-1">Не важно</div>
-              <div class="text-sm text-ink-3">Обычного пульта хватит</div>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold text-sm sm:text-base mb-0.5 sm:mb-1">Не важно</div>
+              <div class="text-xs sm:text-sm text-ink-3">Обычного пульта хватит</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="wifi" value="dontknow" required class="peer sr-only" {% if wifi == 'dontknow' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
-              <div class="font-semibold mb-1">Не знаю</div>
-              <div class="text-sm text-ink-3">Менеджер расскажет</div>
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+              <div class="font-semibold text-sm sm:text-base mb-0.5 sm:mb-1">Не знаю</div>
+              <div class="text-xs sm:text-sm text-ink-3">Менеджер расскажет</div>
             </div>
           </label>
         </div>
@@ -210,24 +210,24 @@
 
     {% elif step == 5 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Нужен прогрев зимой?</h2>
-        <p class="text-ink-3 mb-5">Тепловой насос греет помещение до −7…−15 °C — нужен для межсезонья.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Нужен прогрев зимой?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Тепловой насос греет помещение до −7…−15 °C — нужен для межсезонья.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
           <label class="relative cursor-pointer block">
             <input type="radio" name="heating" value="yes" required class="peer sr-only" {% if heating == 'yes' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
               <div class="font-semibold">Да, и греть тоже</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="heating" value="no" required class="peer sr-only" {% if heating == 'no' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
               <div class="font-semibold">Только охлаждение</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="heating" value="dontknow" required class="peer sr-only" {% if heating == 'dontknow' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-5 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full">
               <div class="font-semibold">Не знаю</div>
             </div>
           </label>
@@ -236,13 +236,13 @@
 
     {% elif step == 6 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Какой бюджет?</h2>
-        <p class="text-ink-3 mb-5">За одну сплит-систему (без монтажа).</p>
-        <div class="grid grid-cols-2 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Какой бюджет?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">За одну сплит-систему (без монтажа).</p>
+        <div class="grid grid-cols-2 gap-2 sm:gap-3">
           {% for v, label in budget_options %}
             <label class="relative cursor-pointer block {% if forloop.last %}col-span-2{% endif %}">
               <input type="radio" name="budget" value="{{ v }}" required class="peer sr-only" {% if budget == v %}checked{% endif %}>
-              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold">
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition text-center font-semibold text-sm sm:text-base">
                 {{ label }}
               </div>
             </label>
@@ -252,13 +252,13 @@
 
     {% elif step == 7 %}
       <div>
-        <h2 class="text-2xl sm:text-3xl font-bold mb-2">Предпочтения по бренду?</h2>
-        <p class="text-ink-3 mb-5">Если есть бренд, к которому привыкли — выбирайте. Иначе «Не важно» — покажем подходящие из всех.</p>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <h2 class="text-lg sm:text-3xl font-bold mb-1 sm:mb-2">Предпочтения по бренду?</h2>
+        <p class="text-ink-3 text-sm sm:text-base mb-3 sm:mb-5">Если есть бренд, к которому привыкли — выбирайте. Иначе «Не важно» — покажем подходящие из всех.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
           {% for b in brand_options %}
             <label class="relative cursor-pointer block">
               <input type="radio" name="brand" value="{{ b.id }}" required class="peer sr-only" {% if brand == b.id|stringformat:"s" %}checked{% endif %}>
-              <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex flex-col items-center justify-center gap-2 min-h-[88px]">
+              <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex flex-col items-center justify-center gap-2 min-h-[64px] sm:min-h-[88px]">
                 {% if b.logo_static %}
                   <img src="{% static b.logo_static %}" alt="{{ b.title }}" class="h-8 max-w-full object-contain">
                 {% endif %}
@@ -268,13 +268,13 @@
           {% endfor %}
           <label class="relative cursor-pointer block">
             <input type="radio" name="brand" value="any" required class="peer sr-only" {% if brand == 'any' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[88px]">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[64px] sm:min-h-[88px]">
               <div class="font-semibold text-sm text-center">Не важно</div>
             </div>
           </label>
           <label class="relative cursor-pointer block">
             <input type="radio" name="brand" value="dontknow" required class="peer sr-only" {% if brand == 'dontknow' %}checked{% endif %}>
-            <div class="rounded-2xl border-2 border-ink/10 bg-white p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[88px]">
+            <div class="rounded-2xl border-2 border-ink/10 bg-white p-3 sm:p-4 peer-checked:border-accent peer-checked:bg-accent/5 hover:border-accent/40 transition h-full flex items-center justify-center min-h-[64px] sm:min-h-[88px]">
               <div class="font-semibold text-sm text-center">Не знаю</div>
             </div>
           </label>
