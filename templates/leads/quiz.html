@@ -24,7 +24,9 @@
 // открывается на той же прокрутке, где человек нажал «Далее», то есть посередине.
 document.body.addEventListener('htmx:afterSwap', function (e) {
   if (e.target && e.target.id === 'quiz-content') {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Без behavior:'smooth' — плавная прокрутка молча игнорируется
+    // в части мобильных браузеров, и шаг открывается на середине.
+    window.scrollTo(0, 0);
   }
 });
 </script>
