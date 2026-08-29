@@ -68,6 +68,22 @@
       </div>
     </div>
 
+    {# Подборки — срезы каталога, а не категории: товар остаётся в своей
+       категории и одновременно виден здесь (apps/catalog/collections.py). #}
+    {% if collections %}
+    <div class="card p-5">
+      <h2 class="font-bold text-base mb-3 text-gray-800">Подборки</h2>
+      <div class="space-y-2">
+        {% for coll in collections %}
+          <a href="{% url 'collection' coll.slug %}"
+             class="cat-btn {% if collection.slug == coll.slug %}is-active{% endif %}">
+            <span>{{ coll.title }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     {% include 'catalog/partials/_filters.html' %}
 
   </aside>
