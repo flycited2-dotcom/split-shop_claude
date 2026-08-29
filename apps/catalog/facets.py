@@ -2,8 +2,8 @@ from django.db.models import Count, Q
 
 from .models import Brand
 from .filters import (
-    BTU_VALUES, AREA_CHOICES, INVERTER_CHOICES, COLOR_CHOICES,
-    ProductFilter, _btu_q, _area_q, _color_q,
+    BTU_VALUES, AREA_CHOICES, INVERTER_CHOICES, COLOR_CHOICES, HEATING_CHOICES,
+    ProductFilter, _btu_q, _area_q, _color_q, _heating_q,
 )
 
 
@@ -30,12 +30,14 @@ def compute_facets(get_data, base_qs):
     selected_area = set(get_data.getlist('area'))
     selected_inv = set(get_data.getlist('inverter'))
     selected_color = set(get_data.getlist('color'))
+    selected_heating = set(get_data.getlist('heating'))
 
     qs_no_brand    = _apply_filters_excluding(get_data, 'brand', base_qs)
     qs_no_btu      = _apply_filters_excluding(get_data, 'btu', base_qs)
     qs_no_area     = _apply_filters_excluding(get_data, 'area', base_qs)
     qs_no_inverter = _apply_filters_excluding(get_data, 'inverter', base_qs)
     qs_no_color    = _apply_filters_excluding(get_data, 'color', base_qs)
+    qs_no_heating  = _apply_filters_excluding(get_data, 'heating', base_qs)
 
     # --- Brand: single GROUP BY query --------------------------------------
     brand_counts = dict(
@@ -110,10 +112,24 @@ def compute_facets(get_data, base_qs):
             'selected': key in selected_color,
         })
 
+    # --- Heating (обогрев до -20/-25/-30): 3 counts ------------------------
+    heating_facet = []
+    for code, label in HEATING_CHOICES:
+        n = qs_no_heating.filter(_heating_q([code])).count()
+        if n == 0 and code not in selected_heating:
+            continue
+        heating_facet.append({
+            'value':    code,
+            'label':    label,
+            'count':    n,
+            'selected': code in selected_heating,
+        })
+
     return {
         'brand':    brand_facet,
         'btu':      btu_facet,
         'area':     area_facet,
         'inverter': inv_facet,
         'color':    color_facet,
+        'heating':  heating_facet,
     }

@@ -2,10 +2,16 @@ import django_filters
 from django import forms
 from django.db.models import Q
 
+from .heating import HEATING_THRESHOLDS
 from .models import Product, Brand, Category
 
 
-_select_cls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400'
+# Фасета «Работает на обогрев до» — по Product.heating_min_temp (считается при
+# синке, см. apps/catalog/heating.py). Значение чекбокса — сам порог в °C.
+HEATING_CHOICES = [(str(t), f'до {t} °C') for t in HEATING_THRESHOLDS]
+
+
+_select_cls ='w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400'
 _input_cls = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400'
 
 
@@ -165,6 +171,23 @@ def _area_q(area_keys):
     return Q(btu_calc__in=values) if values else Q()
 
 
+def _heating_q(codes):
+    """Фильтр по порогам обогрева (Product.heating_min_temp, считается при синке).
+
+    Несколько выбранных порогов = самый тёплый из них: множество «до -25»
+    целиком входит в «до -20», поэтому объединение — это lte по максимуму.
+    """
+    thresholds = []
+    for code in codes:
+        try:
+            thresholds.append(int(code))
+        except (TypeError, ValueError):
+            continue
+    if not thresholds:
+        return Q()
+    return Q(heating_min_temp__lte=max(thresholds))
+
+
 class ProductFilter(django_filters.FilterSet):
     q = django_filters.CharFilter(
         method='filter_search', label='Поиск',
@@ -204,6 +227,10 @@ class ProductFilter(django_filters.FilterSet):
         choices=COLOR_CHOICES,
         method='filter_color', label='Цвет', conjoined=False,
     )
+    heating = django_filters.MultipleChoiceFilter(
+        choices=HEATING_CHOICES,
+        method='filter_heating', label='Работает на обогрев до', conjoined=False,
+    )
     type = django_filters.ChoiceFilter(
         choices=TYPE_CHOICES,
         method='filter_type', label='Тип блока',
@@ -212,7 +239,7 @@ class ProductFilter(django_filters.FilterSet):
     class Meta:
         model = Product
         fields = ['q', 'brand', 'category', 'price_min', 'price_max',
-                  'btu', 'area', 'inverter', 'color', 'type']
+                  'btu', 'area', 'inverter', 'color', 'type', 'heating']
 
     def filter_search(self, queryset, name, value):
         # series включён в поиск — «Серия» не выведена отдельной фасетой
@@ -236,6 +263,10 @@ class ProductFilter(django_filters.FilterSet):
 
     def filter_color(self, queryset, name, value):
         q = _color_q(value or [])
+        return queryset.filter(q) if q else queryset
+
+    def filter_heating(self, queryset, name, value):
+        q = _heating_q(value or [])
         return queryset.filter(q) if q else queryset
 
     def filter_type(self, queryset, name, value):

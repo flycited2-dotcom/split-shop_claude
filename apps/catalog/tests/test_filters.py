@@ -4,9 +4,11 @@
 """
 import re
 
-from django.test import SimpleTestCase
+from django.db.models import Q
+from django.test import SimpleTestCase, TestCase
 
-from apps.catalog.filters import NON_RETAIL_Q
+from apps.catalog.filters import NON_RETAIL_Q, ProductFilter, _heating_q
+from apps.catalog.models import Category, Product
 
 
 class NonRetailQTest(SimpleTestCase):
@@ -47,3 +49,47 @@ class NonRetailQTest(SimpleTestCase):
         # «комплект» в названии кита (внутр+наруж блок в сборе) — не аксессуар,
         # excludить должны только «комплект зимний».
         self.assertFalse(self._regex_matches('Midea MSAG1-09HRN8-I/MSAG1-09HRN8-OU2 (комплект)'))
+
+
+class HeatingFilterTest(TestCase):
+    """Фасета «Работает на обогрев до» — по Product.heating_min_temp."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(
+            title='Сплит-системы', slug='split-heatfilter', sync_enabled=True,
+        )
+
+    def _product(self, nc, temp):
+        return Product.objects.create(
+            nc_code=nc, articul=nc, category=self.category,
+            title=f'AC {nc}', slug=f'ac-{nc}', heating_min_temp=temp,
+        )
+
+    def test_filter_minus_25_keeps_colder_only(self):
+        self._product('NC-H20', -20)
+        self._product('NC-H25', -25)
+        self._product('NC-H30', -30)
+        qs = Product.objects.filter(_heating_q(['-25']))
+        self.assertEqual(
+            set(qs.values_list('nc_code', flat=True)), {'NC-H25', 'NC-H30'},
+        )
+
+    def test_several_thresholds_take_the_warmest(self):
+        # Выбраны -20 и -25 → показываем всё, что подходит хотя бы под один,
+        # то есть от -20 и холоднее
+        self._product('NC-M20', -20)
+        self._product('NC-M15', -15)
+        qs = Product.objects.filter(_heating_q(['-20', '-25']))
+        self.assertEqual(set(qs.values_list('nc_code', flat=True)), {'NC-M20'})
+
+    def test_empty_selection_no_filter(self):
+        self.assertEqual(_heating_q([]), Q())
+
+    def test_filterset_applies_heating(self):
+        self._product('NC-F25', -25)
+        self._product('NC-F15', -15)
+        f = ProductFilter({'heating': ['-25']}, queryset=Product.objects.all())
+        self.assertEqual(
+            set(f.qs.values_list('nc_code', flat=True)), {'NC-F25'},
+        )
