@@ -62,6 +62,7 @@ TEMPLATES = [{
             'apps.orders.context_processors.cart_count',
             'apps.catalog.context_processors.yandex_metrika',
             'apps.catalog.context_processors.seo_verification',
+            'apps.catalog.context_processors.static_version',
         ],
     },
 }]

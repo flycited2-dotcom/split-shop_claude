@@ -107,15 +107,27 @@ python manage.py test apps.catalog.tests apps.leads.tests apps.sync.tests apps.a
 
 ## Деплой на прод
 
+Боевой сайт — **212.116.115.150** (`/opt/oasis`); 213.109.202.45 только проксирует
+на него и держит вторую копию приложения (её базу читает Telegram-бот отчётов).
+
 ```bash
 ssh prod
 cd /opt/oasis
 git pull
-docker compose build --no-cache web   # --no-cache важно при правках static/
-docker compose up -d web
+docker compose build web            # Tailwind компилируется внутри образа
+docker compose up -d web celery beat
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py collectstatic --no-input
+# ВАЖНО: collectstatic пишет в docker-volume, а nginx раздаёт /static/ из
+# ХОСТОВОЙ папки /opt/oasis/staticfiles — без копирования сайт продолжит
+# отдавать старый CSS (2026-08-29 он отставал на два месяца).
+docker compose cp web:/app/staticfiles/. /opt/oasis/staticfiles/
 ```
+
+Статика отдаётся с `max-age=2592000` и без хэша в имени, поэтому в `base.html`
+к CSS добавляется `?v={{ STATIC_VERSION }}` — метка берётся из mtime собранного
+`tailwind.css` (`apps/catalog/context_processors.static_version`). Без неё
+вернувшийся посетитель месяц видит старую вёрстку.
 
 Подробности — `HANDOFF.md`.
 

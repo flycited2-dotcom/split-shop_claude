@@ -36,8 +36,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
-  <link rel="stylesheet" href="{% static 'css/splithub.css' %}">
+  {# ?v= — статика отдаётся с max-age 30 дней и без хэша в имени: без метки версии старый CSS живёт в браузере месяц #}
+  <link rel="stylesheet" href="{% static 'css/tailwind.css' %}{% if STATIC_VERSION %}?v={{ STATIC_VERSION }}{% endif %}">
+  <link rel="stylesheet" href="{% static 'css/splithub.css' %}{% if STATIC_VERSION %}?v={{ STATIC_VERSION }}{% endif %}">
   {# Site-wide Schema.org: профиль компании для поисковиков и LLM. HVACBusiness — подтип LocalBusiness. #}
   <script type="application/ld+json">
   {
