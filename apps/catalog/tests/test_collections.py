@@ -109,6 +109,16 @@ class CollectionViewTest(TestCase):
         self.assertContains(r, 'Тепловые насосы воздух-воздух в Крыму')
         self.assertContains(r, 'воздух-воздух — это инверторная сплит-система')
 
+    def test_no_raw_template_comment_leaks(self):
+        """Регрессия 2026-08-29: многострочный {# … #} Django НЕ поддерживает —
+        он печатается как текст. На проде такой комментарий вылез поверх
+        каталога. Многострочные комментарии только через {% comment %}."""
+        self._product('NC-CMT', -25)
+        for url in (reverse('catalog'), reverse('collection', args=['heat-pumps'])):
+            r = self.client.get(url)
+            self.assertNotContains(r, '{#')
+            self.assertNotContains(r, '#}')
+
     def test_under_order_hidden_by_default(self):
         # Товар без крымского остатка виден только по ?with_order=1 —
         # то же правило, что в каталоге
