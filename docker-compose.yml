@@ -49,6 +49,9 @@ services:
     restart: always
     command: celery -A splithome worker -l info -c 2
     env_file: .env
+    extra_hosts:
+      # Notification tasks use the same IPv6 Telegram proxy as the web app.
+      - "api.telegram.org:172.30.0.1"
     depends_on:
       db:
         condition: service_healthy

@@ -30,5 +30,7 @@ def send_telegram(text: str) -> bool:
         resp.raise_for_status()
         return True
     except Exception as exc:
-        logger.error('Telegram send failed: %s', exc)
+        # requests includes the full URL in its exception text. The URL contains
+        # the bot token, so never write the exception message to production logs.
+        logger.error('Telegram send failed (%s)', type(exc).__name__)
         return False
