@@ -31,7 +31,7 @@ class ServiceRequestViewTest(TestCase):
         self.assertContains(response, 'name="utm_content" value="svc_vkp_14"')
 
     def test_valid_request_is_saved_and_sent_to_telegram(self):
-        with patch('apps.leads.views.send_telegram') as telegram:
+        with patch('apps.leads.views.enqueue_manager_notifications') as telegram:
             response = self.client.post(reverse('service_submit'), {
                 'name': 'Алексей',
                 'phone': '+79780000000',
@@ -52,7 +52,7 @@ class ServiceRequestViewTest(TestCase):
         self.assertTrue(lead.privacy_accepted)
         self.assertEqual(lead.utm_content, 'svc_vkp_14')
         telegram.assert_called_once()
-        message = telegram.call_args.args[0]
+        message = telegram.call_args.kwargs['telegram_text']
         self.assertIn('Заявка на сервисное обслуживание', message)
         self.assertIn('svc_vkp_14', message)
 
@@ -62,7 +62,7 @@ class ServiceRequestViewTest(TestCase):
         self.assertContains(response, f'action="{reverse("service_submit")}"')
 
     def test_htmx_submit_keeps_modal_response(self):
-        with patch('apps.leads.views.send_telegram'):
+        with patch('apps.leads.views.enqueue_manager_notifications'):
             response = self.client.post(reverse('service_submit'), {
                 'name': 'Алексей',
                 'phone': '+79780000000',
@@ -83,7 +83,7 @@ class ServiceRequestViewTest(TestCase):
         self.assertContains(response, 'Обязательное поле.')
 
     def test_consent_is_required(self):
-        with patch('apps.leads.views.send_telegram') as telegram:
+        with patch('apps.leads.views.enqueue_manager_notifications') as telegram:
             response = self.client.post(reverse('service_submit'), {
                 'name': 'Алексей',
                 'phone': '+79780000000',
@@ -95,7 +95,7 @@ class ServiceRequestViewTest(TestCase):
         telegram.assert_not_called()
 
     def test_user_html_is_escaped_in_telegram_message(self):
-        with patch('apps.leads.views.send_telegram') as telegram:
+        with patch('apps.leads.views.enqueue_manager_notifications') as telegram:
             self.client.post(reverse('service_submit'), {
                 'name': '<b>Чужой тег</b>',
                 'phone': '+79780000000',
@@ -103,7 +103,7 @@ class ServiceRequestViewTest(TestCase):
                 'service_type': 'diagnostics',
                 'privacy_accepted': 'on',
             })
-        message = telegram.call_args.args[0]
+        message = telegram.call_args.kwargs['telegram_text']
         self.assertNotIn('<b>Чужой тег</b>', message)
         self.assertIn('&lt;b&gt;Чужой тег&lt;/b&gt;', message)
 

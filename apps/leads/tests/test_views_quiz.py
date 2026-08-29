@@ -128,7 +128,7 @@ class QuizFlowTest(TestCase):
             area_sqm=25, room_type='apartment',
             recommended_btu=9, recommended_product_ids=[],
         )
-        with patch('apps.leads.views.send_telegram') as m:
+        with patch('apps.leads.views.enqueue_manager_notifications') as m:
             r = self.client.post(
                 reverse('quiz_lead', args=[quiz.id]),
                 {'name': 'Иван', 'phone': '+79780000000'},
@@ -140,7 +140,7 @@ class QuizFlowTest(TestCase):
         self.assertEqual(quiz.contact_phone, '+79780000000')
 
     def test_quiz_lead_bad_id_returns_404(self):
-        with patch('apps.leads.views.send_telegram'):
+        with patch('apps.leads.views.enqueue_manager_notifications'):
             r = self.client.post(
                 reverse('quiz_lead', args=[99999]),
                 {'name': 'Иван', 'phone': '+79780000000'},
@@ -152,7 +152,7 @@ class QuizFlowTest(TestCase):
             area_sqm=25, room_type='apartment',
             recommended_btu=9, recommended_product_ids=[],
         )
-        with patch('apps.leads.views.send_telegram'):
+        with patch('apps.leads.views.enqueue_manager_notifications'):
             r = self.client.post(
                 reverse('quiz_lead', args=[quiz.id]),
                 {'name': '', 'phone': '+79780000000'},
@@ -164,7 +164,7 @@ class QuizFlowTest(TestCase):
             area_sqm=25, room_type='apartment',
             recommended_btu=9, recommended_product_ids=[],
         )
-        with patch('apps.leads.views.send_telegram'):
+        with patch('apps.leads.views.enqueue_manager_notifications'):
             r = self.client.post(
                 reverse('quiz_lead', args=[quiz.id]),
                 {'name': 'Иван', 'phone': ''},

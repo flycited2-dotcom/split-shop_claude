@@ -5,12 +5,11 @@ from html import escape
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.conf import settings
 
 from apps.catalog.models import Brand, Product
-from apps.notifications.telegram import send_telegram
+from apps.notifications.tasks import enqueue_manager_notifications
 from .forms import (
     InstallationRequestForm, QuickOrderForm, SelectionRequestForm,
     ServiceRequestForm,
@@ -78,21 +77,17 @@ def quick_order_submit(request):
         sku = obj.product.articul or obj.product.nc_code
         product_info = f'\n📦 {sku} — {obj.product.title}'
 
-    send_telegram(
+    telegram_text = (
         f'⚡ <b>Заказ в 1 клик</b>\n'
         f'👤 {obj.name} | 📞 {obj.phone}'
         f'{product_info}\n'
         f'💬 {obj.comment or "—"}'
     )
-
-    if settings.MANAGER_EMAIL:
-        send_mail(
-            subject=f'Заказ в 1 клик — {obj.name}',
-            message=f'Имя: {obj.name}\nТелефон: {obj.phone}\nТовар: {obj.product or "не указан"}\nКомментарий: {obj.comment or "—"}',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.MANAGER_EMAIL],
-            fail_silently=True,
-        )
+    enqueue_manager_notifications(
+        subject=f'Заказ в 1 клик — {obj.name}',
+        email_body=f'Имя: {obj.name}\nТелефон: {obj.phone}\nТовар: {obj.product or "не указан"}\nКомментарий: {obj.comment or "—"}',
+        telegram_text=telegram_text,
+    )
 
     return HttpResponse(SUCCESS_HTML)
 
@@ -116,7 +111,7 @@ def selection_submit(request):
         comment=d.get('comment', ''),
     )
 
-    send_telegram(
+    telegram_text = (
         f'🔍 <b>Заявка на подбор</b>\n'
         f'👤 {obj.name} | 📞 {obj.phone}\n'
         f'📍 {obj.city or "—"} | 📐 {obj.area_sqm or "—"} м²\n'
@@ -125,20 +120,16 @@ def selection_submit(request):
         f'📅 {obj.timeline or "—"}\n'
         f'💬 {obj.comment or "—"}'
     )
-
-    if settings.MANAGER_EMAIL:
-        send_mail(
-            subject=f'Заявка на подбор — {obj.name}',
-            message=(
+    enqueue_manager_notifications(
+        subject=f'Заявка на подбор — {obj.name}',
+        email_body=(
                 f'Имя: {obj.name}\nТелефон: {obj.phone}\nГород: {obj.city}\n'
                 f'Площадь: {obj.area_sqm} м²\nТип: {obj.room_type}\nБюджет: {obj.budget}\n'
                 f'Монтаж: {"Да" if obj.needs_installation else "Нет"}\n'
                 f'Срок: {obj.timeline}\nКомментарий: {obj.comment or "—"}'
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.MANAGER_EMAIL],
-            fail_silently=True,
-        )
+        ),
+        telegram_text=telegram_text,
+    )
 
     return HttpResponse(SUCCESS_MODAL_HTML)
 
@@ -162,7 +153,7 @@ def installation_submit(request):
         comment=d.get('comment', ''),
     )
 
-    send_telegram(
+    telegram_text = (
         f'🔧 <b>Заявка на монтаж</b>\n'
         f'👤 {obj.name} | 📞 {obj.phone}\n'
         f'📍 {obj.address}\n'
@@ -172,21 +163,17 @@ def installation_submit(request):
         f'🔩 Закладка трассы: {"Да" if obj.needs_channel else "Нет"}\n'
         f'💬 {obj.comment or "—"}'
     )
-
-    if settings.MANAGER_EMAIL:
-        send_mail(
-            subject=f'Заявка на монтаж — {obj.name}',
-            message=(
+    enqueue_manager_notifications(
+        subject=f'Заявка на монтаж — {obj.name}',
+        email_body=(
                 f'Имя: {obj.name}\nТелефон: {obj.phone}\nАдрес: {obj.address}\n'
                 f'Оборудование: {obj.equipment_type}\nУже куплен: {"Да" if obj.has_equipment else "Нет"}\n'
                 f'Этаж: {obj.floor}\nСтена: {obj.wall_type}\n'
                 f'Закладка трассы: {"Да" if obj.needs_channel else "Нет"}\n'
                 f'Комментарий: {obj.comment or "—"}'
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.MANAGER_EMAIL],
-            fail_silently=True,
-        )
+        ),
+        telegram_text=telegram_text,
+    )
 
     return HttpResponse(SUCCESS_MODAL_HTML)
 
@@ -244,7 +231,7 @@ def service_submit(request):
     attribution = ' / '.join(filter(None, (
         obj.utm_source, obj.utm_campaign, obj.utm_content,
     ))) or 'прямой переход'
-    send_telegram(
+    telegram_text = (
         f'🛠 <b>Заявка на сервисное обслуживание</b>\n'
         f'👤 {escape(obj.name)} | 📞 {escape(obj.phone)}\n'
         f'📍 {escape(obj.locality or "—")}\n'
@@ -255,22 +242,18 @@ def service_submit(request):
         f'💬 {escape(obj.comment or "—")}\n'
         f'📊 Источник: {escape(attribution)}'
     )
-
-    if settings.MANAGER_EMAIL:
-        send_mail(
-            subject=f'Заявка на сервис — {obj.name}',
-            message=(
+    enqueue_manager_notifications(
+        subject=f'Заявка на сервис — {obj.name}',
+        email_body=(
                 f'Имя: {obj.name}\nТелефон: {obj.phone}\nНаселённый пункт: {obj.locality}\n'
                 f'Оборудование: {obj.get_equipment_type_display()}\n'
                 f'Вид обращения: {obj.get_service_type_display()}\n'
                 f'Марка и модель: {obj.equipment_model or "—"}\n'
                 f'Удобное время: {obj.preferred_time or "—"}\n'
                 f'Описание: {obj.comment or "—"}\nИсточник: {attribution}'
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.MANAGER_EMAIL],
-            fail_silently=True,
-        )
+        ),
+        telegram_text=telegram_text,
+    )
 
     if request.headers.get('HX-Request') == 'true':
         return HttpResponse(SUCCESS_MODAL_HTML)
@@ -457,7 +440,7 @@ def quiz_lead(request, quiz_id):
     budget_str = f'до {quiz.budget_max:,} ₽'.replace(',', ' ') if quiz.budget_max else 'любой'
     brand_str = quiz.wanted_brand.title if quiz.wanted_brand else 'любой'
 
-    send_telegram(
+    enqueue_manager_notifications(telegram_text=(
         f'🎯 <b>Quiz: подбор</b>\n'
         f'👤 {name} | 📞 {phone}\n'
         f'📐 {quiz.area_sqm} м² | {quiz.get_room_type_display()}\n'
@@ -467,6 +450,6 @@ def quiz_lead(request, quiz_id):
         f'Обогрев: {"да" if quiz.needs_heating else "нет"}\n'
         f'🏷 Бренд: {brand_str}\n'
         f'🔗 /admin/leads/quizresult/{quiz.id}/'
-    )
+    ))
 
     return render(request, 'leads/partials/_quiz_thanks.html', {'name': name})

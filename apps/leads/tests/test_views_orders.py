@@ -31,7 +31,7 @@ class QuickOrderSubmitTest(TestCase):
         self.client = Client()
 
     def test_success_creates_order_and_sends_telegram(self):
-        with patch('apps.leads.views.send_telegram') as m:
+        with patch('apps.leads.views.enqueue_manager_notifications') as m:
             r = self.client.post(reverse('quick_order_submit'), {
                 'name': 'Иван',
                 'phone': '+79780000000',
@@ -46,7 +46,7 @@ class QuickOrderSubmitTest(TestCase):
         self.assertEqual(order.comment, 'Привезите завтра')
 
     def test_success_without_product(self):
-        with patch('apps.leads.views.send_telegram') as m:
+        with patch('apps.leads.views.enqueue_manager_notifications') as m:
             r = self.client.post(reverse('quick_order_submit'), {
                 'name': 'Иван',
                 'phone': '+79780000000',
@@ -57,7 +57,7 @@ class QuickOrderSubmitTest(TestCase):
         self.assertIsNone(order.product)
 
     def test_invalid_form_no_order_created(self):
-        with patch('apps.leads.views.send_telegram') as m:
+        with patch('apps.leads.views.enqueue_manager_notifications') as m:
             r = self.client.post(reverse('quick_order_submit'), {
                 # Без name и phone — form invalid.
                 'comment': 'test',
@@ -69,7 +69,7 @@ class QuickOrderSubmitTest(TestCase):
 
     def test_invalid_product_id_ignored(self):
         # Несуществующий product_id не ломает создание заявки.
-        with patch('apps.leads.views.send_telegram'):
+        with patch('apps.leads.views.enqueue_manager_notifications'):
             r = self.client.post(reverse('quick_order_submit'), {
                 'name': 'Иван',
                 'phone': '+79780000000',

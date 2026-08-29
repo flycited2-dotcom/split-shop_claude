@@ -5,8 +5,7 @@
   <h1 class="text-3xl font-bold text-gray-900 mb-2">Подбор кондиционера</h1>
   <p class="text-gray-500 mb-8">Заполните форму — наш специалист подберёт оборудование под ваши задачи и перезвонит.</p>
   <div id="selection-result" aria-live="polite">
-    <form hx-post="{% url 'selection_submit' %}" hx-target="body" hx-swap="beforeend"
-          hx-on::after-request="if(event.detail.successful) this.reset()"
+    <form hx-post="{% url 'selection_submit' %}" hx-target="#selection-result" hx-swap="innerHTML"
           class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
       {% csrf_token %}
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
