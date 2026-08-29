@@ -211,7 +211,9 @@ def _sync_tech_specs(product, pp_data, category, tech_cache):
     if to_create:
         ProductTech.objects.bulk_create(to_create)
     from apps.catalog.btu import refresh_btu_calc
+    from apps.catalog.heating import apply_heating_fields
     refresh_btu_calc(product)
+    apply_heating_fields(product)
     return len(to_create)
 
 

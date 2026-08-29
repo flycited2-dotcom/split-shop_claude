@@ -28,6 +28,7 @@ from django.conf import settings
 from django.db import transaction
 
 from apps.catalog.classify import classify_title
+from apps.catalog.heating import apply_heating_fields
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 from apps.sync import rusklimat_auth
@@ -52,8 +53,12 @@ _RK_BASE = 'https://internet-partner.rusklimat.com'
 RUSKLIMAT_SOURCE = 'rusklimat'
 
 # Соответствие master-категорий Rusklimat (по regex по name).
+# «Тепловые насосы» добавлены 2026-08-28: воздух-воздух — это те же сплит-системы,
+# просто продаются под другим ярлыком (22 позиции, все под заказ). См.
+# docs/superpowers/specs/2026-08-28-heat-pumps-collection-design.md
 _AC_CATEGORY_RE = re.compile(
-    r'кондицион|сплит.?систем|мульти.?сплит|мобильн\w*\s+кондицион',
+    r'кондицион|сплит.?систем|мульти.?сплит|мобильн\w*\s+кондицион|'
+    r'теплов\w*\s+насос',
     re.IGNORECASE,
 )
 # Исключаем категории-аксессуары / запчасти / комплектующие.
@@ -61,6 +66,13 @@ _AC_EXCLUDE_RE = re.compile(
     r'аксессуар|запчаст|комплектующ|расходн|чехл|абажур|пульт|фильтр',
     re.IGNORECASE,
 )
+# Категория, которой поставщик сам объявил товар тепловым насосом.
+_HEAT_PUMP_CATEGORY_RE = re.compile(r'теплов\w*\s+насос', re.IGNORECASE)
+
+
+def _is_heat_pump_category(name):
+    """True, если Rusklimat назвал категорию тепловыми насосами."""
+    return bool(_HEAT_PUMP_CATEGORY_RE.search(name or ''))
 
 
 class RusklimatJWTExpired(RuntimeError):
@@ -182,18 +194,24 @@ class RusklimatRestClient:
 
 
 def _find_ac_categories(client):
-    """UUID категорий Rusklimat с AC-товарами (по name regex).
-    Аксессуары и запчасти исключаются."""
+    """(ids, names) категорий Rusklimat с AC-товарами (по name regex).
+
+    Аксессуары и запчасти исключаются. Карта {id: name} нужна при записи товара:
+    в самом товаре есть только categoryId, названия там нет, а по названию мы
+    решаем, объявил ли поставщик товар тепловым насосом.
+    """
     cats = client.get_categories()
     ids = set()
+    names = {}
     for cat in cats:
         name = (cat.get('name') or '').strip()
+        names[cat['id']] = name
         if _AC_EXCLUDE_RE.search(name):
             continue
         if _AC_CATEGORY_RE.search(name):
             ids.add(cat['id'])
     logger.info('Rusklimat REST: %d AC-категорий из %d', len(ids), len(cats))
-    return ids
+    return ids, names
 
 
 def _master_category_for(name):
@@ -325,7 +343,9 @@ def _sync_tech_specs(product, properties_dict, tech_cache, properties_meta, unit
         ProductTech.objects.filter(product=product).delete()
         ProductTech.objects.bulk_create(to_create)
     from apps.catalog.btu import refresh_btu_calc
+    from apps.catalog.heating import apply_heating_fields
     refresh_btu_calc(product)
+    apply_heating_fields(product)
     return len(to_create)
 
 
@@ -338,7 +358,7 @@ def sync_rusklimat_rest(*, max_pages=None):
     """
     client = RusklimatRestClient()
 
-    ac_ids = _find_ac_categories(client)
+    ac_ids, category_names = _find_ac_categories(client)
     if not ac_ids:
         logger.warning('AC-категорий не найдено в Rusklimat REST')
         return {'created': 0, 'updated': 0, 'pages': 0}
@@ -462,6 +482,12 @@ def sync_rusklimat_rest(*, max_pages=None):
                     )
                     if count:
                         specs_synced += 1
+
+                # Rusklimat объявляет тепловой насос названием КАТЕГОРИИ, а не
+                # характеристикой — _sync_tech_specs про категорию не знает,
+                # поэтому флаг доставляем здесь (вызов идемпотентный).
+                if _is_heat_pump_category(category_names.get(p.get('categoryId', ''), '')):
+                    apply_heating_fields(product, declared=True)
 
         if len(items) < page_size:
             break

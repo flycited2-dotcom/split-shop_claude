@@ -6,12 +6,15 @@
 сделан внутри функции.
 """
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from apps.catalog.models import Brand, Category, Product, ProductTech, TechSpec
-from apps.sync.rusklimat_rest import _sync_tech_specs
+from apps.sync.rusklimat_rest import (
+    _AC_CATEGORY_RE, _AC_EXCLUDE_RE, _find_ac_categories, _is_heat_pump_category,
+    _sync_tech_specs,
+)
 
 
 class _SyncTechSpecsBase(TestCase):
@@ -162,3 +165,39 @@ class SyncTechSpecsTest(_SyncTechSpecsBase):
             _sync_tech_specs(p, props, {}, meta, {})
         spec = TechSpec.objects.get(external_uuid='a')
         self.assertEqual(spec.order, 0)
+
+
+class HeatPumpCategoryTest(SimpleTestCase):
+    """Категории тепловых насосов Rusklimat должны проходить в синк.
+
+    До 2026-08-28 _AC_CATEGORY_RE их не пропускал, и 23 позиции («Тепловые
+    насосы воздух-воздух» — это те же сплит-системы) в каталог не попадали.
+    """
+
+    def test_heat_pump_category_passes_filter(self):
+        name = 'Тепловые насосы воздух-воздух'
+        self.assertTrue(_AC_CATEGORY_RE.search(name))
+        self.assertFalse(_AC_EXCLUDE_RE.search(name))
+
+    def test_heat_pump_air_water_passes_filter(self):
+        self.assertTrue(_AC_CATEGORY_RE.search('Тепловые насосы воздух-вода. Моноблоки'))
+
+    def test_heat_pump_accessories_still_excluded(self):
+        # Аксессуары к теплонасосам в розницу не нужны
+        self.assertTrue(_AC_EXCLUDE_RE.search('Аксессуары для тепловых насосов'))
+
+    def test_is_heat_pump_category_by_name(self):
+        self.assertTrue(_is_heat_pump_category('Тепловые насосы воздух-воздух'))
+        self.assertFalse(_is_heat_pump_category('Бытовые кондиционеры'))
+
+    def test_find_ac_categories_returns_ids_and_names(self):
+        client = Mock()
+        client.get_categories.return_value = [
+            {'id': 'uuid-1', 'name': 'Бытовые кондиционеры'},
+            {'id': 'uuid-2', 'name': 'Тепловые насосы воздух-воздух'},
+            {'id': 'uuid-3', 'name': 'Шланги садовые'},
+        ]
+        ids, names = _find_ac_categories(client)
+        self.assertEqual(ids, {'uuid-1', 'uuid-2'})
+        self.assertEqual(names['uuid-2'], 'Тепловые насосы воздух-воздух')
+        self.assertNotIn('uuid-3', ids)
