@@ -89,7 +89,11 @@ m[i].l=1*new Date();
 for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
 k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
 (window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');
-ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true,ecommerce:'dataLayer',webvisor:true,ssr:true});
+window.dataLayer=window.dataLayer||[];
+/* Опцию ssr:true НЕ добавлять: с ней счётчик не инициализируется (init остаётся в очереди,
+   нет cookie _ym_uid и запросов к mc.yandex.ru/watch) — визиты из Директа не записываются.
+   Яндекс подставляет её в код, выданный через API, поэтому её легко занести обратно. */
+ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true,ecommerce:'dataLayer',webvisor:true});
 </script>
 <noscript><div><img src="https://mc.yandex.ru/watch/{{ YANDEX_METRIKA_ID }}" style="position:absolute;left:-9999px;" alt=""/></div></noscript>
 <script>
