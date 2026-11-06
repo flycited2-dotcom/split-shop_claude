@@ -1,0 +1,17 @@
+# Контекст сборки = весь /opt/oasis на проде. Без этого файла в образ уходили
+# staticfiles/ (3 ГБ, на проде всё равно перекрыт томом static_files),
+# rts-photos/, бэкапы и копии .env с секретами — сборка 07.11.2026 забила диск.
+.git
+.claude
+.env
+.env.*
+!.env.example
+*.env
+**/*.bak*
+**/*.backup*
+backups/
+staticfiles/
+media/
+rts-photos/
+**/__pycache__/
+**/*.pyc
