@@ -110,19 +110,29 @@ python manage.py test apps.catalog.tests apps.leads.tests apps.sync.tests apps.a
 Боевой сайт — **212.116.115.150** (`/opt/oasis`); 213.109.202.45 только проксирует
 на него и держит вторую копию приложения (её базу читает Telegram-бот отчётов).
 
+Прод стоит на ветке `develop` и собирается только из git: правки руками на
+сервере или `docker cp` в контейнер потеряются при следующей выкладке. Доступа к
+GitHub у прода нет, поэтому коммиты привозят `git bundle`:
+
 ```bash
-ssh prod
-cd /opt/oasis
-git pull
-docker compose build web            # Tailwind компилируется внутри образа
-docker compose up -d web celery beat
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py collectstatic --no-input
-# ВАЖНО: collectstatic пишет в docker-volume, а nginx раздаёт /static/ из
-# ХОСТОВОЙ папки /opt/oasis/staticfiles — без копирования сайт продолжит
-# отдавать старый CSS (2026-08-29 он отставал на два месяца).
-docker compose cp web:/app/staticfiles/. /opt/oasis/staticfiles/
+# локально: всё, чего на проде ещё нет (<было> — его текущий HEAD)
+git bundle create deploy.bundle <было>..origin/develop
+scp deploy.bundle sprintbox-itp:/opt/oasis/backups/
+# на сервере
+cd /opt/oasis && ./deploy.sh backups/deploy.bundle
 ```
+
+`deploy.sh` пересобирает и пересоздаёт только `web`, `celery` и `beat` (db,
+redis и tg_proxy не трогает: на db 172.30.0.20 завязаны соседние стеки).
+Скрипт приостанавливает `oasis-health.timer` на время выкладки, гоняет
+`migrate` и `collectstatic`, копирует статику в хостовую папку nginx и проверяет
+сайт, брокер и воркер. Прошлые образы остаются с тегом `:prev`, команда отката
+есть в шапке скрипта.
+
+ВАЖНО про статику: `collectstatic` пишет в docker-volume, а nginx раздаёт
+`/static/` из ХОСТОВОЙ папки `/opt/oasis/staticfiles`. Без копирования сайт
+продолжит отдавать старый CSS (2026-08-29 он отставал на два месяца).
+`deploy.sh` копирует её сам.
 
 Статика отдаётся с `max-age=2592000` и без хэша в имени, поэтому в `base.html`
 к CSS добавляется `?v={{ STATIC_VERSION }}` — метка берётся из mtime собранного
