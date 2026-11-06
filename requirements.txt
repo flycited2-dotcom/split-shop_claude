@@ -2,6 +2,9 @@ Django==5.2
 psycopg2-binary==2.9.9
 redis==5.0.1
 celery==5.3.6
+# kombu не закреплён транзитивно: 5.7 требует redis-py>=6.1, а у нас redis==5.0.1 —
+# свежая сборка 07.11.2026 уронила celery и постановку задач из web (VersionMismatch).
+kombu==5.5.4
 django-redis==5.4.0
 django-filter==24.1
 Pillow==10.2.0
