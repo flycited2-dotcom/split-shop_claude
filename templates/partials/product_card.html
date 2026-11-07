@@ -6,9 +6,11 @@
   <button type="button"
           onclick="return shareProduct(event, '{% url 'product_detail' product.slug %}', '{{ product.title|escapejs }}');"
           class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/95 border border-ink/10 shadow-sm flex items-center justify-center text-ink-3 hover:text-accent hover:border-accent transition"
-          aria-label="Поделиться">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.032 4.026a3 3 0 10-2.684 0m2.684 0a3 3 0 11-2.684 0m0-9.032a3 3 0 102.684 0m-2.684 0L8.684 10.658m6.632-3.026L8.684 13.342"/>
+          aria-label="Поделиться" title="Поделиться ссылкой">
+    {# Стрелка «переслать» (как в Telegram/VK) — три кружка heroicons на 16px читались как непонятный значок #}
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="15 17 20 12 15 7"/>
+      <path d="M4 18v-2a4 4 0 0 1 4-4h12"/>
     </svg>
   </button>
   {% with img=product.images.first %}
