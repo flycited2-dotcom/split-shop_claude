@@ -64,7 +64,7 @@ def _link_cards(article):
 
 def _ld(data):
     # </script> внутри строки не должен закрыть тег
-    return json.dumps(data, ensure_ascii=False).replace('</', '<\/')
+    return json.dumps(data, ensure_ascii=False).replace('</', r'<\/')
 
 
 def article_list(request):
