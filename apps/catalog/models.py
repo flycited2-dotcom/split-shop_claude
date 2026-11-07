@@ -135,7 +135,9 @@ class Product(models.Model):
                 base = f"{brand_part}-{self.articul}-{self.nc_code}"
             else:
                 base = f"{slugify(self.title, allow_unicode=True)}-{self.nc_code}"
-            self.slug = base[:500] or f"product-{self.nc_code}"
+            # to_latin: коды «НС-…» не должны давать кириллицу в адресе (slugs.py)
+            from .slugs import to_latin
+            self.slug = to_latin(base[:500]) or f"product-{to_latin(self.nc_code)}"
         super().save(*args, **kwargs)
 
 

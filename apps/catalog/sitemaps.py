@@ -1,23 +1,42 @@
+from urllib.parse import urlsplit
+
+from django.conf import settings
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse, NoReverseMatch
+from django.utils.encoding import iri_to_uri
+
 from .models import Product, Category, Brand
 
 
-class ProductSitemap(Sitemap):
+class SiteSitemap(Sitemap):
+    """Домен и протокол — из SITE_URL, а не из запроса: запрос на www или
+    по IP иначе отдаст карту с чужим доменом."""
+    protocol = 'https'
+
+    def get_domain(self, site=None):
+        return urlsplit(settings.SITE_URL).netloc
+
+
+class ProductSitemap(SiteSitemap):
     changefreq = 'daily'
     priority = 0.8
 
     def items(self):
-        return Product.objects.filter(is_active=True, kind=Product.KIND_SPLIT_SYSTEM)
+        # Тот же фильтр, что и в product_detail (is_active), плюс только
+        # сплит-системы: в карте нет адресов, которые отдают 404.
+        return (Product.objects.filter(is_active=True, kind=Product.KIND_SPLIT_SYSTEM)
+                .only('slug', 'updated_at').order_by('pk'))
 
     def location(self, obj):
-        return f'/product/{obj.slug}/'
+        # iri_to_uri: если кириллица всё же осталась в slug, в <loc> уйдёт
+        # percent-encoding, а не сырые символы.
+        return iri_to_uri(f'/product/{obj.slug}/')
 
     def lastmod(self, obj):
         return obj.updated_at
 
 
-class CategorySitemap(Sitemap):
+class CategorySitemap(SiteSitemap):
     changefreq = 'weekly'
     priority = 0.6
 
@@ -28,7 +47,7 @@ class CategorySitemap(Sitemap):
         return f'{reverse("catalog")}?category={obj.pk}'
 
 
-class CollectionSitemap(Sitemap):
+class CollectionSitemap(SiteSitemap):
     """Подборки — срезы каталога со своими SEO-страницами (collections.py)."""
     changefreq = 'weekly'
     priority = 0.7
@@ -41,7 +60,7 @@ class CollectionSitemap(Sitemap):
         return reverse('collection', args=[obj.slug])
 
 
-class StaticViewSitemap(Sitemap):
+class StaticViewSitemap(SiteSitemap):
     changefreq = 'monthly'
     priority = 0.5
 

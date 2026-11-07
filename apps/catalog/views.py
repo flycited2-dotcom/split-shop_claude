@@ -4,7 +4,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F, Sum, Value, Case, When, IntegerField
 from django.db.models.functions import Coalesce
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponsePermanentRedirect, JsonResponse
 from .models import Product, Category, Brand
 from .collections import COLLECTIONS, get_collection
 from .navigation import group_categories
@@ -14,6 +14,7 @@ from .facets import compute_facets
 from .dynamic_filters import apply_tech_filters, compute_tech_facets
 from .btu import extract_btu, resolve_btu
 from apps.leads.quiz_logic import _balance_by_source
+from apps.articles.loader import related_articles
 
 
 def home(request):
@@ -235,6 +236,8 @@ def catalog(request):
         'listing_qs': _listing_querystring(request),
         'facets': facets,
         'tech_facets': tech_facets,
+        'useful_articles': related_articles(
+            request.path, selected_category.title if selected_category else ''),
     }
 
     template = (
@@ -319,6 +322,7 @@ def collection(request, slug):
         # характеристик (см. compute_tech_facets).
         'tech_facets': compute_tech_facets(request.GET, None, filtered_qs,
                                            scope=f'collection:{coll.slug}'),
+        'useful_articles': related_articles(request.path, ''),
     }
 
     template = (
@@ -360,6 +364,18 @@ def availability(request):
 
 
 def product_detail(request, slug):
+    if not slug.isascii():
+        # Старый кириллический адрес (…-НС-1181388/) → 301 на латинский.
+        # Новый slug однозначно выводится тем же to_latin(), что и в миграции
+        # 0015 (apps/catalog/slugs.py), поэтому таблица соответствий не нужна.
+        from .slugs import to_latin
+        new_slug = to_latin(slug)
+        if new_slug and Product.objects.filter(slug=new_slug, is_active=True).exists():
+            target = f'/product/{new_slug}/'
+            if request.META.get('QUERY_STRING'):
+                target += '?' + request.META['QUERY_STRING']
+            return HttpResponsePermanentRedirect(target)
+        raise Http404
     product = get_object_or_404(
         Product.objects.select_related('brand', 'category', 'stock')
                        .prefetch_related('images', 'tech_values__spec', 'warehouse_stocks'),
@@ -412,4 +428,6 @@ def product_detail(request, slug):
         'computed_btu': btu,
         'is_inverter': is_inverter,
         'similar_products': similar,
+        'useful_articles': related_articles(
+            request.path, product.category.title if product.category else ''),
     })

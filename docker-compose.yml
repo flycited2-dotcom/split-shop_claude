@@ -37,6 +37,9 @@ services:
       # файлы читает Telegram-бот остатков. Только на чтение: пишет сюда
       # скрапер, сайт лишь забирает (см. apps/sync/jac_catalog.py).
       - /opt/splithub_api_telegram/data:/data/jac:ro
+      # Статьи робота автовыкладки (/articles/). Только чтение: пишет туда
+      # робот, сайт лишь показывает (apps/articles/loader.py, ARTICLES_DIR).
+      - /var/lib/articles-robot/splithome.ru:/data/articles:ro
     ports:
       - "8000:8000"
     env_file: .env

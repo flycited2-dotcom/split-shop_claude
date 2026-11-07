@@ -25,6 +25,7 @@ from django.db import transaction
 from django.utils.text import slugify
 
 from apps.catalog.classify import classify_title
+from apps.catalog.slugs import to_latin
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.sync.warehouse_stock import write_warehouse_stocks
 
@@ -201,7 +202,8 @@ def _build_slug(brand_title, article, nc_code):
         slugify(article, allow_unicode=True) if article else '',
     ]
     base = '-'.join(p for p in parts if p) or nc_code
-    return f'{base}-{nc_code[-8:]}'[:500]
+    # латиница в адресе товара — см. apps/catalog/slugs.py
+    return to_latin(f'{base}-{nc_code[-8:]}'[:500])
 
 
 def _photo_url(photos, brand_title, series):

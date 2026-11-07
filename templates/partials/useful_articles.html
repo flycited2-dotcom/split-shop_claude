@@ -1,0 +1,13 @@
+{% if useful_articles %}
+<section class="mt-8">
+  <h2 class="text-xl sm:text-2xl font-bold mb-4">Полезные статьи</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    {% for a in useful_articles %}
+    <a href="{{ a.url }}" class="rounded-2xl border border-ink/10 bg-white p-5 hover:border-accent/40 hover:shadow-md transition block">
+      <span class="block font-semibold text-ink mb-1">{{ a.h1 }}</span>
+      <span class="block text-sm text-ink-3">{{ a.description|truncatewords:22 }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}

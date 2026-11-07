@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils.text import slugify
 
 from apps.catalog.classify import classify_title
+from apps.catalog.slugs import to_latin
 from apps.catalog.models import Brand, Category, Product, ProductImage, ProductTech, TechSpec
 from apps.stock.models import Stock
 from apps.sync.daichi_client import DaichiClient
@@ -171,7 +172,8 @@ def _build_slug(brand, articul, xml_id):
     short_uuid = (xml_id or '').replace('-', '')[:12]
     parts = [p for p in (brand_part, art_part, short_uuid) if p]
     slug = '-'.join(parts) or f'daichi-{short_uuid}'
-    return slug[:500]
+    # латиница в адресе товара — см. apps/catalog/slugs.py
+    return to_latin(slug[:500])
 
 
 def _fetch_all_productparams(client, page_size=500):

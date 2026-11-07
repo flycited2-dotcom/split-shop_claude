@@ -12,13 +12,15 @@
   <title>{% block title %}SplitHome — кондиционеры и сплит-системы в Крыму{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}SplitHome — продажа, доставка и монтаж кондиционеров по всему Крыму. Симферополь, Севастополь, Ялта, Евпатория, Феодосия, Керчь.{% endblock %}">
   {# Canonical без query-строки: фильтры /catalog/?... схлопываются в один URL. Переопределяется блоком. #}
-  <link rel="canonical" href="{% block canonical %}{{ request.scheme }}://{{ request.get_host }}{{ request.path }}{% endblock %}">
+  {# Домен — из SITE_URL, не из запроса: иначе www.splithome.ru отдавал canonical на самого себя. #}
+  <link rel="canonical" href="{% block canonical %}{{ SITE_URL }}{{ request.path }}{% endblock %}">
+  {% block meta_robots %}{% endblock %}
   <link rel="icon" type="image/x-icon" href="{% static 'img/favicon/favicon.ico' %}">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon/favicon-32.png' %}">
   <link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/favicon/favicon-192.png' %}">
   <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/favicon/apple-touch-icon.png' %}">
   <!-- Open Graph -->
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
   <meta property="og:site_name" content="SplitHome">
   <meta property="og:title" content="{% block og_title %}{% block og_title_inner %}{% endblock %}{% endblock %}">
   <meta property="og:description" content="{% block og_description %}SplitHome — продажа и монтаж кондиционеров по всему Крыму.{% endblock %}">
@@ -26,7 +28,7 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="SplitHome — кондиционеры по Крыму">
-  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:url" content="{% block og_url %}{{ SITE_URL }}{{ request.path }}{% endblock %}">
   <meta property="og:locale" content="ru_RU">
   <!-- Twitter / прочие SMS-app превью -->
   <meta name="twitter:card" content="summary_large_image">

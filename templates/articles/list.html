@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Статьи о кондиционерах: выбор, монтаж, обслуживание{% if page_obj and page_obj.number > 1 %} — страница {{ page_obj.number }}{% endif %} | SplitHome{% endblock %}
+{% block meta_description %}Как выбрать кондиционер для квартиры и дома в Крыму, рассчитать мощность, подготовиться к монтажу и обслуживать сплит-систему. Советы SplitHome.{% endblock %}
+{% block canonical %}{{ canonical_url }}{% endblock %}
+{% block meta_robots %}{% if noindex %}<meta name="robots" content="noindex, follow">{% else %}<meta name="robots" content="index, follow">{% endif %}{% endblock %}
+{% block og_title %}Статьи о кондиционерах — SplitHome{% endblock %}
+{% block og_url %}{{ canonical_url }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <nav class="text-sm text-ink-3 mb-4" aria-label="Хлебные крошки">
+    <a href="/" class="hover:text-accent">Главная</a> / <span class="text-ink-2">Статьи</span>
+  </nav>
+  <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink mb-3">Статьи о кондиционерах</h1>
+  <p class="text-ink-2 mb-8">Выбор, расчёт мощности, монтаж и обслуживание сплит-систем — с учётом крымского климата.</p>
+
+  {% if articles %}
+  <div class="grid gap-3">
+    {% for a in articles %}
+    <a href="{{ a.url }}" class="card block p-5 hover:border-accent/40 transition">
+      <span class="block text-xs text-ink-3 mb-1"><time datetime="{{ a.date|date:'Y-m-d' }}">{{ a.date_ru }}</time>{% if a.category %} · {{ a.category }}{% endif %}</span>
+      <span class="block font-semibold text-ink text-lg leading-snug mb-1">{{ a.h1 }}</span>
+      <span class="block text-sm text-ink-3">{{ a.description }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav class="flex items-center justify-between mt-8 text-sm" aria-label="Страницы">
+    {% if page_obj.has_previous %}
+      <a href="{% if page_obj.previous_page_number == 1 %}/articles/{% else %}?page={{ page_obj.previous_page_number }}{% endif %}" class="nav-btn">← Новее</a>
+    {% else %}<span></span>{% endif %}
+    <span class="text-ink-3">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}" class="nav-btn">Старше →</a>
+    {% else %}<span></span>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="card p-6 text-ink-2">Скоро здесь появятся статьи о выборе, установке и обслуживании кондиционеров.</div>
+  {% endif %}
+</div>
+{% endblock %}

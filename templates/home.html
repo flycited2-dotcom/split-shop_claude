@@ -44,6 +44,9 @@
 
 {% block content %}
 
+{# H1 главной — про магазин целиком, а не про сезонную акцию в баннере. #}
+<h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-ink mb-4">Кондиционеры и сплит-системы в Крыму с установкой</h1>
+
 <!-- HERO bento grid -->
 <section class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8" style="grid-auto-rows: minmax(140px, auto);">
 
@@ -72,10 +75,11 @@
       <span class="chip self-start" style="background: rgba(255,255,255,0.12); color: #ffd7a3; border: 1px solid rgba(255,215,163,0.35);">
         <span class="dot" style="background:#ffb05c;"></span> Тёплая осень начинается дома
       </span>
-      <h1 class="mt-auto text-white" style="font-size: clamp(34px, 6.4vw, 76px); font-weight: 700; letter-spacing: -0.035em; line-height: 1;">
+      {# Сезонный баннер — НЕ H1: H1 страницы ниже, над сеткой (SEO-аудит 06.11.2026). #}
+      <p class="mt-auto text-white" style="font-size: clamp(34px, 6.4vw, 76px); font-weight: 700; letter-spacing: -0.035em; line-height: 1;">
         Обогревайте дом<br>
         <span style="background: linear-gradient(90deg,#ffd18a,#ff9d54); -webkit-background-clip: text; background-clip: text; color: transparent;">тепловым насосом</span>
-      </h1>
+      </p>
       <p class="text-[15px] sm:text-[17px] leading-relaxed max-w-md" style="color: #cbd8e8;">
         Инверторная сплит-система греет до −20 °C и отдаёт 3–4 кВт тепла на каждый киловатт
         электричества — в разы дешевле обогревателя. Привезём и установим за день.

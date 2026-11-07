@@ -40,6 +40,7 @@ LOCAL_APPS = [
     'apps.sync',
     'apps.leads',
     'apps.notifications',
+    'apps.articles',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -190,6 +191,15 @@ SITE_PHONE_RAW = config('SITE_PHONE_RAW', default='+79785792995')
 SITE_PHONE = config('SITE_PHONE', default='+7 978 579-29-95')
 SITE_MAX_URL = config('SITE_MAX_URL', default='')
 SITE_TELEGRAM = config('SITE_TELEGRAM', default='')
+
+# Канонический адрес сайта: от него строятся canonical, og:url, sitemap и
+# robots.txt. Не request.get_host(): на www.splithome.ru страницы отдавали
+# canonical на www, и поисковик видел два одинаковых сайта (аудит 06.11.2026).
+SITE_URL = config('SITE_URL', default='https://splithome.ru').rstrip('/')
+
+# Раздел /articles/: папка робота автовыкладки, сайт её только читает
+# (в docker-compose смонтирована :ro). Нет папки — раздел пустой, не 500.
+ARTICLES_DIR = config('ARTICLES_DIR', default='/data/articles')
 
 # Верификация прав в панелях вебмастеров (мета-тег в <head>). Токен выдаётся
 # при добавлении сайта; пустое значение = мета-тег не выводится.

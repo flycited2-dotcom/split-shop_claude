@@ -46,6 +46,7 @@ def site_contacts(request):
         'SITE_PHONE': getattr(settings, 'SITE_PHONE', ''),
         'SITE_MAX_URL': getattr(settings, 'SITE_MAX_URL', ''),
         'SITE_TELEGRAM': getattr(settings, 'SITE_TELEGRAM', ''),
+        'SITE_URL': getattr(settings, 'SITE_URL', 'https://splithome.ru'),
     }
 
 

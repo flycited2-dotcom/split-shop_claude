@@ -285,7 +285,9 @@ def _build_slug(brand_title, vendor_code, ns_code, slug_cache):
         parts.append(slugify(vendor_code, allow_unicode=True))
     if ns_code:
         parts.append(ns_code)
-    base = '-'.join(p for p in parts if p)[:480] or f'rk-{ns_code}'
+    # латиница в адресе товара: ns_code — «НС-…» (apps/catalog/slugs.py)
+    from apps.catalog.slugs import to_latin
+    base = to_latin('-'.join(p for p in parts if p)[:480]) or f'rk-{to_latin(ns_code)}'
     slug = base
     i = 1
     while slug in slug_cache:

@@ -12,7 +12,10 @@ from apps.catalog.sitemaps import (
     CategorySitemap, CollectionSitemap, ProductSitemap, StaticViewSitemap,
 )
 
+from apps.articles.sitemaps import ArticleSitemap
+
 sitemaps = {
+    'articles': ArticleSitemap,
     'products': ProductSitemap,
     'categories': CategorySitemap,
     'collections': CollectionSitemap,
@@ -45,16 +48,16 @@ def robots_txt(request):
         'User-agent: CCBot',
         'Allow: /',
         '',
-        f'Sitemap: https://{request.get_host()}/sitemap.xml',
-        f'# LLM-ориентированное описание: https://{request.get_host()}/llms.txt',
+        f'Sitemap: {settings.SITE_URL}/sitemap.xml',
+        f'Sitemap: {settings.SITE_URL}/articles/sitemap.xml',
+        f'# LLM-ориентированное описание: {settings.SITE_URL}/llms.txt',
     ]
     return HttpResponse('\n'.join(lines), content_type='text/plain')
 
 
 def llms_txt(request):
     """Стандарт llmstxt.org — структурированное описание сайта для LLM-краулеров."""
-    host = request.get_host()
-    base = f'https://{host}'
+    base = settings.SITE_URL
     lines = [
         '# SplitHome',
         '',
@@ -153,4 +156,6 @@ urlpatterns = [
     path('robots.txt', robots_txt),
     path('llms.txt', llms_txt),
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    path('articles/sitemap.xml', sitemap, {'sitemaps': {'articles': ArticleSitemap}}, name='articles_sitemap'),
+    path('articles/', include('apps.articles.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
