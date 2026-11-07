@@ -1,0 +1,57 @@
+# Полный снимок версий из рабочего образа прода (pip freeze, 07.11.2026).
+# Ставится как constraints: pip install -r requirements.txt -c constraints.txt.
+# Зачем: requirements.txt закрепляет только прямые зависимости, и сборка без
+# кэша pip 07.11.2026 подтянула kombu 5.7 (нужен redis-py>=6.1) — celery упал.
+# Обновлять осознанно: поднять версию здесь, собрать, проверить celery и сайт.
+amqp==5.4.2
+asgiref==3.13.0
+beautifulsoup4==4.12.3
+billiard==4.3.2
+brotli==1.2.1
+celery==5.3.6
+certifi==2026.10.23
+cffi==2.1.1
+charset-normalizer==3.5.2
+click==8.5.1
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.4.1
+cron-descriptor==1.4.5
+cssselect2==0.10.1
+Django==5.2
+django-celery-beat==2.9.0
+django-filter==24.1
+django-htmx==1.17.3
+django-redis==5.4.0
+django-timezone-field==7.2.2
+et_xmlfile==2.0.0
+fonttools==4.68.0
+gunicorn==21.2.0
+html5lib==1.1
+idna==3.20
+kombu==5.5.4
+openpyxl==3.1.2
+packaging==26.3
+pillow==10.2.0
+prompt_toolkit==3.0.53
+psycopg2-binary==2.9.9
+pycparser==3.12
+pydyf==0.13.0
+pyphen==0.18.1
+python-crontab==3.4.0
+python-dateutil==4.0.0
+python-decouple==3.8
+redis==5.0.1
+requests==2.31.0
+six==1.17.0
+soupsieve==4.0.1
+sqlparse==0.6.1
+tinycss2==1.5.1
+typing_extensions==4.16.0
+tzdata==2026.6
+urllib3==2.8.0
+vine==5.1.0
+wcwidth==0.9.4
+weasyprint==62.3
+webencodings==0.6.1
+zopfli==0.4.3

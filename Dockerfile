@@ -14,8 +14,8 @@ RUN sed -i 's|http://deb.debian.org|http://mirror.yandex.ru|g; s|http://security
     libpango-1.0-0 libpangoft2-1.0-0 libffi-dev curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt constraints.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -c constraints.txt
 
 COPY . .
 
