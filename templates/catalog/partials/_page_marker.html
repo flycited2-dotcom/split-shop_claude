@@ -1,0 +1,12 @@
+{% comment %}
+Маркер начала страницы листинга. Для первой видимой страницы — невидимый
+якорь, для подгруженных — тонкий разделитель «Страница N из M».
+{% endcomment %}
+<div class="col-span-full {% if first %}h-0{% else %}flex items-center gap-3 text-xs text-ink-3 pt-2{% endif %}"
+     data-catalog-page="{{ page_obj.number }}" id="catalog-page-{{ page_obj.number }}">
+  {% if not first %}
+    <span class="flex-1 border-t border-black/10"></span>
+    <span>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    <span class="flex-1 border-t border-black/10"></span>
+  {% endif %}
+</div>

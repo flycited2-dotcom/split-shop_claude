@@ -4,15 +4,21 @@ which carry it as a secondary block automatically refresh the in-DOM copy.
 On the first (full) page render hx-swap-oob is inert — HTMX only acts on it
 when parsing a response.
 {% endcomment %}
-<div id="catalog-filters-card" class="card p-5" hx-swap-oob="true">
+{% comment %}
+Фильтры применяются НЕ на каждый клик: человек отмечает несколько пунктов,
+рядом всплывает кнопка «Показать N» (#catalog-apply, логика — catalogFilters
+в base.html), и только по ней форма уходит (hx-trigger="submit"). Раньше
+каждый чекбокс перерисовывал выдачу и прокручивал страницу наверх.
+{% endcomment %}
+<div id="catalog-filters-card" class="card p-5 relative" hx-swap-oob="true">
   <h2 class="font-bold text-base mb-4 text-gray-800">Фильтры</h2>
 
   <form id="catalog-filters-form"
-        hx-get="{% url 'catalog' %}"
+        hx-get="{{ request.path }}"
         hx-target="#catalog-results"
         hx-swap="outerHTML"
         hx-push-url="true"
-        hx-trigger="change, keyup changed delay:400ms from:input[type='search']">
+        hx-trigger="submit">
 
     {% if request.GET.category %}
       <input type="hidden" name="category" value="{{ request.GET.category }}">
@@ -206,12 +212,18 @@ when parsing a response.
       <span class="text-sm text-gray-700">Только в наличии (Крым)</span>
     </label>
 
+    <button type="submit" class="catalog-apply-static">Показать</button>
+
     {# Сброс фильтров сохраняет category+type (выбор раздела каталога). #}
     {% with cat=request.GET.category btype=request.GET.type %}
-    <a href="{% url 'catalog' %}{% if cat or btype %}?{% endif %}{% if cat %}category={{ cat }}{% if btype %}&{% endif %}{% endif %}{% if btype %}type={{ btype }}{% endif %}"
+    <a href="{{ request.path }}{% if cat or btype %}?{% endif %}{% if cat %}category={{ cat }}{% if btype %}&{% endif %}{% endif %}{% if btype %}type={{ btype }}{% endif %}"
        class="block text-center text-xs text-gray-400 mt-4 hover:text-accent">
       Сбросить фильтры
     </a>
     {% endwith %}
+    {# Плавающая кнопка: позиционируется у последнего изменённого фильтра #}
+    <button type="submit" id="catalog-apply" class="catalog-apply" hidden>
+      Показать<span data-apply-count></span>
+    </button>
   </form>
 </div>

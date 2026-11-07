@@ -1,0 +1,20 @@
+{% comment %}
+«Сторож» бесконечной прокрутки: когда до него остаётся < 800px (или его
+пролистали мимо), JS в base.html шлёт событие catalog:more, и htmx заменяет
+сторож следующей порцией (_page_chunk.html) с новым сторожем в конце.
+Не hx-trigger="revealed": тот не срабатывает, если сторож проскочили
+быстрой прокруткой. Кнопка — запасной путь: клик работает всегда.
+{% endcomment %}
+{% if page_obj.has_next %}
+  <div class="col-span-full flex justify-center py-6"
+       hx-get="{{ request.path }}?{% if listing_qs %}{{ listing_qs }}&{% endif %}page={{ page_obj.next_page_number }}&_chunk=1"
+       data-catalog-sentinel
+       hx-trigger="catalog:more, click"
+       hx-swap="outerHTML"
+       hx-push-url="false">
+    <button type="button" class="catalog-more-btn">
+      <span class="htmx-indicator-hide">Показать ещё</span>
+      <span class="catalog-spinner" aria-hidden="true"></span>
+    </button>
+  </div>
+{% endif %}

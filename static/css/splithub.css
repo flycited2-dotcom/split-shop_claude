@@ -487,3 +487,149 @@ h1, h2, h3, h4 {
   .share-chip svg { width: 18px; height: 18px; }
 }
 
+
+/* ── Каталог: применение фильтров по кнопке ─────────────────────────────
+   #catalog-apply всплывает у последнего изменённого фильтра (JS в base.html
+   ставит top). На десктопе — справа от сайдбара, поверх выдачи; на узких
+   экранах — внутри карточки фильтров у правого края. */
+.catalog-apply {
+  position: absolute;
+  left: calc(100% + 12px);
+  transform: translateY(-50%);
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .55rem 1rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: .875rem;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(46, 124, 246, .35);
+  cursor: pointer;
+  transition: top .15s ease, background .15s;
+}
+.catalog-apply::before {
+  content: '';
+  position: absolute;
+  left: -6px; top: 50%;
+  width: 12px; height: 12px;
+  background: inherit;
+  transform: translateY(-50%) rotate(45deg);
+  border-radius: 2px;
+}
+.catalog-apply:hover { background: var(--primary-dark); }
+.catalog-apply[hidden] { display: none; }
+@media (max-width: 1023px) {
+  .catalog-apply { left: auto; right: 12px; }
+  .catalog-apply::before { display: none; }
+}
+.catalog-apply-static {
+  display: block;
+  width: 100%;
+  margin-top: .75rem;
+  padding: .6rem 1rem;
+  border-radius: var(--radius-s);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: .875rem;
+  cursor: pointer;
+}
+.catalog-apply-static:hover { background: var(--primary-dark); }
+
+/* ── Каталог: бесконечная прокрутка ─────────────────────────────────── */
+.catalog-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  color: var(--ink-2);
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.catalog-more-btn:hover { color: var(--primary); border-color: var(--primary); }
+.catalog-spinner {
+  display: none;
+  width: 18px; height: 18px;
+  border: 2px solid var(--primary-soft);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: catalog-spin .7s linear infinite;
+}
+.htmx-request .catalog-spinner { display: inline-block; }
+.htmx-request .htmx-indicator-hide { display: none; }
+@keyframes catalog-spin { to { transform: rotate(360deg); } }
+
+/* Плавающая панель: «Стр. N из M» (открывает список страниц) + «наверх».
+   Справа снизу; на телефоне компактнее. Создаётся JS только на листинге. */
+.catalog-pager {
+  position: fixed;
+  right: 20px;
+  bottom: 24px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.catalog-pager-pages, .catalog-pager-up {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-strong);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-m);
+  color: var(--ink);
+  cursor: pointer;
+}
+.catalog-pager-pages {
+  padding: .5rem .9rem;
+  border-radius: 999px;
+  font-size: .8125rem;
+  white-space: nowrap;
+}
+.catalog-pager-pages b { color: var(--primary); }
+.catalog-pager-up {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  transition: opacity .2s, transform .2s;
+}
+.catalog-pager-up.is-hidden { opacity: 0; pointer-events: none; transform: translateY(8px); }
+.catalog-pager-up:hover, .catalog-pager-pages:hover { color: var(--primary); border-color: var(--primary); }
+.catalog-pager-menu {
+  display: grid;
+  grid-template-columns: repeat(5, 36px);
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-2);
+  box-shadow: var(--shadow-m);
+}
+.catalog-pager-menu[hidden] { display: none; }
+.catalog-pager-menu button {
+  height: 36px;
+  border-radius: var(--radius-xs);
+  font-size: .8125rem;
+  color: var(--ink-2);
+  background: var(--bg-1);
+  cursor: pointer;
+}
+.catalog-pager-menu button:hover { color: var(--primary); }
+.catalog-pager-menu button.is-current { background: var(--primary); color: #fff; }
+.catalog-pager-menu button.is-loaded { font-weight: 700; }
+@media (max-width: 639px) {
+  .catalog-pager { right: 12px; bottom: 16px; }
+  .catalog-pager-up { width: 40px; height: 40px; }
+}

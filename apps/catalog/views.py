@@ -4,7 +4,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, F, Sum, Value, Case, When, IntegerField
 from django.db.models.functions import Coalesce
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from .models import Product, Category, Brand
 from .collections import COLLECTIONS, get_collection
 from .navigation import group_categories
@@ -132,6 +132,38 @@ def _catalog_base_qs(request):
     return base_qs
 
 
+# Служебные параметры листинга — не фильтры, в ссылки «следующей страницы» не идут.
+_LISTING_SERVICE_PARAMS = ('page', '_chunk', '_count')
+
+
+def _listing_querystring(request):
+    """GET без служебных параметров — база для ссылок на страницы листинга."""
+    params = request.GET.copy()
+    for key in _LISTING_SERVICE_PARAMS:
+        params.pop(key, None)
+    return params.urlencode()
+
+
+def _listing_shortcut(request, ordered_qs):
+    """Короткие ответы листинга, которым не нужны фасеты и категории.
+
+    ?_count=1 — число товаров под текущими фильтрами (кнопка «Показать N»
+    в сайдбаре: человек отмечает несколько фильтров, видит итог и только
+    потом применяет). ?_chunk=1 — следующая порция карточек для бесконечной
+    прокрутки. Иначе None — рендерим страницу целиком.
+    """
+    if request.GET.get('_count'):
+        return JsonResponse({'count': ordered_qs.count()})
+    if request.GET.get('_chunk') and request.headers.get('HX-Request') == 'true':
+        page = Paginator(ordered_qs, 16).get_page(request.GET.get('page'))
+        return render(request, 'catalog/partials/_page_chunk.html', {
+            'page_obj': page,
+            'listing_qs': _listing_querystring(request),
+            'show_price': request.user.is_authenticated and request.user.is_approved,
+        })
+    return None
+
+
 def catalog(request):
     base_qs = _catalog_base_qs(request)
 
@@ -160,6 +192,10 @@ def catalog(request):
             F('stock__quantity').desc(nulls_last=True),
             'title',
         )
+
+    shortcut = _listing_shortcut(request, ordered_qs)
+    if shortcut is not None:
+        return shortcut
 
     paginator = Paginator(ordered_qs, 16)
     page = paginator.get_page(request.GET.get('page'))
@@ -196,6 +232,7 @@ def catalog(request):
         'collections': list(COLLECTIONS.values()),
         'show_price': request.user.is_authenticated and request.user.is_approved,
         'current_ordering': ordering_key,
+        'listing_qs': _listing_querystring(request),
         'facets': facets,
         'tech_facets': tech_facets,
     }
@@ -240,6 +277,10 @@ def collection(request, slug):
             'title',
         )
 
+    shortcut = _listing_shortcut(request, ordered_qs)
+    if shortcut is not None:
+        return shortcut
+
     paginator = Paginator(ordered_qs, 16)
     page = paginator.get_page(request.GET.get('page'))
 
@@ -272,6 +313,7 @@ def collection(request, slug):
         'collection': coll,
         'show_price': request.user.is_authenticated and request.user.is_approved,
         'current_ordering': ordering_key,
+        'listing_qs': _listing_querystring(request),
         'facets': compute_facets(request.GET, base_qs, scope=f'collection:{coll.slug}'),
         # Категория внутри подборки не выбрана — показываем глобальные фасеты
         # характеристик (см. compute_tech_facets).

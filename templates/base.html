@@ -72,10 +72,15 @@
   </script>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <script>
-    // Авто-скролл вверх после любого HTMX-swap каталога (пагинация / сортировка / фильтры)
+    // После применения фильтров / сортировки / перехода на страницу — показать
+    // начало выдачи, если оно за пределами экрана (на телефоне выдача ниже
+    // раскрытого сайдбара, на десктопе — выше, если фильтр был внизу).
+    // Подгрузка следующих страниц (_chunk) сюда не попадает: её цель — сторож.
     document.addEventListener('htmx:afterSwap', function(e) {
-      if (e.target && e.target.id === 'catalog-results') {
-        window.scrollTo({top: 0, behavior: 'smooth'});
+      if (!e.target || e.target.id !== 'catalog-results') return;
+      var r = e.target.getBoundingClientRect();
+      if (r.top < 0 || r.top > window.innerHeight * 0.6) {
+        window.scrollTo({top: r.top + window.scrollY - 80, behavior: 'smooth'});
       }
     });
   </script>
@@ -240,6 +245,144 @@ ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBo
     url.searchParams.delete('page');  // сброс на первую страницу
     location.href = url.toString();
   };
+  // ── Каталог: фильтры применяются кнопкой «Показать N» ───────────────
+  // Форма фильтров уходит только по submit (_filters.html). На каждое
+  // изменение двигаем к нему плавающую кнопку и через ?_count=1 узнаём,
+  // сколько товаров будет — человек выбирает несколько пунктов спокойно.
+  (function() {
+    var timer = null, seq = 0;
+    function plural(n) {
+      var m10 = n % 10, m100 = n % 100;
+      if (m10 === 1 && m100 !== 11) return 'товар';
+      if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'товара';
+      return 'товаров';
+    }
+    function showApply(input) {
+      var form = document.getElementById('catalog-filters-form');
+      var card = document.getElementById('catalog-filters-card');
+      var btn = document.getElementById('catalog-apply');
+      if (!form || !card || !btn) return;
+      var anchor = input.closest('label') || input;
+      var a = anchor.getBoundingClientRect(), c = card.getBoundingClientRect();
+      btn.style.top = (a.top - c.top + a.height / 2) + 'px';
+      btn.hidden = false;
+      var out = btn.querySelector('[data-apply-count]');
+      out.textContent = '';
+      clearTimeout(timer);
+      var my = ++seq;
+      timer = setTimeout(function() {
+        var params = new URLSearchParams(new FormData(form));
+        params.set('_count', '1');
+        fetch(form.getAttribute('hx-get') + '?' + params.toString(), {headers: {'Accept': 'application/json'}})
+          .then(function(r) { return r.json(); })
+          .then(function(d) { if (my === seq) out.textContent = ' ' + d.count + ' ' + plural(d.count); })
+          .catch(function() {});
+      }, 250);
+    }
+    function inForm(el) { return el && el.closest && el.closest('#catalog-filters-form'); }
+    document.addEventListener('change', function(e) { if (inForm(e.target)) showApply(e.target); });
+    document.addEventListener('input', function(e) {
+      if (inForm(e.target) && e.target.type !== 'checkbox') showApply(e.target);
+    });
+  })();
+
+  // ── Каталог: бесконечная прокрутка — счётчик страниц и «наверх» ─────
+  // Страницы подгружает htmx (_page_sentinel.html). Здесь — плавающая
+  // панель: текущая страница по маркерам [data-catalog-page], переход на
+  // любую страницу (загруженную — прокруткой, иначе подменой выдачи),
+  // номер страницы в адресе (replaceState — «Назад» из товара вернёт сюда).
+  (function() {
+    var pager, label, menu, up, ticking = false, current = 1;
+    function grid() { return document.getElementById('catalog-grid'); }
+    function pageUrl(n) {
+      var g = grid(), qs = g.dataset.listingQs;
+      var q = qs ? qs + (n > 1 ? '&page=' + n : '') : (n > 1 ? 'page=' + n : '');
+      return g.dataset.listingUrl + (q ? '?' + q : '');
+    }
+    function build() {
+      if (pager && document.body.contains(pager)) return;
+      // htmx-снимок истории мог вернуть «мёртвую» копию панели — убираем.
+      document.querySelectorAll('.catalog-pager').forEach(function(el) { el.remove(); });
+      pager = document.createElement('div');
+      pager.className = 'catalog-pager';
+      pager.innerHTML =
+        '<div class="catalog-pager-menu" hidden></div>' +
+        '<button type="button" class="catalog-pager-pages" aria-label="Перейти к странице"></button>' +
+        '<button type="button" class="catalog-pager-up is-hidden" aria-label="Наверх">↑</button>';
+      document.body.appendChild(pager);
+      menu = pager.children[0]; label = pager.children[1]; up = pager.children[2];
+      label.addEventListener('click', toggleMenu);
+      up.addEventListener('click', function() { window.scrollTo({top: 0, behavior: 'smooth'}); });
+      menu.addEventListener('click', function(e) {
+        var b = e.target.closest('button[data-page]');
+        if (b) { menu.hidden = true; goTo(parseInt(b.dataset.page, 10)); }
+      });
+      document.addEventListener('click', function(e) {
+        if (!menu.hidden && !pager.contains(e.target)) menu.hidden = true;
+      });
+    }
+    function toggleMenu() {
+      var g = grid(); if (!g) return;
+      if (!menu.hidden) { menu.hidden = true; return; }
+      var n = parseInt(g.dataset.numPages, 10), html = '';
+      for (var i = 1; i <= n; i++) {
+        var cls = (i === current ? 'is-current' : '') +
+                  (document.getElementById('catalog-page-' + i) ? ' is-loaded' : '');
+        html += '<button type="button" data-page="' + i + '" class="' + cls + '">' + i + '</button>';
+      }
+      menu.innerHTML = html;
+      menu.hidden = false;
+    }
+    function goTo(n) {
+      var marker = document.getElementById('catalog-page-' + n);
+      if (marker) {
+        var top = marker.getBoundingClientRect().top + window.scrollY - 90;
+        window.scrollTo({top: n === 1 ? 0 : top, behavior: 'smooth'});
+        return;
+      }
+      var url = pageUrl(n);
+      history.replaceState(history.state, '', url);
+      htmx.ajax('GET', url, {target: '#catalog-results', swap: 'outerHTML'});
+    }
+    function update() {
+      ticking = false;
+      var g = grid();
+      if (!g) { if (pager) pager.hidden = true; return; }
+      var n = parseInt(g.dataset.numPages, 10) || 1;
+      build();
+      pager.hidden = false;
+      label.hidden = n < 2;
+      // Пока виден cookie-баннер — панель стоит над ним, а не поверх текста.
+      var banner = document.getElementById('cookie-banner');
+      var bh = banner && !banner.classList.contains('hidden') ? banner.offsetHeight : 0;
+      pager.style.bottom = bh ? (bh + 12) + 'px' : '';
+      up.classList.toggle('is-hidden', window.scrollY < 600);
+      var markers = g.querySelectorAll('[data-catalog-page]'), line = window.innerHeight * 0.4;
+      var page = markers.length ? parseInt(markers[0].dataset.catalogPage, 10) : 1;
+      for (var i = 0; i < markers.length; i++) {
+        if (markers[i].getBoundingClientRect().top <= line) page = parseInt(markers[i].dataset.catalogPage, 10);
+      }
+      var sentinel = g.querySelector('[data-catalog-sentinel]');
+      if (sentinel && !sentinel.dataset.fired &&
+          sentinel.getBoundingClientRect().top < window.innerHeight + 800) {
+        sentinel.dataset.fired = '1';
+        htmx.trigger(sentinel, 'catalog:more');
+      }
+      label.innerHTML = 'Стр. <b>' + page + '</b> из ' + n;
+      if (page !== current) {
+        current = page;
+        var url = pageUrl(page);
+        if (url !== location.pathname + location.search) history.replaceState(history.state, '', url);
+      }
+    }
+    function schedule() { if (!ticking) { ticking = true; setTimeout(update, 60); } }
+    window.addEventListener('scroll', schedule, {passive: true});
+    window.addEventListener('resize', schedule);
+    document.addEventListener('DOMContentLoaded', schedule);
+    document.addEventListener('htmx:afterSettle', function() { current = -1; schedule(); });
+    document.addEventListener('htmx:historyRestore', function() { current = -1; schedule(); });
+  })();
+
   // Lightweight global toast.
   window.showToast = function(text) {
     var el = document.createElement('div');

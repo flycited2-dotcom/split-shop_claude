@@ -1,0 +1,9 @@
+{% comment %}
+Ответ на ?_chunk=1: следующая страница карточек, которая встаёт на место
+сторожа. Маркер страницы + карточки + сторож следующей страницы.
+{% endcomment %}
+{% include 'catalog/partials/_page_marker.html' with first=False %}
+{% for product in page_obj %}
+  {% include 'partials/product_card.html' with show_price=show_price %}
+{% endfor %}
+{% include 'catalog/partials/_page_sentinel.html' %}

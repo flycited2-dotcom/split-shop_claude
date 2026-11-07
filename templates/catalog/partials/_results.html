@@ -1,7 +1,9 @@
 {% comment %}
 The right-hand results column. id="catalog-results" is the HTMX swap target.
-Includes the sort dropdown, product grid, and pagination — all of which
-need to stay in sync with the filter sidebar on every change.
+Includes the sort dropdown and the product grid with infinite scroll.
+Все запросы идут на request.path, а не на {% url 'catalog' %}: иначе на
+странице подборки (/catalog/heat-pumps/) сортировка, фильтры и подгрузка
+уводили на общий каталог и подборка «сбрасывалась».
 {% endcomment %}
 <main id="catalog-results" class="flex-1 min-w-0">
 
@@ -22,7 +24,7 @@ need to stay in sync with the filter sidebar on every change.
     <div class="flex items-center gap-2">
       <label class="text-sm text-gray-500">Сортировка:</label>
       <select name="ordering"
-              hx-get="{% url 'catalog' %}"
+              hx-get="{{ request.path }}"
               hx-target="#catalog-results"
               hx-swap="outerHTML"
               hx-push-url="true"
@@ -38,34 +40,32 @@ need to stay in sync with the filter sidebar on every change.
     </div>
   </div>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {% comment %}
+  Бесконечная прокрутка: первая страница рендерится здесь, следующие
+  подгружает «сторож» (_page_sentinel.html) при появлении в зоне видимости.
+  Перед каждой страницей — маркер data-catalog-page: по нему плавающая
+  панель (catalog-pager в base.html) показывает «Стр. N из M» и переносит
+  номер страницы в адрес. data-* на <main> — для этой же панели.
+  {% endcomment %}
+  <div id="catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+       data-num-pages="{{ page_obj.paginator.num_pages }}"
+       data-listing-url="{{ request.path }}"
+       data-listing-qs="{{ listing_qs }}">
+    {% if page_obj.number > 1 %}
+      <a href="{{ request.path }}?{% if listing_qs %}{{ listing_qs }}&{% endif %}page=1"
+         class="col-span-full text-center text-sm text-accent hover:underline py-2">
+        ↑ Показать с первой страницы
+      </a>
+    {% endif %}
+    {% include 'catalog/partials/_page_marker.html' with first=True %}
     {% for product in page_obj %}
       {% include 'partials/product_card.html' with show_price=show_price %}
     {% empty %}
-      <p class="col-span-4 text-gray-400 text-center py-16">
+      <p class="col-span-full text-gray-400 text-center py-16">
         Товары не найдены.
-        <a href="{% url 'catalog' %}" class="text-accent hover:underline">Сбросить фильтры</a>
+        <a href="{{ request.path }}" class="text-accent hover:underline">Сбросить фильтры</a>
       </p>
     {% endfor %}
+    {% include 'catalog/partials/_page_sentinel.html' %}
   </div>
-
-  {% if page_obj.has_other_pages %}
-    <div class="flex justify-center gap-2 mt-8">
-      {% if page_obj.has_previous %}
-        <a hx-get="{% url 'catalog' %}?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
-           hx-target="#catalog-results" hx-swap="outerHTML" hx-push-url="true"
-           href="?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}"
-           class="px-4 py-2 card text-sm hover:text-accent cursor-pointer">← Назад</a>
-      {% endif %}
-      <span class="px-4 py-2 bg-accent text-white rounded-card text-sm font-semibold">
-        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-      </span>
-      {% if page_obj.has_next %}
-        <a hx-get="{% url 'catalog' %}?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
-           hx-target="#catalog-results" hx-swap="outerHTML" hx-push-url="true"
-           href="?{% for k, vs in request.GET.lists %}{% if k != 'page' %}{% for v in vs %}{{ k }}={{ v|urlencode }}&{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}"
-           class="px-4 py-2 card text-sm hover:text-accent cursor-pointer">Вперёд →</a>
-      {% endif %}
-    </div>
-  {% endif %}
 </main>

@@ -130,3 +130,39 @@ class CollectionViewTest(TestCase):
         self.assertContains(r, 'NC-ORDER')
         r2 = self.client.get(reverse('collection', args=['heat-pumps']), {'in_stock': '1'})
         self.assertNotContains(r2, 'NC-ORDER')
+
+    # ── Листинг: фильтры по кнопке и бесконечная прокрутка (2026-11-07) ──
+
+    def test_filters_and_sort_stay_on_collection(self):
+        """Регрессия: форма фильтров и сортировка слали запрос на /catalog/,
+        и выбор бренда на странице подборки сбрасывал «Тепловые насосы»."""
+        self._product('NC-STAY', -25)
+        url = reverse('collection', args=['heat-pumps'])
+        r = self.client.get(url)
+        self.assertContains(r, f'hx-get="{url}"', count=2)  # форма + сортировка
+        self.assertNotContains(r, 'hx-get="/catalog/"')
+
+    def test_filters_apply_on_submit_only(self):
+        r = self.client.get(reverse('collection', args=['heat-pumps']))
+        self.assertContains(r, 'hx-trigger="submit"')
+        self.assertContains(r, 'id="catalog-apply"')
+
+    def test_count_endpoint(self):
+        self._product('NC-C1', -25)
+        self._product('NC-C2', -20)
+        self._product('NC-C3', -10)  # не теплонасос
+        r = self.client.get(reverse('collection', args=['heat-pumps']), {'_count': '1'})
+        self.assertEqual(r.json(), {'count': 2})
+
+    def test_infinite_scroll_chunk(self):
+        for i in range(20):
+            self._product(f'NC-P{i:02d}', -25)
+        url = reverse('collection', args=['heat-pumps'])
+        r = self.client.get(url)
+        self.assertContains(r, 'data-catalog-page="1"')
+        self.assertContains(r, f'{url}?page=2&_chunk=1')  # сторож следующей страницы
+        chunk = self.client.get(url, {'page': '2', '_chunk': '1'}, HTTP_HX_REQUEST='true')
+        self.assertContains(chunk, 'data-catalog-page="2"')
+        self.assertContains(chunk, 'Страница 2 из 2')
+        self.assertNotContains(chunk, 'catalog-filters-card')  # только карточки
+        self.assertNotContains(chunk, '_chunk=1')  # последняя страница — без сторожа
