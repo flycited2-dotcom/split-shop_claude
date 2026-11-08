@@ -63,7 +63,7 @@
       <a href="tel:{{ SITE_PHONE_RAW }}" data-goal="call" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-accent text-white font-semibold hover:bg-accent/90 transition">Позвонить {{ SITE_PHONE }}</a>
       {% endif %}
       {% if SITE_TELEGRAM %}
-      <a href="{{ SITE_TELEGRAM }}" target="_blank" rel="noopener" data-goal="messenger" class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-ink/15 bg-white text-ink font-semibold hover:border-accent transition">Написать в Telegram</a>
+      <a href="https://t.me/{{ SITE_TELEGRAM }}" target="_blank" rel="noopener" data-goal="messenger" class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-ink/15 bg-white text-ink font-semibold hover:border-accent transition">Написать в Telegram</a>
       {% elif SITE_MAX_URL %}
       <a href="{{ SITE_MAX_URL }}" target="_blank" rel="noopener" data-goal="messenger" class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-ink/15 bg-white text-ink font-semibold hover:border-accent transition">Написать в MAX</a>
       {% endif %}

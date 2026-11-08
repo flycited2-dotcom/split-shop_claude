@@ -104,7 +104,7 @@
   </div>
 
   <!-- Product showcase (featured #1) -->
-  {% with featured_one=weekly_pick|default:featured.0 %}
+  {% with featured_one=hero_product %}
   <a href="{% if featured_one %}{% url 'product_detail' featured_one.slug %}{% else %}/catalog/{% endif %}"
      class="md:col-span-4 md:row-span-3 bg-white rounded-[28px] p-7 flex flex-col min-h-[460px] relative overflow-hidden group hover:shadow-lg transition">
     <div class="flex items-center justify-between">

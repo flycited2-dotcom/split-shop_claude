@@ -123,13 +123,31 @@ ym({{ YANDEX_METRIKA_ID }},'init',{clickmap:true,trackLinks:true,accurateTrackBo
       var path = (d.pathInfo && (d.pathInfo.requestPath || d.pathInfo.path)) || '';
       path = path.split('?')[0];
       for (var url in GOALS) {
-        if (path.indexOf(url) !== -1) { ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', GOALS[url]); return; }
+        if (path.indexOf(url) !== -1) {
+          ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', GOALS[url]);
+          // «lead» — общая цель «заявка» поверх конкретной формы (ТЗ по SEO, п. 7)
+          ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', 'lead');
+          return;
+        }
       }
       // Финал квиза — это /leads/quiz-lead/<id>/, а не каждый шаг /leads/quiz-step/.
       if (path.indexOf('/leads/quiz-lead/') !== -1) {
         ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', 'quiz_complete');
+        ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', 'lead');
       }
     });
+    // Звонок и мессенджер — клики по tel: и ссылкам на Telegram/MAX/WhatsApp
+    // в любом месте сайта (шапка, карточка, статьи, страницы городов).
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[href]');
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      if (href.indexOf('tel:') === 0) {
+        ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', 'call');
+      } else if (/^https?:\/\/(t\.me|telegram\.me|max\.ru|web\.max\.ru|wa\.me|api\.whatsapp\.com)\//i.test(href)) {
+        ym({{ YANDEX_METRIKA_ID }}, 'reachGoal', 'messenger');
+      }
+    }, true);
   })();
 </script>
 {% endif %}

@@ -60,6 +60,19 @@ class CollectionSitemap(SiteSitemap):
         return reverse('collection', args=[obj.slug])
 
 
+class CitySitemap(SiteSitemap):
+    """Региональные посадочные /simferopol/ и т.п. (cities.py)."""
+    changefreq = 'weekly'
+    priority = 0.7
+
+    def items(self):
+        from .cities import CITIES
+        return list(CITIES)
+
+    def location(self, slug):
+        return reverse('city', args=[slug])
+
+
 class StaticViewSitemap(SiteSitemap):
     changefreq = 'monthly'
     priority = 0.5

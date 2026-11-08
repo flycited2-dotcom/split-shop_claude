@@ -9,4 +9,8 @@ urlpatterns = [
     path('catalog/<slug:slug>/', views.collection, name='collection'),
     path('availability/', views.availability, name='availability'),
     re_path(r'^product/(?P<slug>[^/]+)/$', views.product_detail, name='product_detail'),
+    # Региональные посадочные — явный список, чтобы маршрут не ловил
+    # произвольные /<что-угодно>/ (тексты: apps/catalog/cities.py).
+    re_path(r'^(?P<city>simferopol|sevastopol|yalta|evpatoriya|feodosiya|kerch)/$',
+            views.city_landing, name='city'),
 ]

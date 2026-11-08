@@ -91,7 +91,42 @@ def home(request):
         'categories': categories,
         'featured': featured,
         'weekly_pick': weekly_pick,
+        # Не через `weekly_pick|default:featured.0` в шаблоне: при пустом
+        # наличии featured.0 бросал VariableDoesNotExist → главная отдавала 500.
+        'hero_product': weekly_pick or (featured[0] if featured else None),
         'show_price': show_price,
+    })
+
+
+def city_landing(request, city):
+    """Региональная посадочная /simferopol/ и т.п. (ТЗ по SEO, п. 5).
+
+    Тексты — в apps/catalog/cities.py. Подборка — сплит-системы в крымском
+    наличии, как «Хиты» на главной, сбалансированные по поставщикам.
+    """
+    from .cities import CITIES
+    c = CITIES.get(city)
+    if c is None:
+        raise Http404
+    base_qs = (
+        Product.objects
+        .filter(is_active=True, category__sync_enabled=True, kind=Product.KIND_SPLIT_SYSTEM,
+                stock__warehouse='Симферополь', stock__quantity__gt=0)
+        .exclude(brand__title__iexact='ALFACOOL')
+        .exclude(brand__title__iexact='SHUFT')
+        .select_related('brand', 'stock')
+        .prefetch_related('images', 'tech_values__spec')
+        .order_by(F('stock__quantity').desc(nulls_last=True), 'ric')
+    )
+    buffer = []
+    for src in ('breeze', 'rusklimat', 'daichi', 'jac'):
+        buffer.extend(list(base_qs.filter(source=src)[:15]))
+    popular = _balance_by_source(buffer, per_source=3, total=8)
+    return render(request, 'catalog/city.html', {
+        'city': c,
+        'other_cities': [x for x in CITIES.values() if x.slug != c.slug],
+        'popular': popular,
+        'show_price': request.user.is_authenticated and getattr(request.user, 'is_approved', False),
     })
 
 

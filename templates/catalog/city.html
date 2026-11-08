@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}{{ city.title }}{% endblock %}
+{% block meta_description %}{{ city.description }}{% endblock %}
+{% block og_title %}{{ city.title }}{% endblock %}
+{% block og_description %}{{ city.description }}{% endblock %}
+{% block twitter_title %}{{ city.title }}{% endblock %}
+{% block twitter_description %}{{ city.description }}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HVACBusiness",
+  "@id": "{{ SITE_URL }}{{ request.path }}#business",
+  "name": "SplitHome — кондиционеры {{ city.where|escapejs }}",
+  "description": "{{ city.description|escapejs }}",
+  "url": "{{ SITE_URL }}{{ request.path }}",
+  "telephone": "{{ SITE_PHONE_RAW }}",
+  "email": "info@splithome.ru",
+  "image": "{{ SITE_URL }}/static/img/favicon/og-image.jpg",
+  "priceRange": "₽₽",
+  "address": {
+    "@type": "PostalAddress",
+    "addressRegion": "Республика Крым",
+    "addressLocality": "Симферополь",
+    "addressCountry": "RU"
+  },
+  "areaServed": {"@type": "City", "name": "{{ city.name|escapejs }}"},
+  "parentOrganization": {"@type": "Organization", "name": "SplitHome", "url": "{{ SITE_URL }}/"}
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Главная", "item": "{{ SITE_URL }}/"},
+    {"@type": "ListItem", "position": 2, "name": "{{ city.h1|escapejs }}", "item": "{{ SITE_URL }}{{ request.path }}"}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<nav class="text-sm text-ink-3 mb-4" aria-label="Хлебные крошки">
+  <a href="/" class="hover:text-accent">Главная</a> / <span class="text-ink-2">Кондиционеры {{ city.where }}</span>
+</nav>
+
+<section class="max-w-3xl mb-10">
+  <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink mb-4">{{ city.h1 }}</h1>
+  <p class="text-lg text-ink-2 leading-relaxed mb-6">{{ city.intro }}</p>
+  <div class="flex flex-wrap gap-3">
+    <a href="/quiz/" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-accent text-white font-semibold hover:bg-accent/90 transition">Подобрать за 2 минуты</a>
+    {% if SITE_PHONE_RAW %}
+    <a href="tel:{{ SITE_PHONE_RAW }}" class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-ink/15 bg-white text-ink font-semibold hover:border-accent transition">Позвонить {{ SITE_PHONE }}</a>
+    {% endif %}
+    <a href="#city-lead" class="inline-flex items-center justify-center px-5 py-3 rounded-xl border border-ink/15 bg-white text-ink font-semibold hover:border-accent transition">Заявка на установку</a>
+  </div>
+</section>
+
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+  <div class="card p-6">
+    <h2 class="text-xl font-bold text-ink mb-2">Доставка {{ city.where }}</h2>
+    <p class="text-ink-2 leading-relaxed">{{ city.delivery }}</p>
+    <a href="{% url 'delivery' %}" class="inline-block mt-3 text-sm text-accent hover:underline">Условия доставки →</a>
+  </div>
+  <div class="card p-6">
+    <h2 class="text-xl font-bold text-ink mb-2">Монтаж {{ city.where }}</h2>
+    <p class="text-ink-2 leading-relaxed">{{ city.install }}</p>
+    <a href="{% url 'installation' %}" class="inline-block mt-3 text-sm text-accent hover:underline">Подробнее о монтаже →</a>
+  </div>
+</section>
+
+{% if popular %}
+<section class="mb-10">
+  <div class="flex items-end justify-between gap-4 mb-4">
+    <h2 class="text-2xl font-bold text-ink">Популярные модели в наличии</h2>
+    <a href="/catalog/?in_stock=1" class="text-sm text-accent hover:underline whitespace-nowrap">Весь каталог →</a>
+  </div>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    {% for product in popular %}
+      {% include 'partials/product_card.html' %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section id="city-lead" class="rounded-[22px] border border-accent/30 bg-accent/5 p-6 sm:p-8 mb-10 max-w-3xl">
+  <h2 class="text-2xl font-bold text-ink mb-2">Заявка на установку {{ city.where }}</h2>
+  <p class="text-ink-2 mb-5">Оставьте телефон — перезвоним, рассчитаем стоимость и согласуем дату. Не знаете, какую модель брать? Пройдите <a href="/quiz/" class="text-accent underline">подбор за 2 минуты</a>.</p>
+  <div id="city-lead-result" aria-live="polite">
+    <form hx-post="{% url 'installation_submit' %}" hx-target="#city-lead-result" hx-swap="innerHTML"
+          class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1" for="city-lead-name">Имя *</label>
+        <input id="city-lead-name" type="text" name="name" required maxlength="150"
+               class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-ink mb-1" for="city-lead-phone">Телефон *</label>
+        <input id="city-lead-phone" type="tel" name="phone" required maxlength="30"
+               class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent">
+      </div>
+      <div class="sm:col-span-2">
+        <label class="block text-sm font-medium text-ink mb-1" for="city-lead-address">Адрес *</label>
+        <input id="city-lead-address" type="text" name="address" required value="{{ city.name }}, "
+               class="w-full border border-ink/15 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent">
+      </div>
+      <input type="hidden" name="comment" value="Заявка со страницы {{ request.path }}">
+      <div class="sm:col-span-2">
+        <button type="submit" class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-accent text-white font-semibold hover:bg-accent/90 transition">Отправить заявку</button>
+        <p class="text-xs text-ink-3 mt-2">Нажимая кнопку, вы соглашаетесь с <a href="{% url 'privacy' %}" class="underline">политикой конфиденциальности</a>.</p>
+      </div>
+    </form>
+  </div>
+</section>
+
+<nav class="text-sm text-ink-3" aria-label="Другие города">
+  <span class="font-semibold text-ink-2">Работаем по Крыму:</span>
+  {% for c in other_cities %}<a href="{% url 'city' c.slug %}" class="hover:text-accent">{{ c.name }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+</nav>
+{% endblock %}

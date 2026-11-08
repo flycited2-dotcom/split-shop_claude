@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from django.contrib.sitemaps.views import sitemap
 from apps.leads import views as views_leads
 from apps.catalog.sitemaps import (
-    CategorySitemap, CollectionSitemap, ProductSitemap, StaticViewSitemap,
+    CitySitemap, CollectionSitemap, ProductSitemap, StaticViewSitemap,
 )
 
 from apps.articles.sitemaps import ArticleSitemap
@@ -17,7 +17,9 @@ from apps.articles.sitemaps import ArticleSitemap
 sitemaps = {
     'articles': ArticleSitemap,
     'products': ProductSitemap,
-    'categories': CategorySitemap,
+    # CategorySitemap убран: /catalog/?category=N отдаёт canonical на /catalog/,
+    # и карта сайта противоречила canonical (SEO-аудит 06.11.2026).
+    'cities': CitySitemap,
     'collections': CollectionSitemap,
     'static': StaticViewSitemap,
 }
