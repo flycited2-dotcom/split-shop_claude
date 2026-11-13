@@ -36,6 +36,22 @@ def _is_ac_category(category, allowed_ids=None):
     return category.sync_enabled
 
 
+def _breez_slug(brand_title, articul, title, nc):
+    """Адрес товара Бриза — только латиница (apps/catalog/slugs.py).
+
+    Без to_latin() синхронизация раз в 4 часа возвращала кириллицу
+    («…-НС-1414392») и откатывала миграцию 0015: product_detail такой
+    адрес не открывает, товар отдаёт 404.
+    """
+    from apps.catalog.slugs import to_latin
+    brand_part = slugify(brand_title, allow_unicode=True) if brand_title else ''
+    if brand_part and articul:
+        raw = f"{brand_part}-{slugify(articul, allow_unicode=True)}-{nc}"
+    else:
+        raw = f"{slugify(title, allow_unicode=True)}-{nc}"
+    return to_latin(raw)[:500] or f"product-{to_latin(nc) or 'x'}"
+
+
 def _get_client():
     return BreezClient()
 
@@ -166,12 +182,7 @@ def sync_products(category_ids=None):
             articul = item.get('articul', '')
             title = item.get('title', '') or articul or nc
 
-            brand_part = slugify(brand.title, allow_unicode=True) if brand else ''
-            if brand_part and articul:
-                slug = f"{brand_part}-{slugify(articul, allow_unicode=True)}-{nc}"
-            else:
-                slug = f"{slugify(title, allow_unicode=True)}-{nc}"
-            slug = slug[:500] or f"product-{nc}"
+            slug = _breez_slug(brand.title if brand else '', articul, title, nc)
 
             obj, is_new = Product.objects.update_or_create(
                 nc_code=nc,
